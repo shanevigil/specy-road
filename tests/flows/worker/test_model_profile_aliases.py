@@ -24,12 +24,12 @@ from tests.support.profiles import commit_profile, make_profile_repo, ROSTER, TE
 from tests.support import REPO
 import os
 import shutil
-import time
 from tests.support.review import commit_file, make_review_repo
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.orchestration.model_profiles import load_profile
+from tests.support.bounded_wait import pause
 from specy_road.orchestration.orchestrate_plan import (
     build_orchestration_plan,
     entry_may_process,
@@ -344,7 +344,7 @@ def test_a_profile_cli_launches_only_generic_workers(tmp_path: Path, monkeypatch
     for _ in range(100):
         if argv.is_file() and argv.read_text():
             break
-        time.sleep(0.1)
+        pause(0.1)
     args = argv.read_text().split()
     for e in expect:
         assert (e[1:] not in args) if e.startswith("!") else (e in args), (e, args)

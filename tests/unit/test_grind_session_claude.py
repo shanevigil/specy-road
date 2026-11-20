@@ -20,14 +20,14 @@ def test_a_generic_hook_still_goes_through_the_plain_shell_runner(monkeypatch, c
     h = Harness(monkeypatch, [plan(ready=["M1.1"])], implement_rc=1)
     captured: list[str] = []
     monkeypatch.setattr(
-        gsi, "_run_capturing", lambda *_a: captured.append("claude path") or (0, "")
+        gsi, "run_capturing", lambda *_a: captured.append("claude path") or (0, "")
     )
 
     def failing_shell(cmd, env, repo_root):
         h.shell_calls.append(cmd)
         return 1
 
-    monkeypatch.setattr(gs, "_run_shell", failing_shell)
+    monkeypatch.setattr(gs, "run_shell", failing_shell)
 
     code = run(["--on-complete", "merge", "--implement-mode", "hook",
                  "--implement-cmd", "my-agent --prompt x", "--json",
@@ -49,8 +49,8 @@ def test_a_claude_hook_waits_out_a_limit_and_the_leaf_still_finishes(
         "session_id: 3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50\n"
     )
     scripted = [(1, limit), (0, "done")]
-    monkeypatch.setattr(gsi, "_run_capturing", lambda *_a: scripted.pop(0))
-    monkeypatch.setattr(gsi, "_notify", lambda *_a: None)
+    monkeypatch.setattr(gsi, "run_capturing", lambda *_a: scripted.pop(0))
+    monkeypatch.setattr(gsi, "notify", lambda *_a: None)
     monkeypatch.setattr(gsi.time, "sleep", lambda _s: None)
 
     code = run(["--on-complete", "merge", "--implement-mode", "hook",
@@ -69,7 +69,7 @@ def test_an_unrecognized_claude_limit_stops_the_session(monkeypatch, capsys):
     """A wording change must surface, not read as a normal hook failure."""
     Harness(monkeypatch, [plan(ready=["M1.1"])])
     monkeypatch.setattr(
-        gsi, "_run_capturing", lambda *_a: (1, "API error 429: too many requests.")
+        gsi, "run_capturing", lambda *_a: (1, "API error 429: too many requests.")
     )
 
     code = run(["--on-complete", "merge", "--implement-mode", "hook",

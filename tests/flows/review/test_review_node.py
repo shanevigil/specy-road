@@ -178,7 +178,7 @@ def test_anthropic_provider_errors_are_redacted(monkeypatch: pytest.MonkeyPatch)
 
 def test_normalize_review_strips_markdown_fence() -> None:
     raw = "```markdown\n## Intent\n\nx\n```"
-    assert review_node._normalize_review_markdown_output(raw) == "## Intent\n\nx"
+    assert review_node.normalize_review_markdown_output(raw) == "## Intent\n\nx"
 
 
 def test_system_prompt_for_planning_review_gate() -> None:
@@ -258,11 +258,11 @@ def test_shared_catalog_max_files_footer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(review_node, "_SHARED_CATALOG_MAX_FILES", 2)
+    monkeypatch.setattr(review_node, "SHARED_CATALOG_MAX_FILES", 2)
     (tmp_path / "shared").mkdir()
     for i in range(4):
         (tmp_path / "shared" / f"z{i}.md").write_text("# t\n", encoding="utf-8")
-    out = review_node._shared_catalog(tmp_path)
+    out = review_node.shared_catalog(tmp_path)
     assert "`shared/z0.md`" in out
     assert "`shared/z1.md`" in out
     assert "`shared/z2.md`" not in out
@@ -270,13 +270,13 @@ def test_shared_catalog_max_files_footer(
 
 
 def test_shared_catalog_no_shared_directory(tmp_path: Path) -> None:
-    out = review_node._shared_catalog(tmp_path)
+    out = review_node.shared_catalog(tmp_path)
     assert "not present" in out
 
 
 def test_shared_catalog_empty_directory(tmp_path: Path) -> None:
     (tmp_path / "shared").mkdir()
-    out = review_node._shared_catalog(tmp_path)
+    out = review_node.shared_catalog(tmp_path)
     assert "empty" in out.lower()
 
 
@@ -284,18 +284,18 @@ def test_shared_catalog_memoizes_when_unchanged(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    review_node._shared_catalog_cache_clear()
+    review_node.shared_catalog_cache_clear()
     (tmp_path / "shared").mkdir()
     (tmp_path / "shared" / "x.md").write_text("# X\n", encoding="utf-8")
     calls = {"n": 0}
-    real_build = review_node._shared_catalog_build
+    real_build = review_node.shared_catalog_build
 
     def counting_build(r: Path) -> str:
         calls["n"] += 1
         return real_build(r)
 
-    monkeypatch.setattr(review_node, "_shared_catalog_build", counting_build)
-    assert review_node._shared_catalog(tmp_path) == review_node._shared_catalog(tmp_path)
+    monkeypatch.setattr(review_node, "shared_catalog_build", counting_build)
+    assert review_node.shared_catalog(tmp_path) == review_node.shared_catalog(tmp_path)
     assert calls["n"] == 1
 
 
@@ -303,25 +303,25 @@ def test_shared_catalog_cache_invalidates_after_file_change(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    review_node._shared_catalog_cache_clear()
+    review_node.shared_catalog_cache_clear()
     (tmp_path / "shared").mkdir()
     p = tmp_path / "shared" / "x.md"
     p.write_text("# X\n", encoding="utf-8")
     calls = {"n": 0}
-    real_build = review_node._shared_catalog_build
+    real_build = review_node.shared_catalog_build
 
     def counting_build(r: Path) -> str:
         calls["n"] += 1
         return real_build(r)
 
-    monkeypatch.setattr(review_node, "_shared_catalog_build", counting_build)
-    review_node._shared_catalog(tmp_path)
+    monkeypatch.setattr(review_node, "shared_catalog_build", counting_build)
+    review_node.shared_catalog(tmp_path)
     # _stat_fingerprint_shared_paths keys on (mtime_ns, size). On fast tmpfs
     # both writes can land in the same nanosecond; rewrite with a different
     # size so the size component alone forces a cache miss even when mtime
     # collides.
     p.write_text("# Y (longer content to force size change)\n", encoding="utf-8")
-    review_node._shared_catalog(tmp_path)
+    review_node.shared_catalog(tmp_path)
     assert calls["n"] == 2
 
 
@@ -329,7 +329,7 @@ def test_shared_catalog_memoizes_with_git_head_tree(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    review_node._shared_catalog_cache_clear()
+    review_node.shared_catalog_cache_clear()
     (tmp_path / "shared").mkdir()
     (tmp_path / "shared" / "a.md").write_text("# Git doc\n", encoding="utf-8")
     subprocess.run(
@@ -363,14 +363,14 @@ def test_shared_catalog_memoizes_with_git_head_tree(
         capture_output=True,
     )
     calls = {"n": 0}
-    real_build = review_node._shared_catalog_build
+    real_build = review_node.shared_catalog_build
 
     def counting_build(r: Path) -> str:
         calls["n"] += 1
         return real_build(r)
 
-    monkeypatch.setattr(review_node, "_shared_catalog_build", counting_build)
-    assert review_node._shared_catalog(tmp_path) == review_node._shared_catalog(tmp_path)
+    monkeypatch.setattr(review_node, "shared_catalog_build", counting_build)
+    assert review_node.shared_catalog(tmp_path) == review_node.shared_catalog(tmp_path)
     assert calls["n"] == 1
-    key = review_node._shared_catalog_cache_key(tmp_path.resolve())
+    key = review_node.shared_catalog_cache_key(tmp_path.resolve())
     assert "\0git:" in key

@@ -211,7 +211,7 @@ def test_json_mode_keeps_child_output_off_stdout(monkeypatch, tmp_path, capfd):
     """capfd gives stderr a real file descriptor: the streaming path."""
     monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", True)
 
-    assert gs._run_shell("echo hello", os.environ.copy(), tmp_path) == 0
+    assert gs.run_shell("echo hello", os.environ.copy(), tmp_path) == 0
 
     captured = capfd.readouterr()
     assert captured.out == ""
@@ -221,7 +221,7 @@ def test_json_mode_keeps_child_output_off_stdout(monkeypatch, tmp_path, capfd):
 def test_json_mode_falls_back_when_stderr_has_no_descriptor(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", True)
 
-    assert gs._run_shell("echo hello", os.environ.copy(), tmp_path) == 0
+    assert gs.run_shell("echo hello", os.environ.copy(), tmp_path) == 0
 
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -231,7 +231,7 @@ def test_json_mode_falls_back_when_stderr_has_no_descriptor(monkeypatch, tmp_pat
 def test_without_json_the_child_keeps_our_stdout(monkeypatch, tmp_path, capfd):
     monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", False)
 
-    gs._run_shell("echo hello", os.environ.copy(), tmp_path)
+    gs.run_shell("echo hello", os.environ.copy(), tmp_path)
 
     assert "hello" in capfd.readouterr().out
 

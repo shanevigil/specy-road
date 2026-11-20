@@ -53,14 +53,14 @@ def repo(tmp_path: Path) -> Path:
 def test_report_is_quiet_when_every_branch_exists(repo: Path, capsys) -> None:
     git(repo, "branch", "feature/rm-alpha")
 
-    code = rp._report(repo, _reg(_entry("alpha", "M1.1")), "origin", "dev")
+    code = rp.report(repo, _reg(_entry("alpha", "M1.1")), "origin", "dev")
 
     assert code == 0
     assert "every branch accounted for" in capsys.readouterr().out
 
 
 def test_report_lists_the_orphan_and_exits_1(repo: Path, capsys) -> None:
-    code = rp._report(repo, _reg(_entry("alpha", "M1.1")), "origin", "dev")
+    code = rp.report(repo, _reg(_entry("alpha", "M1.1")), "origin", "dev")
 
     err = capsys.readouterr().err
     assert code == 1
@@ -69,7 +69,7 @@ def test_report_lists_the_orphan_and_exits_1(repo: Path, capsys) -> None:
 
 def test_report_warns_that_another_clone_looks_the_same(repo: Path, capsys) -> None:
     """The whole reason this command does not auto-prune."""
-    rp._report(repo, _reg(_entry("alpha", "M1.1")), "origin", "dev")
+    rp.report(repo, _reg(_entry("alpha", "M1.1")), "origin", "dev")
 
     err = capsys.readouterr().err
     assert "another clone" in err
@@ -80,7 +80,7 @@ def test_report_warns_that_another_clone_looks_the_same(repo: Path, capsys) -> N
 def test_report_counts_only_missing_branches(repo: Path, capsys) -> None:
     git(repo, "branch", "feature/rm-alpha")
 
-    rp._report(repo, _reg(_entry("alpha", "M1.1"), _entry("beta", "M1.2")), "origin", "dev")
+    rp.report(repo, _reg(_entry("alpha", "M1.1"), _entry("beta", "M1.2")), "origin", "dev")
 
     err = capsys.readouterr().err
     assert "1 of 2 registry claim(s)" in err
@@ -92,7 +92,7 @@ def test_report_counts_only_missing_branches(repo: Path, capsys) -> None:
 
 def test_unknown_codename_is_refused(repo: Path, capsys) -> None:
     with pytest.raises(SystemExit) as e:
-        rp._resolve_removals(repo, _reg(_entry("alpha", "M1.1")), ["nope"])
+        rp.resolve_removals(repo, _reg(_entry("alpha", "M1.1")), ["nope"])
 
     assert e.value.code == 1
     assert "no registry claim with codename 'nope'" in capsys.readouterr().err
@@ -103,7 +103,7 @@ def test_a_claim_whose_branch_is_here_is_refused(repo: Path, capsys) -> None:
     git(repo, "branch", "feature/rm-alpha")
 
     with pytest.raises(SystemExit) as e:
-        rp._resolve_removals(repo, _reg(_entry("alpha", "M1.1")), ["alpha"])
+        rp.resolve_removals(repo, _reg(_entry("alpha", "M1.1")), ["alpha"])
 
     err = capsys.readouterr().err
     assert e.value.code == 1
@@ -114,7 +114,7 @@ def test_a_claim_whose_branch_is_here_is_refused(repo: Path, capsys) -> None:
 def test_named_orphans_resolve_in_order(repo: Path) -> None:
     reg = _reg(_entry("alpha", "M1.1"), _entry("beta", "M1.2"))
 
-    rows = rp._resolve_removals(repo, reg, ["beta", "alpha"])
+    rows = rp.resolve_removals(repo, reg, ["beta", "alpha"])
 
     assert [r["codename"] for r in rows] == ["beta", "alpha"]
 
@@ -131,7 +131,7 @@ def test_removal_drops_only_named_rows_and_pushes(repo: Path, monkeypatch) -> No
         rp, "write_registry", lambda path, doc: written.update(doc)
     )
 
-    code = rp._remove_and_push(repo, reg, [reg["entries"][0]], "origin", "dev")
+    code = rp.remove_and_push(repo, reg, [reg["entries"][0]], "origin", "dev")
 
     assert code == 0
     assert [e["codename"] for e in written["entries"]] == ["beta"]
@@ -145,7 +145,7 @@ def test_removal_commit_message_names_the_claims(repo: Path, monkeypatch) -> Non
     monkeypatch.setattr(rp, "git_run", lambda root, *a: calls.append(a))
     monkeypatch.setattr(rp, "write_registry", lambda path, doc: None)
 
-    rp._remove_and_push(repo, reg, list(reg["entries"]), "origin", "dev")
+    rp.remove_and_push(repo, reg, list(reg["entries"]), "origin", "dev")
 
     commit = next(a for a in calls if a[0] == "commit")
     assert "alpha, beta" in commit[-1]
@@ -163,8 +163,8 @@ def test_removal_runs_under_the_repository_lock(repo: Path, monkeypatch) -> None
 
     monkeypatch.setattr(rp, "pickup_finish_lock", lock)
     monkeypatch.setattr(rp, "sync_integration_branch", lambda *a, **k: events.append("sync"))
-    monkeypatch.setattr(rp, "_resolve_removals", lambda root, reg, names: [])
-    monkeypatch.setattr(rp, "_remove_and_push", lambda *a: events.append("commit+push") or 0)
+    monkeypatch.setattr(rp, "resolve_removals", lambda root, reg, names: [])
+    monkeypatch.setattr(rp, "remove_and_push", lambda *a: events.append("commit+push") or 0)
     with pytest.raises(SystemExit) as e:
         rp.main(["--remove", "alpha", "--repo-root", str(repo)])
     assert e.value.code == 0

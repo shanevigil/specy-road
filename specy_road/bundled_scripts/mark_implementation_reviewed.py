@@ -60,7 +60,7 @@ def _summary_path(root: Path, node_id: str) -> Path:
     return root / "work" / f"implementation-summary-{node_id}.md"
 
 
-def _extract_walkthrough(text: str) -> str | None:
+def extract_walkthrough(text: str) -> str | None:
     """Return body under a Markdown 'Walkthrough' heading, if present."""
     lines = text.splitlines()
     start: int | None = None
@@ -507,7 +507,7 @@ def _mark(argv: list[str] | None) -> None:
         print(summary_text)
         print()
 
-    walkthrough = _extract_walkthrough(summary_text) if summary_text else None
+    walkthrough = extract_walkthrough(summary_text) if summary_text else None
     gate = _gate_or_human_approval(
         root, args, node, branch=entry.get("branch"), summary_text=summary_text,
         walkthrough=walkthrough,

@@ -98,7 +98,7 @@ def test_check_source_states(monkeypatch) -> None:
              "https://example.com/": (200, ""),
              "https://example.com/inline": (200, "<p>defined in <code>.git/config</code>.</p>"
                                                  "<p><b>Ex</b>port <em>files </em>, then</p><td>end</td>")}
-    monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
+    monkeypatch.setattr(bv, "is_off_host", lambda host: host != "example.com")
     calls: list[str] = []
 
     def fetch(url):
@@ -278,7 +278,7 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
         return 200, "exact words" if url.endswith("ok") else "nope"
 
     monkeypatch.setattr(bv, "default_fetch", fetch)
-    monkeypatch.setattr(bv, "_is_off_host", lambda host: False)
+    monkeypatch.setattr(bv, "is_off_host", lambda host: False)
     monkeypatch.setattr("sys.stdin", io.StringIO(""))          # not a TTY, no --yes: nothing fetched
     code, out, _ = cli(repo, "verify")
     assert code == 1 and "would fetch 2 URL(s)" in out and "pass --yes" in out and calls == []
@@ -315,8 +315,8 @@ def test_default_fetch_checks_every_redirect_hop(monkeypatch) -> None:
         calls.append(url)
         return pages[url]
 
-    monkeypatch.setattr(bv, "_fetch_once", fetch_once)
-    monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
+    monkeypatch.setattr(bv, "fetch_once", fetch_once)
+    monkeypatch.setattr(bv, "is_off_host", lambda host: host != "example.com")
     with pytest.raises(ValueError, match="refusing http://127.0.0.1/secret"):
         bv.default_fetch("https://example.com/a")
     assert calls == ["https://example.com/a"]
@@ -363,11 +363,11 @@ def test_the_connection_is_pinned_to_the_checked_address(monkeypatch) -> None:
     """The name is resolved once; the socket goes to that address with the hostname kept for TLS."""
     monkeypatch.setattr(bv.socket, "getaddrinfo",
                         lambda host, port, **kw: [(None, None, None, None, ("93.184.216.34", 443))])
-    assert bv._public_address("example.com") == "93.184.216.34"
+    assert bv.public_address("example.com") == "93.184.216.34"
     monkeypatch.setattr(bv.socket, "getaddrinfo",
                         lambda host, port, **kw: [(None, None, None, None, ("93.184.216.34", 443)),
                                                   (None, None, None, None, ("127.0.0.1", 443))])
-    assert bv._public_address("rebinder.example") is None       # one private answer poisons the name
+    assert bv.public_address("rebinder.example") is None       # one private answer poisons the name
     opened: list[tuple] = []
 
     class Sock:
@@ -382,7 +382,7 @@ def test_the_connection_is_pinned_to_the_checked_address(monkeypatch) -> None:
             opened.append(("sni", server_hostname))
             return sock
 
-    conn = bv._PinnedHTTPS("example.com", "93.184.216.34", 443)
+    conn = bv.PinnedHTTPS("example.com", "93.184.216.34", 443)
     conn._context = Ctx()
     conn.connect()
     assert opened == [("93.184.216.34", 443), ("sni", "example.com")]
@@ -412,9 +412,9 @@ def test_the_byte_cap_blocks_rather_than_truncates(monkeypatch) -> None:
         def getresponse(self): return R()
         def close(self): pass
 
-    monkeypatch.setattr(bv, "_PinnedHTTPS", Conn)
-    monkeypatch.setattr(bv, "_public_address", lambda host: "93.184.216.34")
-    monkeypatch.setattr(bv, "_is_off_host", lambda host: False)
+    monkeypatch.setattr(bv, "PinnedHTTPS", Conn)
+    monkeypatch.setattr(bv, "public_address", lambda host: "93.184.216.34")
+    monkeypatch.setattr(bv, "is_off_host", lambda host: False)
     with pytest.raises(ValueError, match="larger than"):
         bv.default_fetch("https://example.com/big")
     assert bv.check_source({"url": "https://example.com/big", "quote": "x"}, bv.default_fetch) == "blocked"

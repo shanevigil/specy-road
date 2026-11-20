@@ -72,11 +72,11 @@ class Harness:
         monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
         monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", False)
         monkeypatch.setattr(gs, "gather_plan", fake_gather)
-        monkeypatch.setattr(gs, "_run_cli", fake_run_cli)
-        monkeypatch.setattr(gs, "_run_shell", fake_run_shell)
+        monkeypatch.setattr(gs, "run_cli", fake_run_cli)
+        monkeypatch.setattr(gs, "run_shell", fake_run_shell)
         monkeypatch.setattr(gs, "current_branch", fake_current_branch)
-        monkeypatch.setattr(gs, "_resolve_picked", fake_resolve)
-        monkeypatch.setattr(gs, "_wait_for_signal", fake_wait)
+        monkeypatch.setattr(gs, "resolve_picked", fake_resolve)
+        monkeypatch.setattr(gs, "wait_for_signal", fake_wait)
 
     def _fake_git(self, git_args, repo_root):
         self.git_calls.append(list(git_args))

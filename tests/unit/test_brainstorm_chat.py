@@ -229,6 +229,6 @@ def test_search_results_are_delimited_as_untrusted() -> None:
 def test_cgnat_addresses_are_off_host(monkeypatch) -> None:
     assert not ipaddress.ip_address("100.64.0.1").is_private
     monkeypatch.setattr(br.socket, "getaddrinfo", lambda host, port: [(None, None, None, None, ("100.64.0.1", 0))])
-    assert br._is_off_host("tailnet.example")
+    assert br.is_off_host("tailnet.example")
     monkeypatch.setattr(br.socket, "getaddrinfo", lambda host, port: [(None, None, None, None, ("93.184.216.34", 0))])
-    assert not br._is_off_host("example.com")
+    assert not br.is_off_host("example.com")

@@ -58,9 +58,9 @@ def test_available_respects_effective_ancestor_dependencies() -> None:
         "dependencies": [],
         "codename": "leaf-node",
     }
-    assert dnt._available([phase, prereq, leaf], reg(), {}) == []
+    assert dnt.available_nodes([phase, prereq, leaf], reg(), {}) == []
     prereq_done = {**prereq, "status": "Complete"}
-    result = dnt._available([phase, prereq_done, leaf], reg(), {})
+    result = dnt.available_nodes([phase, prereq_done, leaf], reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M0.1"
 
@@ -98,7 +98,7 @@ def test_available_gate_incomplete_blocks_descendant_leaf() -> None:
         "dependencies": [],
         "codename": "leaf-node",
     }
-    assert dnt._available([phase, gate, leaf], reg(), {}) == []
+    assert dnt.available_nodes([phase, gate, leaf], reg(), {}) == []
 
 
 def test_available_gate_complete_allows_descendant_leaf() -> None:
@@ -134,7 +134,7 @@ def test_available_gate_complete_allows_descendant_leaf() -> None:
         "dependencies": [],
         "codename": "leaf-node",
     }
-    result = dnt._available([phase, gate, leaf], reg(), {})
+    result = dnt.available_nodes([phase, gate, leaf], reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M0.2"
 
@@ -161,4 +161,4 @@ def test_available_excludes_type_gate_even_if_agentic() -> None:
         "dependencies": [],
         "planning_dir": "planning/p.md",
     }
-    assert dnt._available([phase, gate], reg(), {}) == []
+    assert dnt.available_nodes([phase, gate], reg(), {}) == []

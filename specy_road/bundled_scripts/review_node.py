@@ -37,7 +37,7 @@ _TEXT_SUFFIXES = frozenset(
 )
 _SHARED_CATALOG_SAMPLE_BYTES = 2048
 _SHARED_CATALOG_MAX_BLURB_CHARS = 120
-_SHARED_CATALOG_MAX_FILES = 400
+SHARED_CATALOG_MAX_FILES = 400
 _SHARED_CATALOG_MAX_CHARS = 28_000
 _SHARED_CATALOG_CACHE_MAX_ENTRIES = 32
 
@@ -204,7 +204,7 @@ def _file_blurb_for_catalog(path: Path, size: int) -> str:
     return _blurb_from_decoded_text(decoded)
 
 
-def _shared_catalog_cache_clear() -> None:
+def shared_catalog_cache_clear() -> None:
     """Drop all cached ``shared/`` catalog strings (tests / rare tooling only)."""
     with _SHARED_CATALOG_CACHE_LOCK:
         _SHARED_CATALOG_CACHE.clear()
@@ -243,7 +243,7 @@ def _stat_fingerprint_shared_paths(root_res: Path) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def _shared_catalog_cache_key(root_res: Path) -> str:
+def shared_catalog_cache_key(root_res: Path) -> str:
     """
     Cache key when ``shared/`` is unchanged.
 
@@ -271,11 +271,11 @@ def _shared_catalog_cache_key(root_res: Path) -> str:
     return f"{root_key}\0stat:{_stat_fingerprint_shared_paths(root_res)}"
 
 
-def _shared_catalog_build(root_res: Path) -> str:
+def shared_catalog_build(root_res: Path) -> str:
     """
     Sorted recursive listing under ``shared/`` with deterministic one-line blurbs.
 
-    Truncation: if there are more than ``_SHARED_CATALOG_MAX_FILES`` paths, only
+    Truncation: if there are more than ``SHARED_CATALOG_MAX_FILES`` paths, only
     the first paths in sorted order are listed and the rest are counted in a
     footer. If the section would exceed ``_SHARED_CATALOG_MAX_CHARS``, listing
     stops early with a footer (sorted order, earliest paths win).
@@ -289,7 +289,7 @@ def _shared_catalog_build(root_res: Path) -> str:
     if total_files == 0:
         body = "- _(empty `shared/` directory — no files to index)_\n"
     else:
-        capped = rel_posix[:_SHARED_CATALOG_MAX_FILES]
+        capped = rel_posix[:SHARED_CATALOG_MAX_FILES]
         omitted_by_cap = total_files - len(capped)
 
         lines: list[str] = []
@@ -333,17 +333,17 @@ def _shared_catalog_build(root_res: Path) -> str:
     return body + "\nUse this index only for optional references.\n"
 
 
-def _shared_catalog(root: Path) -> str:
+def shared_catalog(root: Path) -> str:
     """Like :func:`_shared_catalog_build` but memoized while ``shared/`` is stable."""
     root_res = root.resolve()
-    key = _shared_catalog_cache_key(root_res)
+    key = shared_catalog_cache_key(root_res)
     with _SHARED_CATALOG_CACHE_LOCK:
         hit = _SHARED_CATALOG_CACHE.get(key)
         if hit is not None:
             _SHARED_CATALOG_CACHE.move_to_end(key)
             return hit
 
-    text = _shared_catalog_build(root_res)
+    text = shared_catalog_build(root_res)
 
     with _SHARED_CATALOG_CACHE_LOCK:
         _SHARED_CATALOG_CACHE[key] = text
@@ -353,7 +353,7 @@ def _shared_catalog(root: Path) -> str:
     return text
 
 
-def _normalize_review_markdown_output(text: str) -> str:
+def normalize_review_markdown_output(text: str) -> str:
     """Strip accidental ```markdown fences some models wrap around the sheet."""
     t = text.strip()
     if not t.startswith("```"):
@@ -412,7 +412,7 @@ def run_review(
         raise ValueError(f"unknown node {node_id!r}")
     node = by_id[node_id]
     brief = render_brief(node_id, by_id, repo_root=root)
-    shared_index = _shared_catalog(root)
+    shared_index = shared_catalog(root)
     constraints = _constraints_text(root)
     sheet = _feature_sheet_for_prompt(root, node, planning_body)
     nt = node.get("type")
@@ -434,7 +434,7 @@ def run_review(
         [{"role": "user", "content": user_content}],
         system_prompt=system_prompt,
     )
-    return _normalize_review_markdown_output(raw)
+    return normalize_review_markdown_output(raw)
 
 
 def build_parser() -> argparse.ArgumentParser:

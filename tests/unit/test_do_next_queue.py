@@ -30,7 +30,7 @@ _BASE_NODE = {
 
 def test_available_returns_unclaimed_agentic() -> None:
     nodes = [_BASE_NODE]
-    result = dnt._available(nodes, reg(), {})
+    result = dnt.available_nodes(nodes, reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M1.1"
 
@@ -53,18 +53,18 @@ def test_available_picks_leaf_not_parent_when_descendant_is_ready() -> None:
         "parent_id": "M1",
         "codename": "leaf-node",
     }
-    result = dnt._available([parent, leaf], reg(), {})
+    result = dnt.available_nodes([parent, leaf], reg(), {})
     assert [n["id"] for n in result] == ["M1.1"]
 
 
 def test_available_excludes_claimed() -> None:
     nodes = [_BASE_NODE]
-    assert dnt._available(nodes, reg("M1.1"), {}) == []
+    assert dnt.available_nodes(nodes, reg("M1.1"), {}) == []
 
 
 def test_available_excludes_complete() -> None:
     node = {**_BASE_NODE, "status": "Complete"}
-    assert dnt._available([node], reg(), {}) == []
+    assert dnt.available_nodes([node], reg(), {}) == []
 
 
 def test_available_excludes_unmet_deps() -> None:
@@ -81,7 +81,7 @@ def test_available_excludes_unmet_deps() -> None:
         "dependencies": [],
     }
     node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
-    result = dnt._available([dep, node], reg(), {})
+    result = dnt.available_nodes([dep, node], reg(), {})
     assert "M1.1" not in [n["id"] for n in result]
 
 
@@ -96,7 +96,7 @@ def test_available_includes_when_deps_complete() -> None:
         "dependencies": [],
     }
     node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
-    result = dnt._available([dep, node], reg(), {})
+    result = dnt.available_nodes([dep, node], reg(), {})
     assert len(result) == 1
 
 
@@ -104,7 +104,7 @@ def test_available_includes_human_led_now_that_all_leaves_are_agentic() -> None:
     # Per F-003/F-007, every leaf is considered agentic by design regardless
     # of execution_milestone. This used to be excluded; now it's included.
     node = {**_BASE_NODE, "execution_milestone": "Human-led"}
-    result = dnt._available([node], reg(), {})
+    result = dnt.available_nodes([node], reg(), {})
     assert [n["id"] for n in result] == ["M1.1"]
 
 
@@ -112,7 +112,7 @@ def test_available_excludes_no_codename() -> None:
     # A leaf without a codename is still not eligible (validate auto-heals,
     # but if a node slips through without one, do-next will not pick it).
     node = {**_BASE_NODE, "codename": None}
-    assert dnt._available([node], reg(), {}) == []
+    assert dnt.available_nodes([node], reg(), {}) == []
 
 
 def test_available_prioritizes_blocked_before_not_started() -> None:
@@ -124,7 +124,7 @@ def test_available_prioritizes_blocked_before_not_started() -> None:
         "codename": "b",
         "status": "Blocked",
     }
-    result = dnt._available([a, b], reg(), {})
+    result = dnt.available_nodes([a, b], reg(), {})
     assert [n["id"] for n in result] == ["M1.3", "M1.2"]
 
 
@@ -135,7 +135,7 @@ def test_load_branch_enrichment_returns_empty_on_registry_failure(
         raise RuntimeError("no registry")
 
     monkeypatch.setattr(dna, "read_registry", boom)
-    assert dna._load_branch_enrichment(tmp_path) == {}
+    assert dna.load_branch_enrichment(tmp_path) == {}
 
 
 def test_available_orders_blocked_then_mr_rejected_then_not_started() -> None:
@@ -157,7 +157,7 @@ def test_available_orders_blocked_then_mr_rejected_then_not_started() -> None:
     enrich = {
         "M1.4": {"kind": "github_pr", "pr_state": "rejected", "merged": False},
     }
-    result = dnt._available([a, b, c], reg(), enrich)
+    result = dnt.available_nodes([a, b, c], reg(), enrich)
     assert [n["id"] for n in result] == ["M1.3", "M1.4", "M1.2"]
 
 
@@ -173,7 +173,7 @@ def test_available_prioritizes_mr_rejected_before_not_started() -> None:
     enrich = {
         "M1.3": {"kind": "github_pr", "pr_state": "rejected", "merged": False},
     }
-    result = dnt._available([a, b], reg(), enrich)
+    result = dnt.available_nodes([a, b], reg(), enrich)
     assert [n["id"] for n in result] == ["M1.3", "M1.2"]
 
 
@@ -219,7 +219,7 @@ def test_available_orders_eligible_by_outline_not_merged_chunk_order() -> None:
         "touch_zones": [],
     }
     nodes = [root, first_in_array, second_in_array]
-    result = dnt._available(nodes, reg(), {})
+    result = dnt.available_nodes(nodes, reg(), {})
     assert [n["id"] for n in result] == ["M0.2", "M0.1"]
 
 
@@ -300,7 +300,7 @@ def test_exit_no_actionable_leaves_has_deterministic_diagnostics(
         "codename": "leaf-node",
     }
     with pytest.raises(SystemExit) as ei:
-        dnt._exit_no_actionable_leaves(
+        dnt.exit_no_actionable_leaves(
             [parent, leaf],
             reg("M2.1"),
             after_sync=False,
@@ -319,7 +319,7 @@ def test_exit_no_actionable_leaves_names_the_integration_branch(
     """The usual cause is an add-node commit that never landed on the trunk."""
     leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
     with pytest.raises(SystemExit):
-        dnt._exit_no_actionable_leaves(
+        dnt.exit_no_actionable_leaves(
             [leaf],
             reg("M2.1"),
             after_sync=True,
@@ -335,7 +335,7 @@ def test_exit_no_actionable_leaves_hint_without_a_known_branch(
 ) -> None:
     leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
     with pytest.raises(SystemExit):
-        dnt._exit_no_actionable_leaves([leaf], reg("M2.1"), after_sync=True)
+        dnt.exit_no_actionable_leaves([leaf], reg("M2.1"), after_sync=True)
     assert "the integration branch" in capsys.readouterr().err
 
 
@@ -345,7 +345,7 @@ def test_hint_comes_after_the_diagnostics(
     """The counts explain the queue when they can; the hint covers when they cannot."""
     leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
     with pytest.raises(SystemExit):
-        dnt._exit_no_actionable_leaves(
+        dnt.exit_no_actionable_leaves(
             [leaf], reg("M2.1"), after_sync=True, integration_branch="trunk"
         )
     err = capsys.readouterr().err
@@ -357,7 +357,7 @@ def test_exit_no_leaves_under_parent_also_names_the_branch(
 ) -> None:
     """A freshly authored subtree is the likeliest reason --under comes back empty."""
     with pytest.raises(SystemExit):
-        dnt._exit_no_leaves_under_parent("M7", after_sync=True, integration_branch="trunk")
+        dnt.exit_no_leaves_under_parent("M7", after_sync=True, integration_branch="trunk")
     err = capsys.readouterr().err
     assert "No actionable leaf tasks in the scope 'M7'" in err
     # --under takes a leaf id too, so "parent" here sent adopters looking for

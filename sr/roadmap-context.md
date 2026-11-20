@@ -75,7 +75,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Complete**
     - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Complete**
     - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Complete**
-    - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Not Started**
+    - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Complete**
     - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Not Started**
     - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Not Started**
   - `M16.8` rc5 close, alias window, end-to-end pass and the 0.3.1 tag `rc5-close-alias-window-end-to-end-pass-and-the-0-3-1-tag` — milestone — **Not Started**
@@ -198,7 +198,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Complete**
   - `M22.71` Review channels report the model the harness actually ran, so every review record names it `review-channels-report-the-model-the-harness-ran` — task — **Complete**
   - `M22.72` Gate: current harness facts delivered as a dated research report `harness-facts-research-delivered` — gate — **Not Started**
-  - `M22.73` Harness facts and captures refreshed from the delivered research `harness-facts-and-captures-refreshed` — task — **Not Started**
+  - `M22.73` Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs `harness-facts-and-captures-refreshed` — task — **Not Started**
   - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Complete**
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Complete**
   - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Complete**
@@ -304,6 +304,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-19 `M22.73` stopped depending on `M22.72 Gate: current harness facts delivered as a dated research report`
 - 2026-11-18 `M16.7.7` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
 - 2026-11-18 `M16.7.6` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
 - 2026-11-14 `M17.8` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
@@ -328,8 +329,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-09 `M16.5.12` stopped depending on `M16.1.6 Review-policy evidence: how often each optional review policy changed a gate outcome`
 - 2026-11-09 `M16.5.1` stopped depending on `M23.4 checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)`
 - 2026-11-09 `M16.5.9` stopped depending on `M23.8 The guard classifier becomes three rule tables with every verdict unchanged`
-- 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
-- _…and 83 earlier — `specy-road history --json`_
+- _…and 84 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -358,13 +358,13 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.7.6` on `feature/rm-tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` since 2026-11-19
 - `M16.7.7` on `feature/rm-tests-five-named-properties-replace-the-single-input-tests-they-cover` since 2026-11-19
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M22.73` on `feature/rm-harness-facts-and-captures-refreshed` since 2026-11-19
 - `M22.79` on `feature/rm-the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` since 2026-11-19
 
 ## Quality by area
@@ -375,8 +375,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | --- | --- | --- | --- | --- | --- | --- |
 | `CHANGELOG.md` **flagged** | 20 | 0 | 2.85 | 70% | 18 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
+| `constraints` **flagged** | 25 | 0 | 2.84 | 52% | 387 | 1 |
 | `docs` **flagged** | 19 | 0 | 3.32 | 74% | 336 | 1 |
-| `planning` **flagged** | 2 | 0 | 4.50 | 100% | 0 | 0 |
+| `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
@@ -384,10 +385,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.42 | 53% | 79 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.50 | 53% | 86 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.62 | 58% | 422 | 2 |
-| `constraints` | 24 | 0 | 2.71 | 50% | 380 | 1 |
+| `tests` **flagged** | 48 | 0 | 2.69 | 58% | 429 | 2 |
 | `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.

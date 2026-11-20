@@ -97,7 +97,7 @@ def _github_dict_from_pr(
     }
 
 
-def _github_pr_detail(repo: str, branch_name: str, token: str) -> dict[str, Any] | None:
+def github_pr_detail(repo: str, branch_name: str, token: str) -> dict[str, Any] | None:
     """Open PR for `head`, else newest PR for that head from `state=all` (merged vs rejected)."""
     owner, _, proj = repo.partition("/")
     if not proj:
@@ -182,9 +182,10 @@ def _gitlab_dict_from_mr(
     }
 
 
-def _gitlab_mr_detail(
+def gitlab_mr_detail(
     gr: dict[str, Any], repo: str, branch_name: str, token: str
 ) -> dict[str, Any] | None:
+    """The newest GitLab merge request for this branch, or None."""
     raw_base = (gr.get("base_url") or "").strip().rstrip("/")
     host = raw_base or "https://gitlab.com"
     enc = quote(repo, safe="")
@@ -257,9 +258,9 @@ def fetch_branch_enrichment(gr: dict[str, Any], branch_name: str) -> dict[str, A
         return None
     try:
         if provider == "github":
-            return _github_pr_detail(repo, branch_name, token)
+            return github_pr_detail(repo, branch_name, token)
         if provider in ("gitlab", "custom"):
-            return _gitlab_mr_detail(gr, repo, branch_name, token)
+            return gitlab_mr_detail(gr, repo, branch_name, token)
     except (
         requests.RequestException,
         KeyError,

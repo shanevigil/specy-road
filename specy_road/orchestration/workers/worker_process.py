@@ -66,7 +66,7 @@ def _ps(fields: str, pid: int) -> str | None:
     return r.stdout.strip()
 
 
-def _cmdline(pid: int) -> str | None:
+def cmdline(pid: int) -> str | None:
     """The process's command line via ``ps``: ``""`` for no such process, ``None`` when ``ps`` cannot say."""
     return _ps("command=", pid)
 
@@ -115,7 +115,7 @@ def pid_alive(pid: int | None, worker_id: str | None = None, *, repo_root: Path 
     exists = _exists(pid)
     if exists is False:
         return False
-    cmd = _cmdline(int(pid))  # type: ignore[arg-type]
+    cmd = cmdline(int(pid))  # type: ignore[arg-type]
     root = str(Path(repo_root).resolve()) if repo_root else None
     if cmd is None:
         return exists is True   # ps cannot say: liveness alone, and only as our own user
@@ -126,7 +126,7 @@ def pid_verified(pid: int | None, worker_id: str, *, repo_root: Path | None = No
     """``pid`` is live **and** its command line names this worker's wrapper; unknown is ``False``."""
     if _exists(pid) is False:
         return False
-    cmd = _cmdline(int(pid))  # type: ignore[arg-type]
+    cmd = cmdline(int(pid))  # type: ignore[arg-type]
     root = str(Path(repo_root).resolve()) if repo_root else None
     return bool(cmd) and _is_wrapper(cmd, worker_id, root, token)
 
@@ -140,7 +140,8 @@ def wrapper_verified(rec: WorkerRecord, repo_root: Path | None = None) -> bool:
     return pid_verified(rec.pid, rec.worker_id, repo_root=repo_root, token=rec.wrapper_token)
 
 
-def _group_members(pgid: int | None) -> list[int]:
+def group_members(pgid: int | None) -> list[int]:
+    """Pids in this process group, excluding zombies."""
     if not pgid:
         return []
     try:
@@ -166,7 +167,7 @@ def harness_alive(rec: WorkerRecord) -> bool:
     if rec.harness_pid and _exists(rec.harness_pid) is not False:
         if rec.harness_start is None or start_token(rec.harness_pid) == rec.harness_start:
             return True
-    return any(p != rec.pid for p in _group_members(rec.pgid))
+    return any(p != rec.pid for p in group_members(rec.pgid))
 
 
 def _harness_verified(rec: WorkerRecord) -> bool:
@@ -221,7 +222,7 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
     and no survivor, so a failed or interrupted pass is repeated by the next
     call, even with the group gone (M22.20).
     """
-    if rec.descendants_unchecked and rec.pgid and not _group_members(rec.pgid) and not wrapper_alive(rec, repo_root):
+    if rec.descendants_unchecked and rec.pgid and not group_members(rec.pgid) and not wrapper_alive(rec, repo_root):
         _end_with_descendants(rec, repo_root, rec.pgid, grace)   # the group went with the last terminate
         return
     if wrapper_alive(rec, repo_root) and not wrapper_verified(rec, repo_root):
@@ -279,7 +280,7 @@ def end_group(pgid: int, grace: float = 5.0, *, confirmed: bool = False,
         return False
     check = outside or list
     for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 2.0)):
-        group = confirmed or bool(_group_members(pgid))
+        group = confirmed or bool(group_members(pgid))
         confirmed = False
         rest = check()
         if not group and rest == []:
@@ -287,10 +288,10 @@ def end_group(pgid: int, grace: float = 5.0, *, confirmed: bool = False,
         _signal(pgid if group else None, rest or [], sig)
         deadline = time.monotonic() + wait
         while time.monotonic() < deadline:
-            if not _group_members(pgid) and check() == []:
+            if not group_members(pgid) and check() == []:
                 return True
             time.sleep(0.1)
-    return not _group_members(pgid)
+    return not group_members(pgid)
 
 
 def _signal(pgid: int | None, pids: list[int], sig: int) -> None:

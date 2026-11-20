@@ -340,17 +340,17 @@ def test_a_ready_for_another_node_or_branch_is_invalid_here(tmp_path: Path) -> N
     repo = make_review_repo(tmp_path)
     _ready(repo, "READY-wrong.md", node_id="M9.9", branch="feature/other")
     assert latest_ready(repo, "M1.1") is None
-    st = review_cli._node_status(repo, "M1.1")
+    st = review_cli.node_status(repo, "M1.1")
     assert st["state"] == "waiting"
     assert any("node_id is 'M9.9', not 'M1.1'" in e for r in st["ready"] for e in r["errors"])
     assert "READY-wrong.md" not in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     # Right node, wrong branch: still not this node's hand-off.
     _ready(repo, "READY-wrong.md", branch="feature/other")
     assert latest_ready(repo, "M1.1", "feature/rm-thing") is None
-    assert "branch is 'feature/other', not the registered 'feature/rm-thing'" in review_cli._node_status(repo, "M1.1")["ready"][0]["errors"][0]
+    assert "branch is 'feature/other', not the registered 'feature/rm-thing'" in review_cli.node_status(repo, "M1.1")["ready"][0]["errors"][0]
     _ready(repo, "READY-right.md")
     assert latest_ready(repo, "M1.1", "feature/rm-thing").path.name == "READY-right.md"
-    assert review_cli._node_status(repo, "M1.1")["state"] == "in-review"
+    assert review_cli.node_status(repo, "M1.1")["state"] == "in-review"
 
 
 

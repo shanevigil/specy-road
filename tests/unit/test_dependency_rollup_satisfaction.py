@@ -9,7 +9,7 @@ all reported the phase as Complete. Nothing warned.
 
 from __future__ import annotations
 
-from specy_road.bundled_scripts.do_next_available import _available, _statuses_by_node_key, blocked_pick_notice
+from specy_road.bundled_scripts.do_next_available import available_nodes, statuses_by_node_key, blocked_pick_notice
 from specy_road.roadmap_load import annotate_rollup_status, compute_rollup_status
 from specy_road.orchestration.grind.session_plan import compute_session_plan
 
@@ -72,28 +72,28 @@ EMPTY_REGISTRY: dict = {"version": 1, "entries": []}
 def test_stale_parent_own_status_no_longer_blocks_a_dependent_leaf() -> None:
     nodes = _graph(phase_own_status="Not Started")
     assert next(n for n in nodes if n["id"] == "M1")["status"] == "Not Started"
-    assert [n["id"] for n in _available(nodes, EMPTY_REGISTRY)] == ["M2.1"]
+    assert [n["id"] for n in available_nodes(nodes, EMPTY_REGISTRY)] == ["M2.1"]
 
 
 def test_dependent_leaf_still_blocked_while_upstream_work_remains() -> None:
     nodes = _graph(phase_own_status="Not Started", leaf_status="Not Started")
-    available = [n["id"] for n in _available(nodes, EMPTY_REGISTRY)]
+    available = [n["id"] for n in available_nodes(nodes, EMPTY_REGISTRY)]
     assert "M2.1" not in available
     assert available == ["M1.1"]
 
 
 def test_statuses_by_node_key_returns_rollup_for_parents() -> None:
-    statuses = _statuses_by_node_key(_graph(phase_own_status="Not Started"))
+    statuses = statuses_by_node_key(_graph(phase_own_status="Not Started"))
     assert statuses[NK["M1"]] == "complete"
 
 
 def test_status_overrides_propagate_up_to_ancestors() -> None:
     """A feature-branch tip that is Complete ahead of its merge satisfies its parent."""
     nodes = _graph(phase_own_status="Not Started", leaf_status="In Progress")
-    assert _statuses_by_node_key(nodes)[NK["M1"]] == "in progress"
-    overridden = _statuses_by_node_key(nodes, {NK["M1.1"]: "complete"})
+    assert statuses_by_node_key(nodes)[NK["M1"]] == "in progress"
+    overridden = statuses_by_node_key(nodes, {NK["M1.1"]: "complete"})
     assert overridden[NK["M1"]] == "complete"
-    assert [n["id"] for n in _available(
+    assert [n["id"] for n in available_nodes(
         nodes, EMPTY_REGISTRY, status_overrides={NK["M1.1"]: "complete"}
     )] == ["M2.1"]
 
