@@ -371,6 +371,7 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.81` on `feature/rm-text-round-trips-exactly-where-specy-road-writes-and-reads-back` since 2026-11-20
+- `M22.83` on `feature/rm-codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` since 2026-11-20
 
 ## Quality by area
 
