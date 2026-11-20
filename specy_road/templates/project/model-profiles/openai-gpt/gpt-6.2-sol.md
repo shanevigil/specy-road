@@ -28,7 +28,7 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below name the switches for `specy-road prompt --channel cli` and generic-harness workers. **`worker delegate` on codex will apply them when leaf M8.2 lands** (that leaf adds the `--disable` flags to the codex launch argv):
+When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below pass these switches, for `specy-road prompt --channel cli` and generic-harness workers. **The default `worker delegate` codex launch does not pass them:** it turns memories off with `-c features.memories=false -c memories.use_memories=false -c memories.generate_memories=false` and the profile's own `CODEX_HOME`, and leaves multi_agent and goals at Codex's defaults (both on in the codex-cli 0.166.0 capture). A roster `channels.cli` that runs the executor template passes all three:
 
 | Feature | Switch |
 |---|---|
@@ -51,7 +51,7 @@ Under the default codex launch (`sandbox_mode=workspace-write`) an executor cann
 - OpenAI's Codex guidance says to search for prior art and reuse or extract a shared helper before adding new helpers or logic, and warns against speculative changes, broad catches and silent defaults (read 2026-10-27; researched 2026-10-27 from the lean-code reports, not human-verified) [S4]
 ## Prompting rules
 - Set effort explicitly; the Codex catalog default is low [S1]
-- Do not send ultra to an executor: the catalog describes it as reasoning with automatic task delegation, and the launch disables multi_agent [S1]
+- Do not send ultra to an executor: the catalog describes it as reasoning with automatic task delegation, and the default codex worker launch leaves multi_agent on [S1]
 - Set sandbox and approval policy in the harness, and in a linked worktree give it write access to the git metadata, or it cannot commit
 - Require a prior-art search before any new helper and a named reuse in the summary, and fix the output format; this family writes the most code per task but its merged work holds up [S2, S4]
 ## Open questions
