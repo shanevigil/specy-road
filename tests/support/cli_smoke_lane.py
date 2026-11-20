@@ -78,7 +78,7 @@ def _argv(args: object) -> list[str]:
     if isinstance(args, (str, bytes)):
         text = os.fsdecode(args)
         return text.split()
-    return [os.fsdecode(a) if isinstance(a, bytes) else str(a) for a in args]  # type: ignore
+    return [os.fsdecode(a) if isinstance(a, bytes) else str(a) for a in args]
 
 
 def _started_by_tests() -> bool:
@@ -102,12 +102,12 @@ def _counting_init(self: subprocess.Popen, args: object, *a: object, **kw: objec
     if starts_cli(argv) and _started_by_tests():
         with _lock:
             _recording[-1].append(argv)
-    _original_init(self, args, *a, **kw)  # type: ignore[arg-type]
+    _original_init(self, args, *a, **kw)
 
 
 def install() -> None:
     """Wrap :class:`subprocess.Popen` so each CLI start from test code is recorded."""
-    subprocess.Popen.__init__ = _counting_init  # type: ignore[method-assign]
+    subprocess.Popen.__init__ = _counting_init
 
 
 @contextmanager

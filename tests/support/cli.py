@@ -27,7 +27,7 @@ def run_cli(
     *,
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
-    input: str | None = None,  # noqa: A002 — the name subprocess.run gives it
+    input: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """``specy-road <argv>`` in this process (:func:`run_in_process`)."""
     return run_in_process(["specy-road", *argv], cwd=cwd, env=env, input=input)
@@ -65,7 +65,7 @@ def run_in_process(
     *,
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
-    input: str | None = None,  # noqa: A002 — the name subprocess.run gives it
+    input: str | None = None,
     stderr_to_stdout: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     """The child ``argv`` run in this process: ``main()`` of the module ``argv[0]`` names.
@@ -76,7 +76,8 @@ def run_in_process(
     reads it, and argparse names the program from it, as in the child), the working directory is
     ``cwd``, ``os.environ`` is ``env`` and stdin reads ``input``; each is restored afterwards. An
     exception ``main`` does not handle is reported as a child's would be: its traceback on stderr
-    and status 1. ``stderr_to_stdout`` interleaves both streams in ``stdout``, as
+    and status 1 (an unreadable registry in the orchestration snapshot tests, a failed pickup's
+    self-heal). ``stderr_to_stdout`` interleaves both streams in ``stdout``, as
     ``stderr=subprocess.STDOUT`` does; ``stderr`` is then ``None``.
     """
     module = CONSOLE_SCRIPTS.get(argv[0]) or f"specy_road.bundled_scripts.{Path(argv[0]).stem}"
@@ -88,7 +89,7 @@ def run_in_process(
             status = 0
         except SystemExit as e:
             status = cli.exit_status(e)
-        except Exception:  # noqa: BLE001 — a child's traceback, as its pipe captured it
+        except Exception:   # what a child's pipe captured when it crashed: its traceback, status 1
             traceback.print_exc()
             status = 1
         sys.stdout.flush()
@@ -134,16 +135,17 @@ def _captured_fds(merged: bool) -> Iterator[list[str | None]]:
         saved = os.dup(1), os.dup(2)
         os.dup2(files[0].fileno(), 1)
         os.dup2(files[1].fileno(), 2)
-        py_out, py_err = (
-            open(f.fileno(), "w", buffering=1, encoding="utf-8", closefd=False)  # noqa: SIM115
-            for f in files
-        )
         try:
-            with contextlib.redirect_stdout(py_out), contextlib.redirect_stderr(py_err):
-                yield output
+            with contextlib.ExitStack() as writers:
+                py_out, py_err = (
+                    writers.enter_context(
+                        open(f.fileno(), "w", buffering=1, encoding="utf-8", closefd=False)
+                    )
+                    for f in files
+                )
+                with contextlib.redirect_stdout(py_out), contextlib.redirect_stderr(py_err):
+                    yield output
         finally:
-            py_out.close()
-            py_err.close()
             os.dup2(saved[0], 1)
             os.dup2(saved[1], 2)
             os.close(saved[0])
