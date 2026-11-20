@@ -290,6 +290,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.12` Registry and front-matter YAML round-trip a value containing U+0085 (NEL) `registry-and-front-matter-yaml-round-trip-a-value-containing-u` — task — **Not Started**
   - `M23.13` A delta review packet carries the required test-removal check, so a delta approve is not refused `a-delta-review-packet-carries-the-required-test-removal-check-so` — task — **Not Started**
   - `M23.14` Remove the stale vulture whitelist entry left by the private-to-public renames `remove-the-stale-vulture-whitelist-entry-left-by-the-private-to` — task — **Not Started**
+  - `M23.15` Managed-block replace keeps line endings and a whitespace-only tail, and is idempotent with a carriage return in a block line `managed-block-replace-keeps-line-endings-and-a-whitespace-only` — task — **Not Started**
 
 ## Open gates
 
