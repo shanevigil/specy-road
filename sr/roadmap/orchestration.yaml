@@ -15,6 +15,21 @@ roster:
     billing_route: claude_subscription
     channels:
       cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/claude-worker.sh" {session} {prompt}'
+  # Claude Fable 5.2 as the Claude Code executor and reviewer (maintainer 2026-11-20, for today's run).
+  - id: claude-fable-5-2
+    family: anthropic
+    roles: [coordinator, executor]
+    profile: model-profiles/anthropic-claude/claude-fable-5-2.md
+    harness: claude-code
+    harness_model: claude-fable-5-2
+    billing_route: claude_subscription
+  - id: claude-fable-5-2-review
+    family: anthropic
+    roles: [reviewer]
+    profile: model-profiles/anthropic-claude/claude-fable-5-2.md
+    harness: claude-code
+    channels:
+      cli: 'SR_REVIEW_MODEL=claude-fable-5-2 "${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/claude-review.sh" medium {prompt}'
   - id: claude-fable-5-1
     family: anthropic
     roles: [executor]

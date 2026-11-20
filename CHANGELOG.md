@@ -102,6 +102,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- Shipped Codex guidance leaves `goals` on. `harness-facts.yaml` classifies it as `use` (the 2026-11-02
+  F15 `avoid` is superseded by the operator decision of 2026-11-20, "goals same as multi_agent"). The Codex
+  executor template, the rendered model-profiles README and every OpenAI GPT profile `access.cli` no longer
+  pass `--disable goals`; memories stay disabled and `multi_agent` stays on. The worker adapter and its
+  launch argv are unchanged.
 - Shipped Codex guidance leaves `multi_agent` on. `harness-facts.yaml` classifies it as `use` (the 2026-11-02
   F15 `avoid` is superseded by the operator decision of 2026-11-19). The Codex executor template, the rendered
   model-profiles README and every OpenAI GPT profile `access.cli` no longer pass `--disable multi_agent`;
@@ -254,6 +259,12 @@ are removed in the release after 0.3.1:
 - `specy_road.review_policy_ref` -> `specy_road.review_policy_pin`.
 
 ### Fixed
+
+- Text round-trips exactly where specy-road writes and reads back, or rewrites, a file: `render_front_matter`
+  escapes U+0085, U+2028 and U+2029 and both front-matter readers split on `\n` only, so `{'\x85': None}` no longer
+  reads back as `{' ': None}`; the registry writes U+0085 escaped; and `apply_managed_block` keeps every byte
+  outside its block, including CRLF line endings, a whitespace-only tail and the blank lines after the block, and a
+  second apply with `\r` in a block line changes nothing. Files written by earlier versions parse as before.
 
 - A front-matter value's trailing non-ASCII space survives rendering: `render_front_matter` removes only the YAML
   dump's trailing newline, so `{'0': '\xa0'}` reads back as that mapping. `split_frontmatter` ends the block only

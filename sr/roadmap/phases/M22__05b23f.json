@@ -140,7 +140,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.72_harness-facts-research-delivered_393ad414-3a5a-49b3-8873-b63d0e35d0ee.md",
       "sibling_order": 72,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Gate: current harness facts delivered as a dated research report",
       "touch_zones": [],
       "type": "gate"
@@ -360,6 +360,136 @@
         "specy_road/templates/project/model-profiles/harness-facts.yaml",
         "specy_road/templates/project/model-profiles/openai-gpt/",
         "specy_road/templates/project/model-profiles/README.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "One shared helper beside atomic_write_text in specy_road/fs_atomic.py reads a file keeping its line endings exactly (no newline translation) and splits text on \\n only; the four subjects below use it instead of read_text() newline translation and str.splitlines()",
+        "Front matter: render_front_matter escapes U+0085, U+2028 and U+2029 in keys and values, and load_ready and split_frontmatter read back the same mapping and body ({'\\x85': None}, {'k': 'a\\u2028b'} and {'\\u2029': 'v'} round-trip; seen 2026-11-19 reading back as a space). Files written by earlier versions, which use \\n only, parse as before",
+        "Registry: dump_registry_text writes U+0085 so that yaml.safe_load and read_registry return the original document (U+2028 and U+2029 already round-trip there, checked 2026-11-20)",
+        "Managed block: apply_managed_block keeps every byte outside the block as it was: CRLF line endings stay CRLF, a whitespace-only tail is kept, the blank lines between the end marker and the following text keep their number, and a second apply is UNCHANGED when a block line contains \\r",
+        "M16.7.7's front-matter, registry and managed-block properties pass with their character and whitespace exclusions removed (the M22.75 body exclusions stay); other non-ASCII text keeps its current rendering, and every existing test passes unchanged",
+        "One test per subject through its public function; CHANGELOG.md [Unreleased] records the fix under Fixed; no version heading is written"
+      ],
+      "codename": "text-round-trips-exactly-where-specy-road-writes-and-reads-back",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.81",
+      "node_key": "fa400b72-a46c-4deb-b21e-4d5027146680",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.81_text-round-trips-exactly-where-specy-road-writes-and-reads-back_fa400b72-a46c-4deb-b21e-4d5027146680.md",
+      "sibling_order": 81,
+      "status": "Complete",
+      "title": "Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks",
+      "touch_zones": [
+        "specy_road/fs_atomic.py",
+        "specy_road/review_files.py",
+        "specy_road/planning_artifacts.py",
+        "specy_road/registry_yaml.py",
+        "specy_road/managed_block.py",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "sr/docs/research/text-round-trip-audit.md lists every package call site of read_text, write_text and str.splitlines with file:line, classified read-only (no change needed), round-trip (specy-road writes data it later reads back) or rewrite (a file a user owns is rewritten), with one line of reasoning each",
+        "For each round-trip and rewrite site the audit states whether CRLF, a lone \\r, U+0085, U+2028 or U+2029 can reach it and change, shown by a scratch run recorded in the audit (command and result), or why its input can only be \\n-only text specy-road wrote itself",
+        "The audit ends with the exact file list a fix leaf needs and names which of those files match a trust path; no package or test file is changed by this leaf"
+      ],
+      "codename": "audit-every-path-that-writes-and-reads-back-text-or-rewrites-a",
+      "dependencies": [
+        "fa400b72-a46c-4deb-b21e-4d5027146680"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.82",
+      "node_key": "15d16b14-845d-4b26-851c-6936755eb35b",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.82_audit-every-path-that-writes-and-reads-back-text-or-rewrites-a_15d16b14-845d-4b26-851c-6936755eb35b.md",
+      "sibling_order": 82,
+      "status": "Not Started",
+      "title": "Audit: every path that writes and reads back text, or rewrites a user's file, listed with its line-ending and line-break handling",
+      "touch_zones": [
+        "sr/docs/research/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Operator 2026-11-20: \"goals same as multi_agent\". harness-facts.yaml classifies goals as use (the F15 'avoid' is superseded, with the operator's date), and no shipped Codex executor or reviewer template or profile cli line passes `--disable goals`; the specy-road worker adapter and launch argv are unchanged (they already leave goals on)",
+        "`specy-road upgrade --only profiles --render` then `--check` reports no drift; the harness-facts and profile tests pass",
+        "CHANGELOG.md [Unreleased] records the change; no version heading is written"
+      ],
+      "codename": "codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.83",
+      "node_key": "dbc090c2-2266-4ce1-8b11-a5ce57bcc8bd",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.83_codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles_dbc090c2-2266-4ce1-8b11-a5ce57bcc8bd.md",
+      "sibling_order": 83,
+      "status": "Complete",
+      "title": "Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/harness-facts.yaml",
+        "specy_road/templates/project/model-profiles/openai-gpt/",
+        "specy_road/templates/project/model-profiles/README.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Every `unknown` field and Open question M22.73 left for M22.72 (prices, output-token limits, release dates for claude-fable-5-2, gpt-6.2-sol and gpt-6.2-astra; Codex project trust; the multi_agent flag replacement) is filled from sr/docs/research/harness-facts-2026-11-19/report.md where that report marks the row checked, citing the row id; a row marked not checked stays unknown with its reason",
+        "harness-facts.yaml records the Codex 0.168.0 deprecation of multi_agent in favour of agents.enabled and the 0.169.0 trust behaviour (CX-FLAG-MULTI, CX-TRUST), each with the version it holds for; specy-road's launch argv is unchanged, and any change the report implies for it is listed in the summary as a follow-up, not made here",
+        "`specy-road upgrade --only profiles --render` then `--check` reports no drift; the harness-facts and profile tests pass; CHANGELOG.md [Unreleased] records the refresh; no version heading is written"
+      ],
+      "codename": "bundled-harness-facts-and-profiles-take-in-the-dated-harness",
+      "dependencies": [
+        "393ad414-3a5a-49b3-8873-b63d0e35d0ee",
+        "dbc090c2-2266-4ce1-8b11-a5ce57bcc8bd"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.84",
+      "node_key": "c2c7046a-450a-4d76-8076-d6a3b7e545cb",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.84_bundled-harness-facts-and-profiles-take-in-the-dated-harness_c2c7046a-450a-4d76-8076-d6a3b7e545cb.md",
+      "sibling_order": 84,
+      "status": "Not Started",
+      "title": "Bundled harness facts and profiles take in the dated harness-facts report",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/",
+        "docs/orchestration-workers.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each round-trip and rewrite site that sr/docs/research/text-round-trip-audit.md marks as able to change text uses the M22.81 helper; the touch zones are set to the audit's exact file list and the tier from those files before pickup (maintainer 2026-11-20: \"A, final\")",
+        "Each changed site has one test that round-trips CRLF, a lone \\r, U+0085, U+2028 and U+2029 through its public interface; existing tests pass unchanged",
+        "CHANGELOG.md [Unreleased] extends the M22.81 entry; no version heading is written"
+      ],
+      "codename": "the-round-trip-and-rewrite-paths-the-audit-lists-keep-line",
+      "dependencies": [
+        "15d16b14-845d-4b26-851c-6936755eb35b",
+        "fa400b72-a46c-4deb-b21e-4d5027146680"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.85",
+      "node_key": "996476bd-3758-4678-a4df-fc4b4fba0d17",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.85_the-round-trip-and-rewrite-paths-the-audit-lists-keep-line_996476bd-3758-4678-a4df-fc4b4fba0d17.md",
+      "sibling_order": 85,
+      "status": "Not Started",
+      "title": "The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly",
+      "touch_zones": [
         "tests/",
         "CHANGELOG.md"
       ],

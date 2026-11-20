@@ -180,14 +180,17 @@ def test_claude_print_config_has_on_failure_block() -> None:
 
 @pytest.mark.repo
 def test_codex_launch_template_pins_disable_flags() -> None:
-    """Template and GPT access.cli disable memories and goals; multi_agent stays on (operator 2026-11-19)."""
+    """Template and GPT access.cli disable memories; multi_agent and goals stay on (operators 2026-11-19 and 2026-11-20)."""
     facts = (REPO / "specy_road" / "templates" / "project" / "model-profiles" / "harness-facts.yaml").read_text(
         encoding="utf-8"
     )
-    assert "--disable memories --disable goals" in facts
+    assert "--disable memories" in facts
     assert "--disable multi_agent" not in facts
+    assert "--disable goals" not in facts
     assert "multi_agent: use" in facts
+    assert "goals: use" in facts
     assert "F15 avoid superseded 2026-11-19" in facts
+    assert "F15 avoid superseded 2026-11-20" in facts
     root = REPO / "specy_road" / "templates" / "project" / "model-profiles" / "openai-gpt"
     missing = []
     for path in sorted(root.glob("*.md")):
@@ -197,7 +200,7 @@ def test_codex_launch_template_pins_disable_flags() -> None:
             if line.startswith("  cli:"):
                 cli = line
                 break
-        if "--disable memories" not in cli or "--disable goals" not in cli or "--disable multi_agent" in text:
+        if "--disable memories" not in cli or "--disable goals" in text or "--disable multi_agent" in text:
             missing.append(path.name)
     assert not missing, missing
 

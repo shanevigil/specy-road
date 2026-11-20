@@ -85,6 +85,25 @@ def test_replacing_a_block_twice_gives_the_same_file_and_keeps_the_rest(
     assert "stale/" not in first
 
 
+@pytest.mark.parametrize(("before", "old", "after", "lines"), [
+    # A CRLF file keeps CRLF in the user's lines before and after the block.
+    ("# mine\r\nkeep/\r\n\r\n", render_block(["a/"]).replace("\n", "\r\n")[:-2],
+     "\r\n\r\n# later\r\ndist/\r\n", ["b/"]),
+    ("", render_block(["a/"])[:-1], "\n  \n\t", ["b/"]),  # a whitespace-only tail
+    ("x/\n", render_block(["a/"])[:-1], "\n\n\n\nlater/\n", ["b/"]),  # three blank lines stay three
+    ("", render_block(["a/"])[:-1], "\n", ["a\rb/"]),  # \r in a block line: the second apply is a no-op
+], ids=["crlf", "whitespace-tail", "blank-lines", "cr-in-block"])
+def test_replace_keeps_every_byte_outside_the_block(
+    tmp_path: Path, before: str, old: str, after: str, lines: list[str]
+) -> None:
+    path = tmp_path / ".gitignore"
+    path.write_bytes((before + old + after).encode("utf-8"))
+
+    assert apply_managed_block(path, lines) == UPDATED
+    assert path.read_bytes().decode("utf-8") == before + render_block(lines)[:-1] + after
+    assert apply_managed_block(path, lines) == UNCHANGED
+
+
 def test_a_truncated_block_is_repaired(tmp_path: Path) -> None:
     """A half-edited file must not accumulate a second broken block."""
     path = tmp_path / ".gitignore"
