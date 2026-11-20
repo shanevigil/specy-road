@@ -100,3 +100,14 @@ entries:
     started: '2026-11-20'
     owner: savigil
     implementation_review: pending
+  - codename: bundled-harness-facts-and-profiles-take-in-the-dated-harness
+    node_id: M22.84
+    branch: feature/rm-bundled-harness-facts-and-profiles-take-in-the-dated-harness
+    touch_zones:
+      - specy_road/templates/project/model-profiles/
+      - docs/orchestration-workers.md
+      - tests/
+      - CHANGELOG.md
+    started: '2026-11-20'
+    owner: savigil
+    implementation_review: pending
