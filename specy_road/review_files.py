@@ -180,7 +180,9 @@ _SHA_KEYS = ("commit", "base")
 
 def _split_front_matter(text: str) -> tuple[str | None, str]:
     """``(yaml_block, body)``; the block ends at the first unindented ``---`` line."""
-    lines = text.splitlines()
+    from specy_road.fs_atomic import split_lines  # here: `validate` imports this module, not this parse
+
+    lines = split_lines(text)
     if not lines or lines[0].rstrip() != "---":
         return None, text
     for i in range(1, len(lines)):
@@ -219,9 +221,11 @@ def check_handoff_read(path: Path) -> None:
 
 
 def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
+    from specy_road.fs_atomic import read_text_exact  # here: `validate` imports this module, not this read
+
     try:
         check_handoff_read(path)
-        text = path.read_text(encoding="utf-8")
+        text = read_text_exact(path)
     except (OSError, UnicodeDecodeError) as e:   # a READY or record that is not UTF-8 is unreadable, not a traceback
         return {}, "", [f"cannot read: {e}"]
     block, body = _split_front_matter(text)
@@ -482,8 +486,24 @@ def node_ids_with_reviews(repo_root: Path) -> list[str]:
     return sorted(p.name for p in root.iterdir() if p.is_dir())
 
 
+#: Line breaks to YAML that ``allow_unicode`` would write raw; the readers split on ``\n`` only.
+_UNICODE_BREAKS = frozenset("\x85\u2028\u2029")
+
+
+class _FrontMatterDumper(yaml.SafeDumper):
+    """``safe_dump``, but a string holding U+0085, U+2028 or U+2029 is double-quoted, which escapes them."""
+
+
+def _represent_str(dumper: yaml.SafeDumper, value: str) -> yaml.ScalarNode:
+    style = '"' if _UNICODE_BREAKS.intersection(value) else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", value, style=style)
+
+
+_FrontMatterDumper.add_representer(str, _represent_str)
+
+
 def render_front_matter(data: dict[str, Any], body: str = "") -> str:
     # safe_dump always ends with its own newline. Strip that only: a value may
     # end in whitespace (a trailing U+00A0 is a plain scalar), and rstrip() would delete it.
-    head = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).rstrip("\n")
+    head = yaml.dump(data, Dumper=_FrontMatterDumper, sort_keys=False, allow_unicode=True).rstrip("\n")
     return f"---\n{head}\n---\n{body}"

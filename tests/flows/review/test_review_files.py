@@ -147,13 +147,20 @@ def test_render_front_matter_round_trips(tmp_path: Path) -> None:
     assert again.ok and again.data == src.data
 
 
-def test_trailing_non_ascii_space_round_trips(tmp_path: Path) -> None:
-    data = {"0": "\xa0"}
-    text = rf.render_front_matter(data)
-    assert split_frontmatter(text)[0] == data
-    path = tmp_path / "READY-nbsp.md"
+@pytest.mark.parametrize("data, rendered", [
+    ({"0": "\xa0"}, "---\n'0': \xa0\n---\nbody"),  # other non-ASCII text keeps its rendering
+    # str.splitlines() breaks on these three: they are written escaped (they read back as a space before)
+    ({"\x85": None}, '---\n? "\\N"\n: null\n---\nbody'),
+    ({"k": "a\u2028b"}, '---\nk: "a\\Lb"\n---\nbody'),
+    ({"\u2029": "v"}, '---\n? "\\P"\n: v\n---\nbody'),
+], ids=["nbsp", "nel-key", "line-separator-value", "paragraph-separator-key"])
+def test_front_matter_round_trips_through_both_readers(tmp_path: Path, data: dict, rendered: str) -> None:
+    text = rf.render_front_matter(data, "body")
+    assert text == rendered
+    assert split_frontmatter(text) == (data, "body")
+    path = tmp_path / "READY-x.md"
     path.write_text(text, encoding="utf-8")
-    assert rf.load_ready(path).data == data
+    assert (rf.load_ready(path).data, rf.load_ready(path).body) == (data, "body")
 
 
 @pytest.mark.parametrize("token, want", [
