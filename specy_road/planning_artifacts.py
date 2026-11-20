@@ -98,7 +98,9 @@ def split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     """
     if not text.startswith("---"):
         return {}, text
-    lines = text.splitlines()
+    from specy_road.fs_atomic import split_lines  # here: `validate` imports this module, not this parse
+
+    lines = split_lines(text)
     if len(lines) < 2 or lines[0].strip() != "---":
         return {}, text
     end = None

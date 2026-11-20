@@ -82,20 +82,6 @@ entries:
     started: '2026-11-19'
     owner: savigil
     implementation_review: pending
-  - codename: text-round-trips-exactly-where-specy-road-writes-and-reads-back
-    node_id: M22.81
-    branch: feature/rm-text-round-trips-exactly-where-specy-road-writes-and-reads-back
-    touch_zones:
-      - specy_road/fs_atomic.py
-      - specy_road/review_files.py
-      - specy_road/planning_artifacts.py
-      - specy_road/registry_yaml.py
-      - specy_road/managed_block.py
-      - tests/
-      - CHANGELOG.md
-    started: '2026-11-20'
-    owner: savigil
-    implementation_review: pending
   - codename: tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the
     node_id: M16.7.8
     branch: feature/rm-tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the

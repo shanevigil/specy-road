@@ -382,7 +382,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.81_text-round-trips-exactly-where-specy-road-writes-and-reads-back_fa400b72-a46c-4deb-b21e-4d5027146680.md",
       "sibling_order": 81,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks",
       "touch_zones": [
         "specy_road/fs_atomic.py",
@@ -397,12 +397,11 @@
     },
     {
       "acceptance": [
-        "An audit lists every package call site of read_text, write_text and str.splitlines that rewrites a file a user owns or writes data that specy-road later reads back, and classifies each as read-only (no change), round-trip or rewrite; the list is in the summary with file:line for each",
-        "Each round-trip and rewrite site uses the M22.81 helper, or the summary states why its input can only be \\n-only text specy-road wrote itself",
-        "Each changed site has one test that round-trips CRLF, a lone \\r, U+0085, U+2028 and U+2029 through its public interface; existing tests pass unchanged",
-        "CHANGELOG.md [Unreleased] extends the M22.81 entry; no version heading is written"
+        "sr/docs/research/text-round-trip-audit.md lists every package call site of read_text, write_text and str.splitlines with file:line, classified read-only (no change needed), round-trip (specy-road writes data it later reads back) or rewrite (a file a user owns is rewritten), with one line of reasoning each",
+        "For each round-trip and rewrite site the audit states whether CRLF, a lone \\r, U+0085, U+2028 or U+2029 can reach it and change, shown by a scratch run recorded in the audit (command and result), or why its input can only be \\n-only text specy-road wrote itself",
+        "The audit ends with the exact file list a fix leaf needs and names which of those files match a trust path; no package or test file is changed by this leaf"
       ],
-      "codename": "every-other-path-that-writes-and-reads-back-text-or-rewrites-a",
+      "codename": "audit-every-path-that-writes-and-reads-back-text-or-rewrites-a",
       "dependencies": [
         "fa400b72-a46c-4deb-b21e-4d5027146680"
       ],
@@ -410,14 +409,12 @@
       "id": "M22.82",
       "node_key": "15d16b14-845d-4b26-851c-6936755eb35b",
       "parent_id": "M22",
-      "planning_dir": "planning/M22.82_every-other-path-that-writes-and-reads-back-text-or-rewrites-a_15d16b14-845d-4b26-851c-6936755eb35b.md",
+      "planning_dir": "planning/M22.82_audit-every-path-that-writes-and-reads-back-text-or-rewrites-a_15d16b14-845d-4b26-851c-6936755eb35b.md",
       "sibling_order": 82,
       "status": "Not Started",
-      "title": "Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly",
+      "title": "Audit: every path that writes and reads back text, or rewrites a user's file, listed with its line-ending and line-break handling",
       "touch_zones": [
-        "specy_road/",
-        "tests/",
-        "CHANGELOG.md"
+        "sr/docs/research/"
       ],
       "type": "task"
     },
@@ -468,6 +465,31 @@
       "touch_zones": [
         "specy_road/templates/project/model-profiles/",
         "docs/orchestration-workers.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each round-trip and rewrite site that sr/docs/research/text-round-trip-audit.md marks as able to change text uses the M22.81 helper; the touch zones are set to the audit's exact file list and the tier from those files before pickup (maintainer 2026-11-20: \"A, final\")",
+        "Each changed site has one test that round-trips CRLF, a lone \\r, U+0085, U+2028 and U+2029 through its public interface; existing tests pass unchanged",
+        "CHANGELOG.md [Unreleased] extends the M22.81 entry; no version heading is written"
+      ],
+      "codename": "the-round-trip-and-rewrite-paths-the-audit-lists-keep-line",
+      "dependencies": [
+        "15d16b14-845d-4b26-851c-6936755eb35b",
+        "fa400b72-a46c-4deb-b21e-4d5027146680"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.85",
+      "node_key": "996476bd-3758-4678-a4df-fc4b4fba0d17",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.85_the-round-trip-and-rewrite-paths-the-audit-lists-keep-line_996476bd-3758-4678-a4df-fc4b4fba0d17.md",
+      "sibling_order": 85,
+      "status": "Not Started",
+      "title": "The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly",
+      "touch_zones": [
         "tests/",
         "CHANGELOG.md"
       ],

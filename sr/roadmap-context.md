@@ -206,10 +206,11 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Complete**
   - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Complete**
   - `M22.80` Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-multi-agent-on-the-harness-facts-and-shipped` — task — **Complete**
-  - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Not Started**
-  - `M22.82` Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly `every-other-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
+  - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Complete**
+  - `M22.82` Audit: every path that writes and reads back text, or rewrites a user's file, listed with its line-ending and line-break handling `audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
   - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Complete**
   - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Not Started**
+  - `M22.85` The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly `the-round-trip-and-rewrite-paths-the-audit-lists-keep-line` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -294,6 +295,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.11` The post-run zone check counts only the leaf's own commits, not integration commits a merge brings in `the-post-run-zone-check-counts-only-the-leaf-s-own-commits-not` — task — **Not Started**
   - `M23.13` A delta review packet carries the required test-removal check, so a delta approve is not refused `a-delta-review-packet-carries-the-required-test-removal-check-so` — task — **Not Started**
   - `M23.14` Remove the stale vulture whitelist entry left by the private-to-public renames `remove-the-stale-vulture-whitelist-entry-left-by-the-private-to` — task — **Not Started**
+  - `M23.16` 0.3.2 earmark: a coordination API service for several developers' orchestrators and their PMs, alongside git `0-3-2-earmark-a-coordination-api-service-for-several-developers` — task — **Not Started**
 
 ## Open gates
 
@@ -371,7 +373,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.81` on `feature/rm-text-round-trips-exactly-where-specy-road-writes-and-reads-back` since 2026-11-20
 
 ## Quality by area
 
@@ -379,9 +380,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 23 | 0 | 2.74 | 70% | 18 | 1 |
+| `CHANGELOG.md` **flagged** | 24 | 0 | 2.67 | 67% | 19 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 22 | 0 | 2.86 | 55% | 386 | 1 |
+| `constraints` **flagged** | 21 | 0 | 2.95 | 57% | 384 | 1 |
 | `docs` **flagged** | 18 | 0 | 3.28 | 78% | 335 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -390,10 +391,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `scripts` **flagged** | 20 | 0 | 3.05 | 60% | 399 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.45 | 55% | 85 | 1 |
+| `scripts` **flagged** | 19 | 0 | 3.16 | 63% | 397 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.45 | 55% | 84 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 47 | 0 | 2.62 | 60% | 428 | 2 |
+| `tests` **flagged** | 47 | 0 | 2.62 | 60% | 427 | 2 |
 | `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
