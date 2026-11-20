@@ -290,5 +290,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M23.12` | Registry and front-matter YAML round-trip a value containing U+0085 (NEL) | task | Agentic-led | Not Started |
 | `M23.13` | A delta review packet carries the required test-removal check, so a delta approve is not refused | task | Agentic-led | Not Started |
 | `M23.14` | Remove the stale vulture whitelist entry left by the private-to-public renames | task | Agentic-led | Not Started |
+| `M23.15` | Managed-block replace keeps line endings and a whitespace-only tail, and is idempotent with a carriage return in a block line | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
