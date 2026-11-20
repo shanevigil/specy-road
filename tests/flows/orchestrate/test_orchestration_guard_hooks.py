@@ -191,6 +191,10 @@ def test_codex_launch_template_pins_disable_flags() -> None:
     assert "goals: use" in facts
     assert "F15 avoid superseded 2026-11-19" in facts
     assert "F15 avoid superseded 2026-11-20" in facts
+    assert "CX-FLAG-MULTI" in facts and "agents.enabled" in facts and "holds for 0.168.0" in facts
+    assert "CX-TRUST" in facts and "holds for 0.169.0" in facts
+    assert "codex exec --json -m <id> -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> - (prompt on stdin)" in facts
+    assert "codex exec --model {api_id} --disable memories -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}" in facts
     root = REPO / "specy_road" / "templates" / "project" / "model-profiles" / "openai-gpt"
     missing = []
     for path in sorted(root.glob("*.md")):

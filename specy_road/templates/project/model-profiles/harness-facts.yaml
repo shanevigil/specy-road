@@ -176,9 +176,9 @@ harnesses:
       label: runtime
       source: M8.7 runtime verification (codex-cli 0.165.0 loads .agents/skills at exec start, 2026-11-02)
     hooks:
-      value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently. Hooks are on by default (features list shows hooks stable true on a fresh CODEX_HOME, 0.166.0; [features] hooks = false turns them off); --dangerously-bypass-hook-trust runs enabled hooks without persisted trust for one invocation. Project trust in 0.166.0 is persisted per path (trust_level under [projects] in config.toml), with no command-line flag that trusts a project; no specy-road Codex launch, executor or reviewer, passes a trust flag or override; specy-road never trusts a project for a reviewer, so a reviewer stays untrusted and its project .codex/ hooks do not load
+      value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently. Hooks are on by default (features list shows hooks stable true on a fresh CODEX_HOME, 0.166.0; [features] hooks = false turns them off); --dangerously-bypass-hook-trust runs enabled hooks without persisted trust for one invocation. Project trust in 0.166.0 is persisted per path (trust_level under [projects] in config.toml), with no command-line flag that trusts a project; no specy-road Codex launch, executor or reviewer, passes a trust flag or override; specy-road never trusts a project for a reviewer, so a reviewer stays untrusted and its project .codex/ hooks do not load. From codex-cli 0.169.0, codex exec keeps project configuration and MCP servers disabled in an untrusted directory even with a workspace-write sandbox, and --trust on codex exec or codex review saves project trust (the grant persists with --ephemeral, cannot be combined with --ignore-user-config, and refuses an explicitly untrusted project) (CX-TRUST, holds for 0.169.0). Launch argv is unchanged and still passes no trust flag
       label: documented
-      source: https://learn.chatgpt.com/docs/hooks; harness-captures/codex/inventory-features.txt, help.txt and help-exec.txt (0.166.0; the only trust flag is --dangerously-bypass-hook-trust); trust_level entries in the orchestration host's Codex config.toml (codex-cli 0.166.0, 2026-11-19); specy_road/orchestration/workers/worker_adapter_codex.py (launch, resume and reviewer argv); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md; 2026-11-02 triage F14
+      source: https://learn.chatgpt.com/docs/hooks; harness-captures/codex/inventory-features.txt, help.txt and help-exec.txt (0.166.0; the only trust flag is --dangerously-bypass-hook-trust); trust_level entries in the orchestration host's Codex config.toml (codex-cli 0.166.0, 2026-11-19); specy_road/orchestration/workers/worker_adapter_codex.py (launch, resume and reviewer argv); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md; 2026-11-02 triage F14; sr/docs/research/harness-facts-2026-11-19/report.md (CX-TRUST, holds for codex-cli 0.169.0; https://github.com/openai/codex/releases, https://github.com/openai/codex/pull/60041)
     git_actions:
       - action: .git and the linked gitdir are read-only inside workspace-write, so the executor cannot commit
         switch: none; the adapter commits on the worker's behalf (decision 2026-10-29, M8.2)
@@ -196,10 +196,10 @@ harnesses:
         switch: --disable memories and both memories keys false; per-profile CODEX_HOME
         label: documented
         source: https://learn.chatgpt.com/docs/changelog (Codex CLI 0.165.0); harness-captures/codex/inventory-features.txt (0.166.0); harness compatibility triage (2026-10-28); 2026-11-02 triage F13
-      - action: multi_agent (stable, on in the 0.166.0 capture) lets the session spawn its own subagents
+      - action: multi_agent (stable, on in the 0.166.0 capture) lets the session spawn its own subagents. From codex-cli 0.168.0 the multi_agent feature flag is deprecated in favour of agents.enabled; Codex warns when features.multi_agent is explicitly configured (CX-FLAG-MULTI, holds for 0.168.0). The command-line form of agents.enabled is not on the pages read
         switch: none; leave multi_agent on (operator 2026-11-19, supersedes F15 avoid)
-        label: runtime
-        source: harness-captures/codex/inventory-features.txt (0.166.0); 2026-11-02 triage F13; operator 2026-11-19
+        label: documented
+        source: harness-captures/codex/inventory-features.txt (0.166.0); 2026-11-02 triage F13; operator 2026-11-19; sr/docs/research/harness-facts-2026-11-19/report.md (CX-FLAG-MULTI, holds for codex-cli 0.168.0; https://github.com/openai/codex/releases)
       - action: goals (stable, on in the 0.166.0 capture) keeps durable goals across turns
         switch: none; leave goals on (operator 2026-11-20, supersedes F15 avoid)
         label: runtime
@@ -269,7 +269,7 @@ harnesses:
       local_thread_store_compression: neutral
       local_thread_store_shared_compression: neutral
       memories: avoid
-      multi_agent: use                              # F15 avoid superseded 2026-11-19 (operator: let Codex run with multi_agent on)
+      multi_agent: use                              # F15 avoid superseded 2026-11-19 (operator: let Codex run with multi_agent on); 0.168.0 deprecates the feature flag for agents.enabled (CX-FLAG-MULTI)
       network_proxy: neutral
       non_prefixed_mcp_tool_names: neutral
       plugin_discovery_prefetch: neutral            # new in 0.166.0; matches "pr"
