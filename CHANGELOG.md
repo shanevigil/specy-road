@@ -1160,6 +1160,16 @@ are removed in the release after 0.3.1:
   attached or a separate value (`sudo -nu bob git stash`, `sudo -ubob git stash`,
   `sudo --user=bob git stash`), and `--` ends that wrapper's options. An option the table does
   not list, before a word that could be git, is refused as opaque and is never allowed.
+  That check drops a trailing `)` glued to the later word, the same way a subshell is
+  unwrapped, so the refusal holds when the closing parenthesis touches the word
+  (`(sudo -Q $X)`, `( sudo -Q $X)`, `(sudo -Q "$X")`, `(sudo -Q ${X})`, `(sudo -Q g$X)`,
+  `(env -Q $X)`, `(nohup -x $X)`, `(doas -Q $CMD)`, `(nice -5 $X)`, `x=1; (sudo -Q $X)`,
+  `(sudo -Q $X); ls`, `! (sudo -Q $X)`, `{ (sudo -Q $X); }`). A quoted or escaped
+  literal `)` ending a could-be-git word after an unlisted option (`sudo -Q 'g)'`,
+  `sudo -Q g\)`) is now refused: splitting the words drops the quoting, so that `)`
+  cannot be told from a subshell's. `(sudo -Q ls)`, `(sudo -Q ls )`,
+  `sudo --not-a-sudo-option ls /tmp` and a word made only of `)`
+  (`( (sudo -Q ls ))`) stay allowed.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

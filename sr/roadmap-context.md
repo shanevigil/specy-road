@@ -211,7 +211,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Complete**
   - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Complete**
   - `M22.85` The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly `the-round-trip-and-rewrite-paths-the-audit-lists-keep-line` — task — **Not Started**
-  - `M22.86` The tool-call guard keeps the unlisted-option refusal when a subshell's closing paren touches the next word `the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a` — task — **Not Started**
+  - `M22.86` The tool-call guard keeps the unlisted-option refusal when a subshell's closing paren touches the next word `the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -375,7 +375,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.82` on `feature/rm-audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` since 2026-11-20
-- `M22.86` on `feature/rm-the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a` since 2026-11-20
 
 ## Quality by area
 
@@ -383,9 +382,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 25 | 0 | 2.60 | 64% | 19 | 1 |
+| `CHANGELOG.md` **flagged** | 26 | 0 | 2.58 | 65% | 19 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 21 | 0 | 2.95 | 57% | 384 | 1 |
+| `constraints` **flagged** | 20 | 0 | 3.05 | 60% | 382 | 1 |
 | `docs` **flagged** | 18 | 0 | 3.11 | 72% | 335 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -395,9 +394,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 19 | 0 | 3.16 | 63% | 397 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.37 | 53% | 84 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.39 | 55% | 82 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 47 | 0 | 2.55 | 57% | 427 | 2 |
+| `tests` **flagged** | 47 | 0 | 2.57 | 60% | 425 | 2 |
 | `gui` | 5 | 0 | 2.40 | 40% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
