@@ -12,6 +12,7 @@ import yaml
 
 from specy_road.orchestration.harness import harness_facts as hf
 from specy_road.bundled_scripts import refresh_profiles as rp
+from specy_road.orchestration.model_profiles import load_profile
 from specy_road.runtime_paths import project_template_root
 from specy_road.orchestration.workers.worker_state import HARNESSES
 from tests.support.extracted.harness_facts import run_main
@@ -75,6 +76,45 @@ def test_an_unverified_fact_needs_no_source_and_a_duplicate_id_is_refused(tmp_pa
 def test_the_shipped_profiles_are_already_rendered_from_the_fixture() -> None:
     plan = hf.plan_render(project_template_root(), hf.load_facts())
     assert plan.findings == [] and plan.updates == {}
+
+
+def test_dated_report_fills_checked_fields_and_leaves_unchecked_rows_unknown() -> None:
+    """Checked 2026-11-19 rows fill prices and output limits; a missing or not-checked row stays unknown."""
+    root = project_template_root() / "model-profiles"
+    fable = load_profile(root / "anthropic-claude" / "claude-fable-5-2.md")
+    sol = load_profile(root / "openai-gpt" / "gpt-6.2-sol.md")
+    astra = load_profile(root / "openai-gpt" / "gpt-6.2-astra.md")
+    assert fable.errors == [] and sol.errors == [] and astra.errors == []
+    assert (fable.data["cost_usd_per_mtok"]["input"], fable.data["cost_usd_per_mtok"]["output"],
+            fable.data["cost_usd_per_mtok"]["cached_input"]) == (8, 40, 0.2)
+    assert fable.data["cost_usd_per_mtok"]["fast_input"] == "unknown"
+    assert fable.data["access"]["output_tokens"] == "unknown" and fable.data["release_date"] == "unknown"
+    fable_text = fable.path.read_text(encoding="utf-8")
+    assert "CC-BILL" in fable_text and "no row for it" in fable_text
+    assert sol.data["access"]["output_tokens"] == 128000 and sol.data["release_date"] == "unknown"
+    assert (sol.data["cost_usd_per_mtok"]["input"], sol.data["cost_usd_per_mtok"]["cached_input"],
+            sol.data["cost_usd_per_mtok"]["fast_output"]) == (2, 0.1, 20)
+    sol_text = sol.path.read_text(encoding="utf-8")
+    assert "SOL-PRICE" in sol_text and "SOL-ROLE is not checked" in sol_text
+    assert "SOL-CODEX is not checked" in sol_text
+    assert astra.data["access"]["output_tokens"] == 128000 and astra.data["release_date"] == "unknown"
+    assert (astra.data["cost_usd_per_mtok"]["input"], astra.data["cost_usd_per_mtok"]["cached_input"],
+            astra.data["cost_usd_per_mtok"]["fast_input"]) == (8, 0.4, 16)
+    astra_text = astra.path.read_text(encoding="utf-8")
+    assert "AST-PRICE" in astra_text and "AST-ROLE is not checked" in astra_text
+    codex = hf.harness(hf.load_facts(), "codex")
+    assert codex["headless_command"]["value"] == (
+        "codex exec --json -m <id> -c sandbox_mode=workspace-write -c approval_policy=never "
+        "-C <worktree> - (prompt on stdin)"
+    )
+    assert codex["executor_template"]["value"] == (
+        "codex exec --model {api_id} --disable memories -c sandbox_mode=workspace-write "
+        "-c approval_policy=never - < {prompt}"
+    )
+    multi = next(a for a in codex["git_actions"] if str(a["action"]).startswith("multi_agent"))
+    assert "CX-FLAG-MULTI" in multi["action"] and "0.168.0" in multi["action"] and "agents.enabled" in multi["action"]
+    assert multi["switch"].startswith("none; leave multi_agent on")
+    assert "CX-TRUST" in codex["hooks"]["value"] and "0.169.0" in codex["hooks"]["value"]
 
 
 def test_each_executor_template_renders_its_families_cli() -> None:

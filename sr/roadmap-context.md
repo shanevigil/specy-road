@@ -209,7 +209,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Complete**
   - `M22.82` Audit: every path that writes and reads back text, or rewrites a user's file, listed with its line-ending and line-break handling `audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
   - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Complete**
-  - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Not Started**
+  - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Complete**
   - `M22.85` The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly `the-round-trip-and-rewrite-paths-the-audit-lists-keep-line` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
@@ -374,7 +374,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.82` on `feature/rm-audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` since 2026-11-20
-- `M22.84` on `feature/rm-bundled-harness-facts-and-profiles-take-in-the-dated-harness` since 2026-11-20
 
 ## Quality by area
 
@@ -382,10 +381,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 24 | 0 | 2.67 | 67% | 19 | 1 |
+| `CHANGELOG.md` **flagged** | 25 | 0 | 2.60 | 64% | 19 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
 | `constraints` **flagged** | 21 | 0 | 2.95 | 57% | 384 | 1 |
-| `docs` **flagged** | 18 | 0 | 3.28 | 78% | 335 | 1 |
+| `docs` **flagged** | 18 | 0 | 3.11 | 72% | 335 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
@@ -394,10 +393,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 19 | 0 | 3.16 | 63% | 397 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.45 | 55% | 84 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.37 | 53% | 84 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 47 | 0 | 2.62 | 60% | 427 | 2 |
-| `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
+| `tests` **flagged** | 47 | 0 | 2.55 | 57% | 427 | 2 |
+| `gui` | 5 | 0 | 2.40 | 40% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
