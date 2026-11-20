@@ -434,12 +434,13 @@ def _skip_wrapper(tokens: list[str], i: int) -> tuple[list[str], int] | None:
 
 
 def _strip_trailing_paren(word: str) -> str:
-    """Drop a subshell's closing ``)`` glued onto ``word``.
+    """Drop a subshell's closing ``)`` glued onto a word that names something.
 
-    A word that is only ``)`` stays: stripping it would leave an empty word,
-    and an empty word reads as a name that could be git.
+    A word made only of ``)``, of any length, stays. Stripping it would leave an
+    empty word, and an empty word reads as a name that could be git. A ``)``
+    after any other character is still removed (``$X)`` is ``$X``).
     """
-    if word.endswith(")") and word != ")":
+    if word.endswith(")") and word.strip(")"):
         return word.rstrip(")")
     return word
 

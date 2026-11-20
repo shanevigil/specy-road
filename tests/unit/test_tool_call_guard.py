@@ -713,7 +713,7 @@ def test_unlisted_wrapper_option_is_opaque() -> None:
         assert reason and "does not list" in reason, (command, reason)
     for command in (
         "sudo --not-a-sudo-option ls /tmp", "command -x echo hi", "nice --not-nice ls",
-        "(sudo -Q ls)", "(sudo -Q ls )",
+        "(sudo -Q ls)", "(sudo -Q ls )", "( (sudo -Q ls ))",
     ):
         assert g.classify(command) is None, (command, g.classify(command))
 

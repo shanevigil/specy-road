@@ -1167,8 +1167,9 @@ are removed in the release after 0.3.1:
   `(sudo -Q $X); ls`, `! (sudo -Q $X)`, `{ (sudo -Q $X); }`). A quoted or escaped
   literal `)` ending a could-be-git word after an unlisted option (`sudo -Q 'g)'`,
   `sudo -Q g\)`) is now refused: splitting the words drops the quoting, so that `)`
-  cannot be told from a subshell's. `(sudo -Q ls)`, `(sudo -Q ls )` and
-  `sudo --not-a-sudo-option ls /tmp` stay allowed.
+  cannot be told from a subshell's. `(sudo -Q ls)`, `(sudo -Q ls )`,
+  `sudo --not-a-sudo-option ls /tmp` and a word made only of `)`
+  (`( (sudo -Q ls ))`) stay allowed.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
