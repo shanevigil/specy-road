@@ -205,6 +205,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.77` The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test `the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does` — task — **Complete**
   - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Complete**
   - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Complete**
+  - `M22.80` Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-multi-agent-on-the-harness-facts-and-shipped` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**

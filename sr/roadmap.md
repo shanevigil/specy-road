@@ -275,6 +275,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.77` | The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test | task | Agentic-led | Complete |
 | `M22.78` | The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word | task | Agentic-led | Complete |
 | `M22.79` | The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command | task | Agentic-led | Complete |
+| `M22.80` | Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
