@@ -310,6 +310,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-20 `M16.7.8` stopped depending on `M16.7.7 Tests: five named properties replace the single-input tests they cover`
 - 2026-11-19 `M22.73` stopped depending on `M22.72 Gate: current harness facts delivered as a dated research report`
 - 2026-11-18 `M16.7.7` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
 - 2026-11-18 `M16.7.6` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
@@ -334,8 +335,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-09 `M16.6.3` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
 - 2026-11-09 `M16.5.12` stopped depending on `M16.1.6 Review-policy evidence: how often each optional review policy changed a gate outcome`
 - 2026-11-09 `M16.5.1` stopped depending on `M23.4 checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)`
-- 2026-11-09 `M16.5.9` stopped depending on `M23.8 The guard classifier becomes three rule tables with every verdict unchanged`
-- _…and 84 earlier — `specy-road history --json`_
+- _…and 85 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
