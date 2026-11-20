@@ -198,13 +198,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Complete**
   - `M22.71` Review channels report the model the harness actually ran, so every review record names it `review-channels-report-the-model-the-harness-ran` — task — **Complete**
   - `M22.72` Gate: current harness facts delivered as a dated research report `harness-facts-research-delivered` — gate — **Not Started**
-  - `M22.73` Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs `harness-facts-and-captures-refreshed` — task — **Not Started**
+  - `M22.73` Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs `harness-facts-and-captures-refreshed` — task — **Complete**
   - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Complete**
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Complete**
   - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Complete**
   - `M22.77` The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test `the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does` — task — **Complete**
   - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Complete**
   - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Complete**
+  - `M22.80` Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-multi-agent-on-the-harness-facts-and-shipped` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -368,7 +369,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.73` on `feature/rm-harness-facts-and-captures-refreshed` since 2026-11-19
 
 ## Quality by area
 
@@ -376,10 +376,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 21 | 0 | 2.81 | 71% | 18 | 1 |
+| `CHANGELOG.md` **flagged** | 22 | 0 | 2.82 | 73% | 18 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 24 | 0 | 2.92 | 54% | 387 | 1 |
-| `docs` **flagged** | 19 | 0 | 3.32 | 74% | 336 | 1 |
+| `constraints` **flagged** | 23 | 0 | 2.78 | 52% | 386 | 1 |
+| `docs` **flagged** | 18 | 0 | 3.28 | 78% | 335 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
@@ -387,10 +387,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.53 | 55% | 86 | 1 |
+| `scripts` **flagged** | 21 | 0 | 2.95 | 57% | 399 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.45 | 55% | 85 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.71 | 60% | 429 | 2 |
+| `tests` **flagged** | 47 | 0 | 2.62 | 60% | 428 | 2 |
 | `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.

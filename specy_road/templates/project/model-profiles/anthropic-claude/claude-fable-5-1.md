@@ -17,7 +17,7 @@ aliases:
   - claude-fable-5-1-thinking-max
 checkpoint: same-as-api_id
 alias_moves: 'no'
-version_rank: latest
+version_rank: previous
 release_date: 2026-09-01
 researched: 2026-10-26
 researcher: claude
@@ -31,7 +31,7 @@ access:
   effort_controls: 'effort parameter, default high; mid-conversation effort change in beta; levels low, medium, high, xhigh, max [S11]'
   effort_map: { minimal: unknown, low: unknown, medium: medium, high: high, max: unknown }
   effort_by_role: { coordinator: medium, executor: high, reviewer: high }  # executor and reviewer at the documented default, coordinator one level below; reviewer kept, not lowered, by M10.6's reviewer-effort study
-  launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
+  launch_mode: full   # bare (--bare) skips settings and installed-plugin hooks (not managed-plugin hooks), auto memory and CLAUDE.md auto-discovery, and authenticates only with ANTHROPIC_API_KEY or an apiKeyHelper (2.1.329 help)
 cost_usd_per_mtok: { input: 10.00, output: 50.00, cached_input: 0.25, fast_input: unknown, fast_output: unknown }
 data_handling: 'Anthropic designates Fable 5.1 a "Covered Model" with additional data retention, safety review and access policies wherever offered [S2]. Available on the Claude API, Amazon Bedrock (US geo and global inference profiles), Claude Platform on AWS (North America), Google Cloud and Microsoft Foundry [S1, S5]. Outputs carry content provenance (watermarking) [S1, S3]. Claude Mythos 5.1, the same model with fewer cyber and bio restrictions, is limited to verified organizations [S1]. Exact retention period: unknown. No local deployment.'
 role_fit:

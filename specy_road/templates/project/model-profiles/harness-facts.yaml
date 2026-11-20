@@ -23,9 +23,9 @@ harnesses:
     name: Claude Code
     binary: claude
     version:
-      value: 2.1.312
+      value: 2.1.329
       label: runtime
-      source: harness-captures/claude-code/version.txt (captured 2026-11-02)
+      source: harness-captures/claude-code/version.txt (captured 2026-11-19)
     headless_command:
       value: claude -p --output-format stream-json --verbose --session-id <uuid> --model <id> --permission-mode acceptEdits (prompt on stdin)
       label: documented
@@ -53,9 +53,9 @@ harnesses:
       label: documented
       source: https://code.claude.com/docs/en/headless (bare mode lists skills, custom commands and subagents as discovered; --agents <json> adds subagents; subagent messages carry parent_tool_use_id); harness compatibility triage (2026-10-28); 2026-11-02 triage F3
     hooks:
-      value: PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips every hook. Exit 1 (or any code but 0 and 2) does not block; a hook that times out does not block unless it sets onFailure "block" (2.1.295+); hookSpecificOutput.permissionDecision "deny" on exit 0 also blocks; -p runs a project's hooks with no trust prompt, even in a folder never trusted
+      value: PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips the hooks in settings files and installed plugins, but not those of an organization's managed plugins (2.1.329 help). Exit 1 (or any code but 0 and 2) does not block; a hook that times out does not block unless it sets onFailure "block" (2.1.295+); hookSpecificOutput.permissionDecision "deny" on exit 0 also blocks; -p runs a project's hooks with no trust prompt, even in a folder never trusted
       label: documented
-      source: https://code.claude.com/docs/en/hooks; https://code.claude.com/docs/en/headless (bare mode); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md (exit 2 observed in the sandbox run 2026-10-28); 2026-11-02 triage F4
+      source: https://code.claude.com/docs/en/hooks; https://code.claude.com/docs/en/headless (bare mode); harness-captures/claude-code/help.txt (--bare, 2.1.329); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md (exit 2 observed in the sandbox run 2026-10-28); 2026-11-02 triage F4
     git_actions:
       - action: commits when asked, with an attribution trailer by default
         switch: unknown (attribution CLI setting not checked; Co-Authored-By trailer observed at runtime)
@@ -154,10 +154,10 @@ harnesses:
       label: runtime
       source: specy_road/worker_adapters.py (codex-cli 0.165, run 2026-10-28)
     executor_template:
-      value: codex exec --model {api_id} --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
+      value: codex exec --model {api_id} --disable memories --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
       renders_cli_for: [OpenAI GPT]
       label: runtime
-      source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28); prompt on stdin as the codex adapter launches it (specy_road/worker_adapter_codex.py)
+      source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28); prompt on stdin as the codex adapter launches it (specy_road/worker_adapter_codex.py); multi_agent left on 2026-11-19 (operator decision, supersedes F15 avoid)
     session_flags:
       value: thread id from the thread.started event; codex exec resume <id> - to continue; --last is cwd-scoped. A resume carries only the conversation, so sandbox, approval, model and memory settings are passed again; 0.166.0 keeps acknowledged approval and permission settings on resume and fork; resume by id from a sibling worktree is undocumented
       label: documented
@@ -176,9 +176,9 @@ harnesses:
       label: runtime
       source: M8.7 runtime verification (codex-cli 0.165.0 loads .agents/skills at exec start, 2026-11-02)
     hooks:
-      value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently. Hooks are on by default (features list shows hooks stable true on a fresh CODEX_HOME, 0.166.0; [features] hooks = false turns them off); --dangerously-bypass-hook-trust runs enabled hooks without persisted trust for one invocation
+      value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently. Hooks are on by default (features list shows hooks stable true on a fresh CODEX_HOME, 0.166.0; [features] hooks = false turns them off); --dangerously-bypass-hook-trust runs enabled hooks without persisted trust for one invocation. Project trust in 0.166.0 is persisted per path (trust_level under [projects] in config.toml), with no command-line flag that trusts a project; no specy-road Codex launch, executor or reviewer, passes a trust flag or override; specy-road never trusts a project for a reviewer, so a reviewer stays untrusted and its project .codex/ hooks do not load
       label: documented
-      source: https://learn.chatgpt.com/docs/hooks; harness-captures/codex/inventory-features.txt and help-exec.txt (0.166.0); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md; 2026-11-02 triage F14
+      source: https://learn.chatgpt.com/docs/hooks; harness-captures/codex/inventory-features.txt, help.txt and help-exec.txt (0.166.0; the only trust flag is --dangerously-bypass-hook-trust); trust_level entries in the orchestration host's Codex config.toml (codex-cli 0.166.0, 2026-11-19); specy_road/orchestration/workers/worker_adapter_codex.py (launch, resume and reviewer argv); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md; 2026-11-02 triage F14
     git_actions:
       - action: .git and the linked gitdir are read-only inside workspace-write, so the executor cannot commit
         switch: none; the adapter commits on the worker's behalf (decision 2026-10-29, M8.2)
@@ -197,9 +197,9 @@ harnesses:
         label: documented
         source: https://learn.chatgpt.com/docs/changelog (Codex CLI 0.165.0); harness-captures/codex/inventory-features.txt (0.166.0); harness compatibility triage (2026-10-28); 2026-11-02 triage F13
       - action: multi_agent (stable, on in the 0.166.0 capture) lets the session spawn its own subagents
-        switch: --disable multi_agent
+        switch: none; leave multi_agent on (operator 2026-11-19, supersedes F15 avoid)
         label: runtime
-        source: harness-captures/codex/inventory-features.txt (0.166.0); 2026-11-02 triage F13
+        source: harness-captures/codex/inventory-features.txt (0.166.0); 2026-11-02 triage F13; operator 2026-11-19
       - action: goals (stable, on in the 0.166.0 capture) keeps durable goals across turns
         switch: --disable goals
         label: runtime
@@ -269,7 +269,7 @@ harnesses:
       local_thread_store_compression: neutral
       local_thread_store_shared_compression: neutral
       memories: avoid
-      multi_agent: avoid                            # F15
+      multi_agent: use                              # F15 avoid superseded 2026-11-19 (operator: let Codex run with multi_agent on)
       network_proxy: neutral
       non_prefixed_mcp_tool_names: neutral
       plugin_discovery_prefetch: neutral            # new in 0.166.0; matches "pr"
@@ -292,9 +292,9 @@ harnesses:
     name: Cursor agent CLI
     binary: agent
     version:
-      value: 2026.10.22-27dcf5f
+      value: 2026.11.17-f532c45
       label: runtime
-      source: harness-captures/cursor/version.txt (captured 2026-11-02)
+      source: harness-captures/cursor/version.txt (captured 2026-11-19)
     headless_command:
       value: agent -p --output-format stream-json --force --trust --model <id> --workspace <worktree> "<prompt>"
       label: documented
