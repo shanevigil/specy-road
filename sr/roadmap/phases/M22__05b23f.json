@@ -163,7 +163,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.73_harness-facts-and-captures-refreshed_d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8.md",
       "sibling_order": 73,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/harness-facts.yaml",

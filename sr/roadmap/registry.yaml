@@ -82,19 +82,3 @@ entries:
     started: '2026-11-19'
     owner: savigil
     implementation_review: pending
-  - codename: harness-facts-and-captures-refreshed
-    node_id: M22.73
-    branch: feature/rm-harness-facts-and-captures-refreshed
-    touch_zones:
-      - specy_road/templates/project/model-profiles/harness-facts.yaml
-      - specy_road/templates/project/model-profiles/harness-captures/claude-code/
-      - specy_road/templates/project/model-profiles/harness-captures/cursor/
-      - specy_road/templates/project/model-profiles/anthropic-claude/
-      - specy_road/templates/project/model-profiles/openai-gpt/
-      - specy_road/templates/project/model-profiles/README.md
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-19'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-20T03:27:15+00:00'
