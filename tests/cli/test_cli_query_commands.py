@@ -9,19 +9,16 @@ from __future__ import annotations
 from tests.support import REPO
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
+from tests.support.cli import run_cli
 
 DOGFOOD = REPO / "tests" / "fixtures" / "specy_road_dogfood"
 
 
 def _cli(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *args],
-        cwd=REPO, capture_output=True, text=True,
-    )
+    return run_cli([*args], cwd=REPO)
 
 
 # ---------------------------------------------------------------------------

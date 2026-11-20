@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from tests.support import REPO
-import subprocess
-import sys
 
 import pytest
 
@@ -25,6 +23,7 @@ from tests.support.same.plan_a42dad7814e8 import plan
 from tests.support.extracted.grind_session import REPO, Harness, event, run
 from tests.support.same.reg_506cecd4ff0e import reg
 from tests.support.extracted.grind_session_in_flight import artifacts, entry
+from tests.support.cli import run_cli
 
 MERGE = ["--on-complete", "merge", "--json", "--repo-root", "/tmp/x"]
 
@@ -268,8 +267,6 @@ def test_json_step_routes_child_output_to_stderr_on_its_own(monkeypatch, capsys)
 
 
 def test_cli_help_lists_step() -> None:
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "grind-session", "--help"],
-        cwd=REPO, capture_output=True, text=True, check=True,
-    )
+    r = run_cli(["grind-session", "--help"], cwd=REPO)
+    r.check_returncode()
     assert "--step {pickup,finish}" in r.stdout

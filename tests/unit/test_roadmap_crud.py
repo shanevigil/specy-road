@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 from pathlib import Path
 
 from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.roadmap_crud_ops import append_node_to_chunk
-from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
+from tests.helpers import script_subprocess_env
 from tests.support.crud import crud_fixture_repo, edit_m99_1, run_crud, write_registry_claim
+from tests.support.cli import run_script
 
 
 def test_find_chunk_path(tmp_path: Path) -> None:
@@ -38,15 +37,9 @@ def test_append_node_validate(tmp_path: Path) -> None:
     p = tmp_path / "planning" / f"M99.3_three_{nk}.md"
     p.write_text("# M99.3\n", encoding="utf-8")
     append_node_to_chunk(tmp_path, "phases/T.json", node)
-    v = subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
-            "--repo-root",
-            str(tmp_path),
-        ],
-        capture_output=True,
-        text=True,
+    v = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(tmp_path)],
         env=script_subprocess_env(),
     )
     assert v.returncode == 0, v.stderr
@@ -96,15 +89,9 @@ def test_hard_remove_deletes_planning_file(tmp_path: Path) -> None:
     )
     assert r.returncode == 0, r.stderr
     assert not planning.exists()
-    v = subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
-            "--repo-root",
-            str(tmp_path),
-        ],
-        capture_output=True,
-        text=True,
+    v = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(tmp_path)],
         env=script_subprocess_env(),
     )
     assert v.returncode == 0, v.stderr

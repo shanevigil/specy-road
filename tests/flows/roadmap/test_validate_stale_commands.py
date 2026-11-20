@@ -5,12 +5,11 @@ from __future__ import annotations
 import argparse
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
+from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 from specy_road import __version__
 from specy_road.agents_md_block import render_agents_lines
@@ -18,6 +17,7 @@ from specy_road.bundled_scripts.validate_roadmap import unregistered_commands, w
 from specy_road.cli import REPLACED_COMMANDS
 from specy_road.managed_block import HTML_COMMENT, render_block
 from specy_road.validate_stale_commands import invocation_unknown_flags
+from tests.support.cli import run_script
 
 AGENTS_MD = """# Our agents guide
 
@@ -48,9 +48,11 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     (tmp_path / "CLAUDE.md").write_text("Run `specy-road backfill-activity` weekly.\n", encoding="utf-8")
     (root / ".specyrd").mkdir(exist_ok=True)
     (root / ".specyrd" / "AGENTS.team.md").write_text("# Team\n\nRun `specy-road pm-sync` first.\n", encoding="utf-8")
-    r = subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "validate_roadmap.py"), "--repo-root", str(root)],
-        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+    r = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(root)],
+        cwd=REPO,
+        env=script_subprocess_env(),
     )
     assert r.returncode == 0, r.stderr
     lines = [ln for ln in r.stderr.splitlines() if "tells agents to run" in ln]

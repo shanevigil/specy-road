@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -22,6 +21,7 @@ from tests.support.crud import crud_fixture_repo, run_crud
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import reviews_dir
+from tests.support.cli import run_cli
 
 NK991 = "10000000-0000-4000-8000-000000009902"
 #: A runnable next step: a backticked ``specy-road …`` / ``git …`` command, or one leading a line.
@@ -29,8 +29,7 @@ NEXT_STEP = re.compile(r"`(?:specy-road|git) [^`]+`|^\s*(?:specy-road|git) \S", 
 
 
 def _cli(cwd: Path, *argv: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, "-m", "specy_road.cli", *argv], cwd=cwd,
-                          capture_output=True, text=True, env=script_subprocess_env())
+    return run_cli([*argv], cwd=cwd, env=script_subprocess_env())
 
 
 def _deps(root: Path, nid: str) -> str:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -12,6 +11,7 @@ import pytest
 from specy_road import __version__
 from specy_road.managed_block import HTML_COMMENT, render_block
 from specy_road.agents_md_block import AGENTS_MD, render_agents_lines
+from tests.support.cli import run_cli
 
 
 def _write_manifest(root: Path, version: str) -> None:
@@ -31,11 +31,7 @@ def _write_agents_block(root: Path, *, written_by: str | None = None, minimum: s
 
 
 def _cli(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *args],
-        capture_output=True,
-        text=True,
-    )
+    return run_cli([*args])
 
 
 @pytest.mark.parametrize(

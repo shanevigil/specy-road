@@ -11,10 +11,10 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.cli import run_script
 from tests.support.same.git_df16ee62bf81 import git
 
 
@@ -72,27 +72,8 @@ def _attach_active_lock_to(repo_root: Path, parent_id: str) -> None:
 
 
 def _run_start(repo: Path, parent_id: str) -> subprocess.CompletedProcess[str]:
-    script = (
-        REPO / "specy_road" / "bundled_scripts" / "start_milestone_session.py"
-    )
-    env = script_subprocess_env()
-    return subprocess.run(
-        [
-            sys.executable,
-            str(script),
-            parent_id,
-            "--repo-root",
-            str(repo),
-            "--base",
-            "dev",
-            "--remote",
-            "origin",
-        ],
-        cwd=str(repo),
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    argv = [parent_id, "--repo-root", str(repo), "--base", "dev", "--remote", "origin"]
+    return run_script("start_milestone_session.py", argv, cwd=repo, env=script_subprocess_env())
 
 
 def test_start_milestone_session_refuses_when_already_active(tmp_path: Path) -> None:

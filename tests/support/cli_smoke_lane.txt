@@ -1,0 +1,50 @@
+# The CLI smoke lane: test items that start the CLI as a child process (at most 50).
+# One pytest node id per line. tests/support/cli_smoke_lane.py counts each item that starts the CLI
+# and fails it when it is not listed here; every other CLI test runs the CLI in process.
+
+# Console entry points and the exit-code contract
+tests/cli/test_cli_version.py::test_specy_road_usage_lists_version_flag
+tests/cli/test_cli_version.py::test_specy_road_version_flag
+tests/cli/test_cli_version.py::test_specyrd_version_flag
+tests/cli/test_cli.py::test_specy_road_validate
+tests/cli/test_cli.py::test_specy_road_root_help_exits_zero
+tests/cli/test_cli.py::test_specy_road_init_requires_subcommand
+tests/cli/test_cli.py::test_specy_road_archive_unknown_node_no_traceback
+tests/cli/test_cli.py::test_specy_road_sync_rejects_no_git_flag
+tests/cli/test_specyrd_init.py::test_specyrd_cli_smoke
+tests/cli/test_specyrd_init.py::test_specyrd_cli_no_prompt_requires_role
+tests/cli/test_init_project.py::test_init_project_scaffold_validates
+tests/flows/roadmap/test_roadmap_apply.py::test_top_level_cli_dispatches_apply
+tests/flows/support/test_support.py::test_run_cli_and_run_cli_subprocess_agree[argv0-0]
+tests/flows/support/test_support.py::test_run_cli_and_run_cli_subprocess_agree[argv1-2]
+
+# Every bundled script run as a file (its `if __name__ == "__main__"` guard)
+tests/cli/test_cli_smoke_lane.py::test_every_bundled_script_runs_as_a_file
+
+# A fresh interpreter: import side effects, import counts, a synthetic checkout
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.cli]
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.bundled_scripts.brainstorm_cli]
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.bundled_scripts.brainstorm_cli_args]
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.brainstorm_promote]
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.brainstorm_session]
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.brainstorm_prompt]
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.bundled_scripts.roadmap_crud]
+tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.bundled_scripts.roadmap_move_node]
+tests/cli/test_validate_import_count.py::test_validate_imports_at_most_half_the_baseline_modules
+tests/cli/test_version_resolution.py::test_version_picks_up_sibling_pyproject
+tests/cli/test_version_resolution.py::test_version_does_not_crash_on_malformed_pyproject
+tests/cli/test_version_resolution.py::test_version_does_not_crash_on_pyproject_with_wrong_name
+tests/flows/worker/test_dynamic_routing_reviewers.py::test_orchestration_routing_imports_cleanly_before_orchestration_config
+tests/flows/worker/test_session_presence.py::test_the_default_session_id_is_stable_across_processes
+tests/repo/test_running_toolkit_version.py::test_checkout_reports_sha
+tests/repo/test_running_toolkit_version.py::test_dirty_checkout_marks_dirty
+tests/repo/test_running_toolkit_version.py::test_non_checkout_install_reports_plain_version
+tests/repo/test_running_toolkit_version.py::test_wheel_in_gitignored_venv_of_unrelated_repo_reports_plain_version
+
+# Real processes and races (stay as they are)
+tests/flows/review/test_review_concurrent_writers.py::test_two_filings_started_together_both_file
+tests/flows/review/test_review_concurrent_writers.py::test_lock_wait_against_another_process[0.5-10-True]
+tests/flows/review/test_review_concurrent_writers.py::test_lock_wait_against_another_process[10-0.3-False]
+tests/flows/review/test_review_record_caller.py::test_a_fifo_worker_record_is_refused_at_once
+tests/flows/worker/test_session_presence.py::test_terminate_ends_only_the_workers_own_session
+tests/flows/release/test_prerelease_files.py::test_concurrent_add_idea_keeps_every_idea_with_distinct_ids

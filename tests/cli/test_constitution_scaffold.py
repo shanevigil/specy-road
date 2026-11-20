@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from tests.support import REPO
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -15,6 +13,7 @@ from specy_road.constitution_scaffold import (
     ConstitutionExistsError,
     write_constitution,
 )
+from tests.support.cli import run_cli
 
 
 
@@ -56,37 +55,14 @@ def test_write_constitution_force_overwrites(tmp_path: Path) -> None:
 
 
 def test_specy_road_scaffold_constitution_help() -> None:
-    r = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "specy_road.cli",
-            "scaffold-constitution",
-            "--help",
-        ],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    r = run_cli(["scaffold-constitution", "--help"], cwd=REPO)
+    r.check_returncode()
     assert "--force" in r.stdout
     assert "--repo-root" in r.stdout
 
 
 def test_specy_road_scaffold_constitution_temp_repo(tmp_path: Path) -> None:
-    r = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "specy_road.cli",
-            "scaffold-constitution",
-            "--repo-root",
-            str(tmp_path),
-        ],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    r = run_cli(["scaffold-constitution", "--repo-root", str(tmp_path)], cwd=REPO)
+    r.check_returncode()
     assert "wrote" in r.stdout
     assert (tmp_path / PURPOSE_REL).is_file()

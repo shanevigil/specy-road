@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import yaml
@@ -21,6 +20,7 @@ from specy_road.bundled_scripts.reconcile_branch_cli import reconcile_branch
 from specy_road.registry_yaml import registry_path, write_registry
 from tests.support.same.cli_fda77d440965 import cli
 import pytest
+from tests.support.cli import run_cli
 
 LEAVES = (("M1.1", "one", "11111111-1111-5111-8111-111111111111"),
           ("M1.2", "two", "22222222-2222-5222-8222-222222222222"))
@@ -145,10 +145,7 @@ def _pushed_app(tmp_path: Path) -> Path:
     remote, app = tmp_path / "remote.git", tmp_path / "app"
     git(tmp_path, "init", "-q", "--bare", str(remote))
     git(tmp_path, "init", "-q", str(app))
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "init", "project", str(app)],
-        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
-    )
+    r = run_cli(["init", "project", str(app)], cwd=REPO, env=script_subprocess_env())
     assert r.returncode == 0, r.stderr
     assert cli(app, "export").returncode == 0 and cli(app, "digest").returncode == 0
     git(app, "config", "user.email", "t@e.com")

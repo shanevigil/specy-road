@@ -26,7 +26,7 @@ from tests.support.same.run_651387813ee4 import run
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
-from tests.support.extracted.review_defer_rounds import cli, runs, this_checkout
+from tests.support.extracted.review_defer_rounds import cli, runs
 
 
 @pytest.mark.slow
@@ -100,7 +100,6 @@ def test_r3_a_later_record_is_not_earlier_evidence(tmp_path: Path, capsys, human
 def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path, capsys, monkeypatch,
                                                                    action: str, expected: str) -> None:
     import shlex
-    import subprocess
 
     repo = make_review_repo(tmp_path, orchestration=ROSTER + "  - {id: composer, family: cursor, roles: [executor]}\n" + BUDGET)
     block_round(repo, 1)
@@ -115,7 +114,7 @@ def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path,
     argv = shlex.split(b["next"])   # parses as shell words, and the CLI accepts them
     assert argv[0] == "specy-road"
     if argv[1] == "decisions":
-        r = subprocess.run(cli(argv[1:], repo), capture_output=True, text=True, env=this_checkout())
+        r = cli(argv[1:], repo)
         assert r.returncode == 0, r.stderr
         entry = yaml.safe_load((repo / "roadmap" / "decisions.yaml").read_text())["entries"][0]
         assert (entry["status"], entry["recommendation"]) == ("open", "apply")

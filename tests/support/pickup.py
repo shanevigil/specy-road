@@ -9,11 +9,11 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 import uuid
 from pathlib import Path
 
 from tests.helpers import SCHEMAS, script_subprocess_env
+from tests.support.cli import run_cli
 from tests.support.same.git_84c8ad8f55f9 import git
 
 from specy_road.planning_artifacts import expected_planning_rel
@@ -61,11 +61,8 @@ def make_pickup_project(tmp_path: Path, git_workflow_extra: str = "") -> Path:
 
 
 def run_specy_road(root: Path, *argv: str) -> subprocess.CompletedProcess:
-    """Shared test helper."""
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *argv, "--repo-root", str(root)],
-        cwd=root, env=script_subprocess_env(), capture_output=True, text=True,
-    )
+    """``specy-road <argv> --repo-root <root>`` from ``root``, in this process."""
+    return run_cli([*argv, "--repo-root", str(root)], cwd=root, env=script_subprocess_env())
 
 
 def run_pickup(root: Path, *argv: str) -> subprocess.CompletedProcess:

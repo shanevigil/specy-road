@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -13,6 +12,7 @@ import pytest
 from specy_road.archive_ops import archive_node, auto_archive_candidates
 from specy_road.archive_plan import plan_archive
 from tests.helpers import REPO, DOGFOOD, script_subprocess_env
+from tests.support.cli import run_cli
 
 
 
@@ -43,14 +43,7 @@ def _closed_milestone(repo: Path, closed_at: str) -> None:
 
 
 def _cli(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(repo)],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-        check=False,
-    )
+    return run_cli([*args, "--repo-root", str(repo)], cwd=REPO, env=script_subprocess_env())
 
 
 def test_auto_skips_work_completed_inside_the_window(repo: Path) -> None:

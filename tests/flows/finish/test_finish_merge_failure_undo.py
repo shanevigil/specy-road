@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -20,9 +19,14 @@ from specy_road.finish_bookkeeping_undo import (
     snapshot_bookkeeping,
     undo_bookkeeping,
 )
+import specy_road.bundled_scripts.finish_task as ft
+import specy_road.finish_modes as fm
+from specy_road.checks_config import check_commands
+from specy_road.finish_land_integration import run_land_checks
 from specy_road.finish_modes import merge_landing_failed
 
 from tests.helpers import REPO
+from tests.support.cli import run_cli, run_in_process
 from tests.support.review import commit_file, git
 from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
 
@@ -31,25 +35,11 @@ CHECK = "echo LAND-CHECK-OUTPUT; echo '3 passed'"
 BRIEF = b"# brief M1.1\n\nbytes \xe2\x80\x94 kept\n"
 SUMMARY = "# summary M1.1\n\nwhat changed\n"
 
-#: Runs finish with ``land_on_integration`` replaced by one that runs the real
-#: land check (so its output streams first) and then raises.
-_RAISING = """
-import sys
-from pathlib import Path
-from unittest import mock
-from specy_road.checks_config import check_commands
-from specy_road.finish_land_integration import run_land_checks
-import specy_road.finish_modes as fm
-
-def boom(repo, *, land_check_cmd, **_kw):
+def _raising_landing(repo, *, land_check_cmd, **_kw):
+    """``land_on_integration`` replaced: runs the real land check (its output streams first), then raises."""
     cmds = check_commands(Path(repo), "land", cli=land_check_cmd)
     assert run_land_checks(Path(repo), cmds) is None
     raise OSError("simulated landing crash")
-
-with mock.patch.object(fm, "land_on_integration", boom):
-    from specy_road.bundled_scripts.finish_task import main
-    main(sys.argv[1:])
-"""
 
 
 def _repo(tmp_path: Path, monkeypatch, *, brief_link: bool = False) -> tuple[Path, Path]:
@@ -76,11 +66,11 @@ def _repo(tmp_path: Path, monkeypatch, *, brief_link: bool = False) -> tuple[Pat
 
 
 def _run(repo: Path, argv: list[str]) -> subprocess.CompletedProcess[str]:
+    """``specy-road <argv>`` in this process, stdout and stderr in one stream."""
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO)
-    return subprocess.run(
-        [sys.executable, *argv, "--repo-root", str(repo)], cwd=repo, env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False,
+    return run_in_process(
+        ["specy-road", *argv, "--repo-root", str(repo)], cwd=repo, env=env, stderr_to_stdout=True
     )
 
 
@@ -118,7 +108,7 @@ def test_push_rejected_by_remote_reports_last_and_undoes(tmp_path: Path, monkeyp
     hook.chmod(0o755)
     pre = git(repo, "rev-parse", "HEAD")
     dev_before = git(bare, "rev-parse", "dev")
-    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    result = _run(repo, ["finish-this-task"])
     _assert_reported_last_and_undone(repo, result, pre, "remote rejected")
     assert git(bare, "rev-parse", "dev") == dev_before
 
@@ -128,7 +118,8 @@ def test_landing_exception_reports_last_and_undoes(tmp_path: Path, monkeypatch) 
     """A4(b): land_on_integration raises OSError."""
     repo, _bare = _repo(tmp_path, monkeypatch)
     pre = git(repo, "rev-parse", "HEAD")
-    result = _run(repo, ["-c", _RAISING])
+    monkeypatch.setattr(fm, "land_on_integration", _raising_landing)
+    result = _run(repo, ["finish-this-task"])
     _assert_reported_last_and_undone(repo, result, pre, "OSError: simulated landing crash")
 
 
@@ -140,7 +131,7 @@ def test_symlinked_brief_target_is_restored(tmp_path: Path, monkeypatch) -> None
     hook.write_text("#!/bin/sh\nexit 1\n")
     hook.chmod(0o755)
     pre = git(repo, "rev-parse", "HEAD")
-    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    result = _run(repo, ["finish-this-task"])
     _assert_reported_last_and_undone(repo, result, pre, "remote rejected")
     assert (repo / "work" / "brief-M1.1.md").is_symlink()
     assert (repo / "notes" / "brief.md").read_bytes() == BRIEF
@@ -206,14 +197,6 @@ def test_restore_failure_after_reset_saves_a_copy(tmp_path: Path, capsys) -> Non
     assert "put each file named above back at its path, then run `specy-road finish-this-task`" in err
 
 
-#: Finish as a version before M15.40's undo ran it: a failed landing keeps the bookkeeping commit.
-_NO_UNDO = """
-import sys
-from unittest import mock
-import specy_road.bundled_scripts.finish_task as ft
-with mock.patch.object(ft, "merge_undo_snapshot", lambda *_a: None):
-    ft.main(sys.argv[1:])
-"""
 
 
 def _last_line(result) -> str:
@@ -230,7 +213,7 @@ def _last_line(result) -> str:
 def test_a_landed_finish_prints_its_outcome_last(tmp_path: Path, monkeypatch, options) -> None:
     """A landing still prints its outcome. With --delete-branch that line stays last; otherwise the checkout guidance is last."""
     repo, _bare = _repo(tmp_path, monkeypatch)
-    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task", *options])
+    result = _run(repo, ["finish-this-task", *options])
     assert result.returncode == 0, result.stdout
     outcome = f"[ok] merged {BRANCH} into dev and pushed to origin"
     if "--delete-branch" in options:
@@ -250,15 +233,17 @@ def test_a_retried_landing_prints_its_outcome_last(tmp_path: Path, monkeypatch) 
     hook = bare / "hooks" / "pre-receive"
     hook.write_text("#!/bin/sh\nexit 1\n")
     hook.chmod(0o755)
-    assert _run(repo, ["-c", _NO_UNDO]).returncode == 1   # bookkeeping kept, as an older finish left it
+    with monkeypatch.context() as mp:   # finish as a version before M15.40's undo ran it
+        mp.setattr(ft, "merge_undo_snapshot", lambda *_a: None)
+        assert _run(repo, ["finish-this-task"]).returncode == 1   # bookkeeping kept, as an older finish left it
     hook.unlink()
-    landed = _run(repo, ["-m", "specy_road.cli", "finish-this-task", "--on-complete", "merge"])
+    landed = _run(repo, ["finish-this-task", "--on-complete", "merge"])
     assert landed.returncode == 0, landed.stdout
     assert f"[ok] merged {BRANCH} into dev and pushed to origin" in landed.stdout
     assert _last_line(landed) == (
         f"[ok] this checkout is still on {BRANCH} (landed into dev); next: git switch dev"
     ), landed.stdout
-    again = _run(repo, ["-m", "specy_road.cli", "finish-this-task", "--on-complete", "merge", "--delete-branch"])
+    again = _run(repo, ["finish-this-task", "--on-complete", "merge", "--delete-branch"])
     assert again.returncode == 0, again.stdout
     assert f"[ok] deleted local branch {BRANCH}" in again.stdout
     assert _last_line(again) == f"[ok] {BRANCH} is already merged into dev on origin", again.stdout
@@ -278,7 +263,7 @@ def test_locally_modified_tracked_documents_come_back_as_they_were(tmp_path: Pat
     hook.write_text("#!/bin/sh\nexit 1\n")
     hook.chmod(0o755)
     pre = git(repo, "rev-parse", "HEAD")
-    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    result = _run(repo, ["finish-this-task"])
     assert result.returncode == 1, result.stdout
     assert "[ok] undid the bookkeeping commit" in result.stdout, result.stdout
     assert git(repo, "rev-parse", BRANCH) == pre
@@ -370,12 +355,10 @@ def _clash(repo: Path) -> None:
 
 
 def _separated(repo: Path, argv: list[str]) -> subprocess.CompletedProcess[str]:
+    """``specy-road <argv>`` in this process, stdout and stderr apart."""
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO)
-    return subprocess.run(
-        [sys.executable, *argv, "--repo-root", str(repo)], cwd=repo, env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False,
-    )
+    return run_cli([*argv, "--repo-root", str(repo)], cwd=repo, env=env)
 
 
 _CHECKOUT_WARNING = (
@@ -406,7 +389,7 @@ def test_feature_checkout_failure_keeps_a_landed_finish(tmp_path: Path, monkeypa
     _feature_checkout_hook(repo)
     pre = git(repo, "rev-parse", "HEAD")
     remote_dev = git(bare, "rev-parse", "dev")
-    result = _separated(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    result = _separated(repo, ["finish-this-task"])
     out = result.stdout + result.stderr
     if case == "merge-fails":
         assert result.returncode == 1, out

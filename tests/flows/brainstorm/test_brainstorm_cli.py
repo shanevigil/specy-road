@@ -10,13 +10,13 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from specy_road.brainstorm_session import resolve_slug
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
+from tests.support.cli import run_cli
 from tests.support.review import make_review_repo
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.brainstorm_session import read_session
@@ -25,14 +25,8 @@ from specy_road.brainstorm_session import read_session
 
 
 def _run(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "brainstorm", *args,
-         "--repo-root", str(repo)],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-    )
+    argv = ["brainstorm", *args, "--repo-root", str(repo)]
+    return run_cli(argv, cwd=REPO, env=script_subprocess_env())
 
 
 def _start(repo: Path, *extra: str) -> subprocess.CompletedProcess[str]:
@@ -247,10 +241,7 @@ def test_promote_writes_accepted_ideas_into_the_graph(repo: Path) -> None:
 
     assert r.returncode == 0, r.stderr
     assert "Stored payment vault" in r.stdout
-    listed = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "validate", "--repo-root", str(repo)],
-        cwd=REPO, capture_output=True, text=True, env=script_subprocess_env(),
-    )
+    listed = run_cli(["validate", "--repo-root", str(repo)], cwd=REPO, env=script_subprocess_env())
     assert listed.returncode == 0, listed.stderr
 
 

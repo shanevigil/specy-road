@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 from tests.helpers import script_subprocess_env
 import subprocess
-import sys
+from tests.support.cli import run_cli
 from tests.helpers import REPO
 
 #: The stdin each harness sends for a shell command, as documented.
@@ -34,7 +34,5 @@ def run(repo: Path, fmt: str, payload: dict, *extra: str) -> subprocess.Complete
     """Shared test helper."""
     env = script_subprocess_env()
     env["SPECY_ROAD_AGENT_ID"] = "me"
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "session", "guard", "--format", fmt, *extra, "--repo-root", str(repo)],
-        input=json.dumps(payload), capture_output=True, text=True, env=env, cwd=REPO, check=False,
-    )
+    argv = ["session", "guard", "--format", fmt, *extra, "--repo-root", str(repo)]
+    return run_cli(argv, input=json.dumps(payload), env=env, cwd=REPO)

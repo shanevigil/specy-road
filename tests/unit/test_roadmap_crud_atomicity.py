@@ -26,7 +26,8 @@ from specy_road.roadmap_crud_ops import (
 from specy_road.bundled_scripts.roadmap_codename_cap import cap_codename_slug
 from specy_road.bundled_scripts.roadmap_codename_cap import CODENAME_MAX_CHARS
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
-from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
+from tests.helpers import REPO, SCHEMAS, script_subprocess_env
+from tests.support.cli import run_script
 
 NK_PHASE = "20000000-0000-4000-8000-000000000001"
 NK_TASK = "20000000-0000-4000-8000-000000000002"
@@ -92,13 +93,7 @@ def _snapshot(root: Path) -> dict[str, str]:
 
 
 def _run(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "roadmap_crud.py"), *args],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-    )
+    return run_script("roadmap_crud.py", [*args], cwd=root, env=script_subprocess_env())
 
 
 def test_rejected_edit_does_not_rename_the_planning_sheet(repo: Path) -> None:

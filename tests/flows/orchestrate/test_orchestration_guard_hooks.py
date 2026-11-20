@@ -25,6 +25,7 @@ from specy_road.orchestration.workers.worker_adapters import Launch
 from tests.helpers import script_subprocess_env
 from tests.support.review import make_review_repo
 from tests.support.extracted.hook_adapters import PAYLOADS
+from tests.support.cli import run_cli
 
 
 _HOOK_PROBE = """\
@@ -66,18 +67,10 @@ def _put_specy_road_on_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 def _run_orch(repo: Path, fmt: str, payload: dict, role: str, cmd: str | None = None) -> subprocess.CompletedProcess[str]:
     env = script_subprocess_env()
     env["SPECY_ROAD_ORCHESTRATION_ROLE"] = role
-    args = [sys.executable, "-m", "specy_road.cli", "orchestration", "guard", "--format", fmt, "--repo-root", str(repo)]
+    args = ["orchestration", "guard", "--format", fmt, "--repo-root", str(repo)]
     if cmd is not None:
         args.extend(["--command", cmd])
-    return subprocess.run(
-        args,
-        input=None if cmd is not None else json.dumps(payload),
-        capture_output=True,
-        text=True,
-        env=env,
-        cwd=REPO,
-        check=False,
-    )
+    return run_cli(args, input=None if cmd is not None else json.dumps(payload), env=env, cwd=REPO)
 
 
 @pytest.mark.parametrize(
@@ -163,13 +156,9 @@ def test_orchestration_hook_adapters_block_like_their_harness(tmp_path: Path, fm
 
 
 def test_claude_print_config_has_on_failure_block() -> None:
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "orchestration", "guard", "--format", "claude-code",
-         "--print-config", "--config-role", "executor"],
-        capture_output=True,
-        text=True,
+    r = run_cli(
+        ["orchestration", "guard", "--format", "claude-code", "--print-config", "--config-role", "executor"],
         cwd=REPO,
-        check=False,
     )
     assert r.returncode == 0
     data = json.loads(r.stdout)

@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from datetime import date
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import BUNDLED_SCRIPTS, REPO, script_subprocess_env
+from tests.helpers import REPO, script_subprocess_env
 
 from specy_road.bundled_scripts.validate_roadmap import warn_research_register
+from tests.support.cli import run_cli, run_script
 
 TODAY = date(2026, 10, 31)
 FRESH = "prompt: research/prompts/topic.md\ncadence_days: 90\nlast_run: 2026-10-01\nfed: [M1.1]\n"
@@ -55,18 +54,17 @@ def test_register_entry_warnings(tmp_path: Path, capsys, front_matter, expected)
 
 
 def test_validate_reports_an_overdue_entry_in_a_scaffolded_project(tmp_path: Path) -> None:
-    subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "init", "project", str(tmp_path)],
-        cwd=REPO, check=True, capture_output=True, text=True,
-    )
+    run_cli(["init", "project", str(tmp_path)], cwd=REPO).check_returncode()
     (tmp_path / "research" / "prompts").mkdir()
     (tmp_path / "research" / "prompts" / "topic.md").write_text("# Prompt\n", encoding="utf-8")
     (tmp_path / "research" / "topic.md").write_text(
         f"---\n{FRESH.replace('2026-10-01', '2020-01-01')}---\n", encoding="utf-8"
     )
-    v = subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "validate_roadmap.py"), "--repo-root", str(tmp_path)],
-        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+    v = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(tmp_path)],
+        cwd=REPO,
+        env=script_subprocess_env(),
     )
     assert v.returncode == 0, v.stderr
     assert "research/topic.md: past its cadence: last run 2020-01-01" in v.stderr

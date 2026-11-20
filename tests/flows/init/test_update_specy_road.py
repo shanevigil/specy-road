@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from tests.support import REPO
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 from specy_road.bundled_scripts import update_specy_road as usr
+from tests.support.cli import run_cli
 
 
 
@@ -110,13 +110,8 @@ def test_is_canonical_specy_road_remote_rejects_fork() -> None:
 
 
 def test_specy_road_update_help() -> None:
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "update", "--help"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    r = run_cli(["update", "--help"], cwd=REPO)
+    r.check_returncode()
     out = r.stdout + r.stderr
     assert "--path" in out
     assert "--dry-run" in out
@@ -182,21 +177,8 @@ def test_update_dry_run_tmp_repo(tmp_path: Path) -> None:
         capture_output=True,
     )
 
-    r = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "specy_road.cli",
-            "update",
-            "--path",
-            str(tmp_path),
-            "--dry-run",
-        ],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    r = run_cli(["update", "--path", str(tmp_path), "--dry-run"], cwd=REPO)
+    r.check_returncode()
     assert "Would run:" in r.stdout
     assert "git fetch" in r.stdout
     assert "git checkout" in r.stdout
@@ -254,22 +236,8 @@ def test_reset_to_origin_dry_run_tmp_repo(tmp_path: Path) -> None:
         capture_output=True,
     )
 
-    r = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "specy_road.cli",
-            "update",
-            "--path",
-            str(tmp_path),
-            "--dry-run",
-            "--reset-to-origin",
-        ],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    r = run_cli(["update", "--path", str(tmp_path), "--dry-run", "--reset-to-origin"], cwd=REPO)
+    r.check_returncode()
     out = r.stdout + r.stderr
     assert "destructive" in out.lower()
     assert "git reset --hard" in out

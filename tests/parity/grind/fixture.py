@@ -10,8 +10,9 @@ fail, git may use the file protocol only, and a fake ``claude`` on PATH prints w
 
 Fixed refs and a fixed clock: every git commit this fixture or the CLI makes carries
 :data:`GIT_DATES`, so the same steps give the same commit ids on every run, and :func:`cli` runs
-``specy-road`` with ``specy_road.clock.utc_now`` returning :data:`FIXED_NOW` (set before any other
-package module imports it). The children grind-session starts (pickup, finish) keep the real clock.
+``specy-road`` in this process with ``specy_road.clock.utc_now`` returning :data:`FIXED_NOW` (in
+the clock module and in every package module that imported it by name). The children
+grind-session starts (pickup, finish) keep the real clock.
 """
 
 from __future__ import annotations
@@ -23,22 +24,19 @@ import stat
 import subprocess
 import sys
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
+import pytest
+
+from specy_road import clock
 from tests.parity.support import cli_env
+from tests.support.cli import run_cli
 
 #: The instant :func:`cli` freezes ``specy_road.clock.utc_now`` at.
 FIXED_NOW = "2026-11-14T12:00:00+00:00"
 #: Author and committer dates of every commit, so commit ids repeat run to run.
 GIT_DATES = {"GIT_AUTHOR_DATE": FIXED_NOW, "GIT_COMMITTER_DATE": FIXED_NOW}
-_FROZEN_CLI = (
-    "import runpy, sys\n"
-    "from datetime import datetime\n"
-    "import specy_road.clock as clock\n"
-    f"clock.utc_now = lambda: datetime.fromisoformat({FIXED_NOW!r})\n"
-    "sys.argv = ['specy-road', *sys.argv[1:]]\n"
-    "runpy.run_module('specy_road.cli', run_name='__main__')\n"
-)
 
 LEAVES = (("M1.2", "write-the-alpha-module"), ("M1.3", "write-the-beta-module"))
 SHEET = (
@@ -74,10 +72,19 @@ def offline_env(tmp: Path, claude_script: str = "exit 0\n") -> dict[str, str]:
 
 def cli(root: Path, env: dict[str, str], *argv: str) -> subprocess.CompletedProcess[str]:
     """``specy-road <argv> --repo-root <root>`` from ``root``, with the clock at FIXED_NOW."""
-    return subprocess.run(
-        [sys.executable, "-c", _FROZEN_CLI, *argv, "--repo-root", str(root)],
-        cwd=root, env=env, capture_output=True, text=True, check=False,
-    )
+    return _frozen_cli([*argv, "--repo-root", str(root)], root, env)
+
+
+def _frozen_cli(
+    argv: list[str], cwd: Path, env: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
+    """``specy-road <argv>`` in this process with ``utc_now`` frozen wherever it is bound."""
+    real = clock.utc_now
+    with pytest.MonkeyPatch.context() as mp:
+        for module in [m for name, m in sys.modules.items() if name.startswith("specy_road")]:
+            if getattr(module, "utc_now", None) is real:
+                mp.setattr(module, "utc_now", lambda: datetime.fromisoformat(FIXED_NOW))
+        return run_cli(argv, cwd=cwd, env=env)
 
 
 def _checked(result: subprocess.CompletedProcess[str]) -> None:
@@ -91,10 +98,7 @@ def build_template(tmp: Path) -> Path:
     git(tmp, "init", "-q", "-b", "main", str(root))
     git(root, "config", "user.email", "parity@example.com")
     git(root, "config", "user.name", "Parity")
-    _checked(subprocess.run(
-        [sys.executable, "-c", _FROZEN_CLI, "init", "project", str(root)],
-        cwd=root, env=env, capture_output=True, text=True, check=False,
-    ))
+    _checked(_frozen_cli(["init", "project", str(root)], root, env))
     workflow = root / "roadmap" / "git-workflow.yaml"
     text = workflow.read_text(encoding="utf-8")
     for old, new in (

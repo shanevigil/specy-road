@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from tests.support import REPO
 import json
-import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -29,6 +27,7 @@ from specy_road.orchestration.grind.grind_session_events import (
     EXIT_PRE_FINISH_FAILED,
 )
 from specy_road.orchestration.grind.session_plan import BlockedLeaf, SessionPlan, Wave
+from tests.support.cli import run_cli
 
 
 
@@ -272,10 +271,8 @@ def test_resolved_mode_is_forwarded_to_every_cycle(monkeypatch, capsys, tmp_path
 
 
 def test_cli_grind_session_help() -> None:
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "grind-session", "--help"],
-        cwd=REPO, capture_output=True, text=True, check=True,
-    )
+    r = run_cli(["grind-session", "--help"], cwd=REPO)
+    r.check_returncode()
     for flag in ("--plan", "--until", "--under", "--max-leaves",
                  "--implement-mode", "--implement-cmd", "--pre-finish-cmd",
                  "--on-complete", "--json", "--max-limit-waits",
@@ -285,21 +282,17 @@ def test_cli_grind_session_help() -> None:
 
 
 def test_cli_grind_session_rejects_negative_limit_flags() -> None:
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "grind-session",
-         "--max-limit-wait-hours", "-1", "--repo-root", str(DOGFOOD)],
-        cwd=REPO, capture_output=True, text=True,
+    r = run_cli(
+        ["grind-session", "--max-limit-wait-hours", "-1", "--repo-root", str(DOGFOOD)],
+        cwd=REPO,
     )
     assert r.returncode == 2
     assert "--max-limit-wait-hours must not be negative" in r.stderr
 
 
 def test_cli_grind_session_plan_json() -> None:
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "grind-session", "--plan",
-         "--json", "--repo-root", str(DOGFOOD)],
-        cwd=REPO, capture_output=True, text=True, check=True,
-    )
+    r = run_cli(["grind-session", "--plan", "--json", "--repo-root", str(DOGFOOD)], cwd=REPO)
+    r.check_returncode()
     payload = json.loads(r.stdout.strip().splitlines()[0])
     assert payload["event"] == "plan"
     assert "ready" in payload and "waves" in payload and "parallel_batches" in payload

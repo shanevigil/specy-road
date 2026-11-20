@@ -10,7 +10,6 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -21,6 +20,7 @@ from specy_road.on_complete_pickup import print_orchestration_hint
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 from tests.support.review import commit_file, git
 from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
+from tests.support.cli import run_cli
 
 THEIRS = b"someone else's file\n"
 SUMMARY = "work/implementation-summary-M1.1.md"
@@ -47,8 +47,7 @@ def _committed_dogfood(root: Path) -> Path:
 
 
 def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(root)],
-                          cwd=REPO, capture_output=True, text=True, env=script_subprocess_env())
+    return run_cli([*args, "--repo-root", str(root)], cwd=REPO, env=script_subprocess_env())
 
 
 def _refusal(path: Path, expected: str) -> str:
@@ -247,8 +246,11 @@ def test_finish_refuses_a_linked_reviews_base(tmp_path: Path, monkeypatch, linke
     link.symlink_to(outside, target_is_directory=True)
     before = (_git_state(repo), _git_state(main), _snapshot(outside), (repo / SUMMARY).read_bytes())
 
-    result = subprocess.run([sys.executable, "-m", "specy_road.cli", "finish-this-task", "--repo-root", str(repo)],
-                            cwd=repo, capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(REPO)})
+    result = run_cli(
+        ["finish-this-task", "--repo-root", str(repo)],
+        cwd=repo,
+        env={**os.environ, "PYTHONPATH": str(REPO)},
+    )
 
     assert result.returncode == 1, result.stdout + result.stderr
     assert f"{link} is a symlink (to {outside}), not a directory" in result.stderr, result.stderr

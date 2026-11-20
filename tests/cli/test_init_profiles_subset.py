@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from tests.support import REPO
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from specy_road.init_project import bundled_profiles_template_dir, run_init_project
+from tests.support.cli import run_cli
 
 
 
@@ -70,21 +69,7 @@ def test_init_project_profiles_one_api_id(tmp_path: Path) -> None:
 
 
 def test_init_project_profiles_cli_wires_flag(tmp_path: Path) -> None:
-    r = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "specy_road.cli",
-            "init",
-            "project",
-            str(tmp_path),
-            "--profiles",
-            "none",
-        ],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-    )
+    r = run_cli(["init", "project", str(tmp_path), "--profiles", "none"], cwd=REPO)
     assert r.returncode == 0, r.stderr
     assert _model_profiles_paths(tmp_path) == sorted(
         [

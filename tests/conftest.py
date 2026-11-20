@@ -18,6 +18,12 @@ from tests.fixture_guard import (
     record_session_start,
 )
 from tests.helpers import REPO
+from tests.support import cli_smoke_lane
+from tests.support.cli_smoke_lane import (  # noqa: F401 — the smoke lane's hooks
+    pytest_collection_modifyitems,
+    pytest_runtest_makereport,
+    pytest_runtest_protocol,
+)
 from tests.support.fixtures import (  # noqa: F401 — registered for every test
     repo,
     api_client,
@@ -25,6 +31,8 @@ from tests.support.fixtures import (  # noqa: F401 — registered for every test
     git_remote_repo,
     git_template,
 )
+
+cli_smoke_lane.install()
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

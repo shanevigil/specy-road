@@ -3,32 +3,20 @@
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 from tests.helpers import REPO, script_subprocess_env
 import pytest
+from tests.support.cli import run_cli
 
 
 def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(root)],
-        cwd=REPO,
-        env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
-    )
+    return run_cli([*args, "--repo-root", str(root)], cwd=REPO, env=script_subprocess_env())
 
 
 def _scaffold(root: Path) -> None:
     subprocess.run(["git", "init", "-q", str(root)], check=True)
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "init", "project", str(root)],
-        cwd=REPO,
-        env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
-    )
+    r = run_cli(["init", "project", str(root)], cwd=REPO, env=script_subprocess_env())
     assert r.returncode == 0, r.stderr
 
 

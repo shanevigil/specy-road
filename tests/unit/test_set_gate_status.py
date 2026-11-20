@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
+from tests.helpers import REPO, SCHEMAS, script_subprocess_env
 from tests.support.extracted.set_gate_status import sheet, repo_with_gate
+from tests.support.cli import run_script
 
 
 
@@ -18,13 +18,7 @@ from tests.support.extracted.set_gate_status import sheet, repo_with_gate
 
 
 def _run_crud(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "roadmap_crud.py"), *args],
-        cwd=tmp,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-    )
+    return run_script("roadmap_crud.py", [*args], cwd=tmp, env=script_subprocess_env())
 
 
 def test_set_gate_status_cli_updates_gate(tmp_path: Path) -> None:

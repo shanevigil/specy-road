@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.cli import run_cli
 
 
 def _lines(n: int) -> str:
@@ -15,31 +15,14 @@ def _lines(n: int) -> str:
 
 def _init_scaffold(root: Path) -> None:
     env = script_subprocess_env()
-    subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "init", "project", str(root)],
-        cwd=REPO,
-        env=env,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    run_cli(["init", "project", str(root)], cwd=REPO, env=env).check_returncode()
 
 
 def _file_limits(root: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "specy_road.cli",
-            "file-limits",
-            "--repo-root",
-            str(root),
-        ],
+    return run_cli(
+        ["file-limits", "--repo-root", str(root)],
         cwd=REPO,
         env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
-        check=False,
     )
 
 

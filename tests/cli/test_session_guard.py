@@ -17,6 +17,7 @@ from tests.support.extracted.hook_adapters import DENY, PAYLOADS, run
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as g
 from specy_road.orchestration.guard.tool_call_guard_adapters import ADAPTERS
+from tests.support.cli import run_cli
 
 ENV_ALIAS = "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0='!git stash' git x"
 
@@ -96,11 +97,13 @@ def test_non_object_payload_raises(text: str) -> None:
 @pytest.mark.parametrize("text", ["[]", '"x"', "3"])
 def test_non_object_payload_denies_at_the_adapter(tmp_path: Path, fmt: str, text: str) -> None:
     from tests.helpers import script_subprocess_env
-    import sys
 
     repo = make_review_repo(tmp_path)
-    r = subprocess.run([sys.executable, "-m", "specy_road.cli", "session", "guard", "--format", fmt, "--repo-root", str(repo)],
-                       input=text, capture_output=True, text=True, env=script_subprocess_env(), check=False)
+    r = run_cli(
+        ["session", "guard", "--format", fmt, "--repo-root", str(repo)],
+        env=script_subprocess_env(),
+        input=text,
+    )
     code, channel = DENY[fmt]
     assert r.returncode == code, (fmt, text, r.stdout, r.stderr)
     assert "internal error" in (r.stdout if channel == "stdout" else r.stderr)

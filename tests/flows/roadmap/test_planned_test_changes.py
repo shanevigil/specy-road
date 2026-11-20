@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
+from tests.helpers import script_subprocess_env
 from tests.support.milestone import land_leaf, make_milestone_repo, merge_leaf, set_status
 from tests.support.review import commit_file, make_review_repo, review_text, git
 from tests.support.profiles import make_profile_repo, ROSTER
@@ -23,6 +22,7 @@ from specy_road.roadmap_load import load_roadmap
 from specy_road.integrity_removals import REQUIRED_HEADING, unplanned_removals
 from specy_road.registry_yaml import read_registry, registry_path
 from tests.support.same.crud_87ad31dc4313 import crud
+from tests.support.cli import run_script
 
 OLD = "removed-test: tests/test_leaf.py::test_old"
 HEADING = f"## {REQUIRED_HEADING}"
@@ -35,8 +35,11 @@ def _planned(repo: Path) -> list[str] | None:
 
 
 def _validate(repo: Path) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, str(BUNDLED_SCRIPTS / "validate_roadmap.py"), "--repo-root", str(repo)],
-                          capture_output=True, text=True, env=script_subprocess_env())
+    return run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(repo)],
+        env=script_subprocess_env(),
+    )
 
 
 def test_edit_node_sets_adds_and_removes_planned_test_changes_on_a_claimed_leaf(tmp_path: Path) -> None:

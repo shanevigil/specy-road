@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from specy_road.init_project import run_init_project
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.cli import run_cli
 
 
 def _validate(root: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "validate", "--repo-root", str(root), *args],
-        cwd=REPO, env=env or script_subprocess_env(), capture_output=True, text=True,
+    return run_cli(
+        ["validate", "--repo-root", str(root), *args],
+        cwd=REPO,
+        env=env or script_subprocess_env(),
     )
 
 
@@ -28,10 +29,10 @@ def _scaffold(root: Path) -> Path:
 
 
 def _clear_acceptance(root: Path) -> None:
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "edit-node", "M1.1", "--repo-root", str(root),
-         "--set", "acceptance="],
-        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+    r = run_cli(
+        ["edit-node", "M1.1", "--repo-root", str(root), "--set", "acceptance="],
+        cwd=REPO,
+        env=script_subprocess_env(),
     )
     assert r.returncode == 0, r.stderr
 
@@ -109,10 +110,11 @@ def test_strict_passes_a_fresh_scaffold(tmp_path: Path) -> None:
 
 def _add_placeholder_leaf(root: Path) -> None:
     """``add-node`` writes the scaffold sheet and sets no acceptance: a leaf pickup skips as unauthored."""
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "add-node", "--repo-root", str(root),
-         "--id", "M1.2", "--type", "task", "--title", "Later work", "--parent-id", "M1"],
-        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+    r = run_cli(
+        ["add-node", "--repo-root", str(root), "--id", "M1.2", "--type", "task",
+         "--title", "Later work", "--parent-id", "M1"],
+        cwd=REPO,
+        env=script_subprocess_env(),
     )
     assert r.returncode == 0, r.stderr
 

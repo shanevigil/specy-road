@@ -11,7 +11,6 @@ zones of the node they wrote.
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -22,11 +21,12 @@ from specy_road.bundled_scripts.touch_zone_tracked import (
     warn_untracked_zones,
     warn_written_zones,
 )
-from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
+from tests.helpers import script_subprocess_env
 from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.crud import crud_fixture_repo, run_crud
 from tests.support.extracted.touch_zone_tracked import FILES, UNTRACKED, zone_git_repo
 from specy_road.bundled_scripts.touch_zone_tracked import LISTED_LIMIT
+from tests.support.cli import run_script
 
 
 
@@ -127,9 +127,11 @@ def crud_git_repo(tmp_path: Path) -> Path:
 
 
 def _validate(root: Path, *flags: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "validate_roadmap.py"), "--repo-root", str(root), *flags],
-        cwd=root, capture_output=True, text=True, env=script_subprocess_env(),
+    return run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(root), *flags],
+        cwd=root,
+        env=script_subprocess_env(),
     )
 
 

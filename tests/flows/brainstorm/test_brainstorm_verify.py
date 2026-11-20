@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import io
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -31,6 +29,7 @@ from tests.support.same.cli_11f0555f0fa9 import cli
 from tests.support.same.prompt_26b6cb7fef04 import prompt
 from tests.support.same.session_9301503dde8a import session
 from tests.support.same.start_f653667be42d import start
+from tests.support.cli import run_cli
 
 SLUG = "how-do-we-expand-payments"
 
@@ -271,9 +270,11 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
     def fetch(url):
         calls.append(url)
         if len(calls) == 1:   # another process adds an idea mid-fetch: verify must not hold the lock, nor drop it
-            add = subprocess.run([sys.executable, "-m", "specy_road.cli", "brainstorm", "add-idea", "--title", "Two",
-                                  "--repo-root", str(repo)], cwd=REPO, env=script_subprocess_env(),
-                                 capture_output=True, text=True, timeout=60)
+            add = run_cli(
+                ["brainstorm", "add-idea", "--title", "Two", "--repo-root", str(repo)],
+                cwd=REPO,
+                env=script_subprocess_env(),
+            )
             assert add.returncode == 0, add.stderr
         return 200, "exact words" if url.endswith("ok") else "nope"
 

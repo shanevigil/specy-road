@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from tests.support import REPO
+from tests.support.cli import run_module
 import json
 import subprocess
 import sys
@@ -263,24 +264,9 @@ def test_specyrd_cli_extras_dry_run_skips_pip(monkeypatch: pytest.MonkeyPatch, t
         called.append(" ".join(cmd))
 
     monkeypatch.setattr("specy_road.specyrd_cli.subprocess.check_call", fake_check_call)
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "specy_road.specyrd_cli",
-            "init",
-            str(tmp_path),
-            "--ai",
-            "cursor",
-            "--role",
-            "pm",
-            "--extras",
-            "review",
-            "--dry-run",
-        ],
-        cwd=REPO,
-        check=True,
-    )
+    argv = ["init", str(tmp_path), "--ai", "cursor", "--role", "pm", "--extras", "review",
+            "--dry-run"]
+    run_module("specy_road.specyrd_cli", argv, cwd=REPO).check_returncode()
     assert not called
 
 
