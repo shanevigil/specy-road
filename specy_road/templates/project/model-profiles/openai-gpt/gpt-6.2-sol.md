@@ -7,19 +7,19 @@ api_id: gpt-6.2-sol
 checkpoint: unknown
 alias_moves: unknown
 version_rank: latest
-release_date: unknown
+release_date: unknown   # the dated report has no release-date row for this model
 researched: 2026-11-19
 researcher: field
 supersedes: gpt-6.1-sol
 access:
   context_tokens: 500000
-  output_tokens: unknown
+  output_tokens: 128000   # API maximum, SOL-CTX (checked); Codex catalogue states no separate output limit
   cli: codex exec --model gpt-6.2-sol --disable memories -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
   cli_verified_from: 'not run with this model; the codex executor template (harness-facts.yaml) with the api_id the Codex catalog lists [S1]'
   subagents: 'yes Codex catalog lists multi_agent_version v2 and an ultra effort described as maximum reasoning with automatic task delegation [S1]'
   effort_controls: 'low, medium, high, xhigh, max, ultra (catalog default low) [S1]'
   effort_map: { minimal: low, low: low, medium: medium, high: high, max: max }
-cost_usd_per_mtok: { input: unknown, output: unknown, cached_input: unknown, fast_input: unknown, fast_output: unknown }
+cost_usd_per_mtok: { input: 2.00, output: 10.00, cached_input: 0.10, fast_input: 4.00, fast_output: 20.00 }   # SOL-PRICE; fast is twice standard
 data_handling: 'Served in Codex; the Codex catalog marks it supported_in_api and lists a Fast service tier ("2x speed, increased usage") [S1]. Retention, training use and residency were not researched for this model.'
 role_fit:
   coordinator: { score: 3, reason: 'Not piloted as a coordinator; no evidence either way', sources: [] }
@@ -52,14 +52,18 @@ Under the default codex launch (`sandbox_mode=workspace-write`) an executor cann
 - Do not send ultra to an executor: the catalog describes it as reasoning with automatic task delegation, and the default codex worker launch leaves multi_agent on [S1]
 - Set sandbox and approval policy in the harness, and in a linked worktree give it write access to the git metadata, or it cannot commit (https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md, "Known limitation", checked on codex-cli 0.165.0)
 - Require a prior-art search before any new helper and a named reuse in the summary, and fix the output format; this family writes the most code per task but its merged work holds up [S2, S4]
+## From the dated report (2026-11-19)
+- API standard price per MTok is input $2, cached input $0.10, output $10; fast mode is twice that. Cache writes are $2.50. Above 272K input tokens, input and cache rates double and output costs 1.5 times, for the full request (SOL-PRICE, checked) [S5]
+- API maximum output is 128000 tokens. The API context window is 1050000, with a 922000 input cap; context_tokens stays the Codex catalogue window 500000 (max 872000). Both figures are SOL-CTX, checked [S5]
+- Codex catalogue default effort is low. The API guide states no model default and says to start with medium (SOL-EFF-DEF, checked) [S5]
+- Not offered in Cursor (SOL-CURSOR, checked) [S1, S5]
 ## Open questions
-- Price per token, output-token limit and release date are unknown here: no source on this host gives them; M22.72's dated report is to supply them
-- Not piloted in any role; the role scores are the not-piloted default until a pilot or M22.72's report gives evidence
-- The vendor's documented default effort is not known here; the Codex catalog default is low [S1]; M22.72 to confirm
-- The API context limit may differ from the Codex catalog window (500000, max 872000) [S1]; M22.72 to confirm
-- Not offered in Cursor's agent inventory as of 2026.11.17-f532c45 (harness-captures/cursor/inventory-models.txt)
+- Release date stays unknown: the report's question list has no release-date row, and no checked row dates this model [S5]
+- Role scores stay the not-piloted default: SOL-ROLE is not checked (vendor text is not a measurement; no study here has used this model, and measuring model quality is outside this report) [S5]
+- Whether Codex 0.166.0 runs this id stays unknown: SOL-CODEX is not checked (needs a model call, RUNBOOK step 4, which is not approved) [S5]
 ## Sources
 - S1: Codex model catalog (`codex debug models`), codex-cli 0.166.0, captured 2026-11-19, runtime
 - S2: New data on code quality: GPT-5.2 high, Opus 4.5, Gemini 3, and more, Sonar, 2025-12, https://www.sonarsource.com/blog/new-data-on-code-quality-gpt-5-2-high-opus-4-5-gemini-3-and-more/, vendor benchmark on Java single-file tasks (lean-code reports)
 - S3: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
 - S4: Codex best practices (search for prior art before adding helpers), OpenAI, accessed 2026-10-27, https://developers.openai.com/codex/learn/best-practices, primary (lean-code reports)
+- S5: Harness-facts report 2026-11-19, sr/docs/research/harness-facts-2026-11-19/report.md (SOL-PRICE, SOL-CTX, SOL-EFF-DEF, SOL-CURSOR, SOL-ROLE, SOL-CODEX)
