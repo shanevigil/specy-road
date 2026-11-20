@@ -268,7 +268,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Complete |
 | `M22.71` | Review channels report the model the harness actually ran, so every review record names it | task | Agentic-led | Complete |
 | `M22.72` | Gate: current harness facts delivered as a dated research report | gate | Human-led | Not Started |
-| `M22.73` | Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs | task | Agentic-led | Not Started |
+| `M22.73` | Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs | task | Agentic-led | Complete |
 | `M22.74` | The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment | task | Agentic-led | Complete |
 | `M22.75` | Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block | task | Agentic-led | Complete |
 | `M22.76` | The tool-call guard reads env's clustered and attached -S like the separate flag | task | Agentic-led | Complete |

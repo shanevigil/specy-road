@@ -6,7 +6,7 @@ model: GPT-6.1 Sol
 api_id: gpt-6.1-sol
 checkpoint: same-as-api_id
 alias_moves: 'no'
-version_rank: latest
+version_rank: previous
 release_date: 2026-09-29
 researched: 2026-10-20
 researcher: merged
@@ -28,7 +28,7 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below name the switches for `specy-road prompt --channel cli` and generic-harness workers. **`worker delegate` on codex will apply them when leaf M8.2 lands** (that leaf adds the `--disable` flags to the codex launch argv):
+When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below pass these switches, for `specy-road prompt --channel cli` and generic-harness workers. **The default `worker delegate` codex launch does not pass them:** it turns memories off with `-c features.memories=false -c memories.use_memories=false -c memories.generate_memories=false` and the profile's own `CODEX_HOME`, and leaves multi_agent and goals at Codex's defaults (both on in the codex-cli 0.166.0 capture). A roster `channels.cli` that runs the executor template passes all three:
 
 | Feature | Switch |
 |---|---|
