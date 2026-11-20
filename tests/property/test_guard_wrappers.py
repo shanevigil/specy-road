@@ -49,6 +49,7 @@ def prefix_wrapper(draw: st.DrawFn) -> str:
     enclosing=st.lists(st.sampled_from(ENCLOSING), max_size=2),
 )
 def test_wrapped_case_keeps_its_classify_result(command, prefixes, enclosing) -> None:
+    """The wrapped command gets the bare command's classify result (reason or ``None``)."""
     bare = classify(command)
     if command.startswith("("):
         prefixes = []

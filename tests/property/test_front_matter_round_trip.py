@@ -36,6 +36,7 @@ bodies = st.text(st.characters(codec="utf-8", exclude_characters=OTHER_BREAKS)).
 def test_front_matter_render_then_parse_round_trips(
     tmp_path_factory, data: dict, body: str
 ) -> None:
+    """Both readers give back the data and body ``render_front_matter`` was given."""
     rendered = render_front_matter(data, body)
     assert split_frontmatter(rendered) == (data, body)
 

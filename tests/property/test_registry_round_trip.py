@@ -38,6 +38,7 @@ SAMPLE_ENTRIES = [
 # The input of the single-input test this property replaces.
 @example(entries=SAMPLE_ENTRIES)
 def test_registry_dump_then_load_round_trips(tmp_path_factory, entries: list[dict]) -> None:
+    """The loaded document equals the dumped one, and dumping it again gives the same text."""
     doc = {"version": 1, "entries": entries}
     path = tmp_path_factory.mktemp("registry") / "registry.yaml"
     path.write_text(dump_registry_text(doc), encoding="utf-8")

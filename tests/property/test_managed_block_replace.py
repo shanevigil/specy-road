@@ -13,8 +13,6 @@ and is not idempotent with ``\\r`` in a block line.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from hypothesis import example, given
 from hypothesis import strategies as st
 
@@ -35,17 +33,22 @@ text = st.text(st.characters(codec="utf-8", exclude_characters="\r"))
 @given(
     before=text,
     after=text.filter(lambda tail: not tail or tail.strip()),
-    old=st.lists(text),
-    new=st.lists(text),
+    lines=st.tuples(st.lists(text), st.lists(text)),
     style=st.sampled_from((HASH, HTML_COMMENT)),
 )
 # The inputs of the single-input tests this property replaces.
-@example(before="", after="", old=["old-rule/"], new=["new-rule/"], style=HASH)
-@example(before="", after="\n# added later by a human\ndist/\n", old=["a/"], new=["b/"], style=HASH)
-@example(before=USER_CONTENT + "\n", after="trailing/\n", old=["a/"], new=["b/"], style=HASH)
+@example(before="", after="", lines=(["old-rule/"], ["new-rule/"]), style=HASH)
+@example(before="", after="\n# added later by a human\ndist/\n", lines=(["a/"], ["b/"]), style=HASH)
+@example(before=USER_CONTENT + "\n", after="trailing/\n", lines=(["a/"], ["b/"]), style=HASH)
 def test_replace_is_idempotent_and_keeps_outside_text(
-    tmp_path_factory, before: str, after: str, old: list[str], new: list[str], style: MarkerStyle
+    tmp_path_factory,
+    before: str,
+    after: str,
+    lines: tuple[list[str], list[str]],
+    style: MarkerStyle,
 ) -> None:
+    """Rewrite ``old``'s block with ``new``: outside text kept, a second apply a no-op."""
+    old, new = lines
     path = tmp_path_factory.mktemp("block") / "managed.txt"
     path.write_bytes((before + render_block(old, style=style) + after).encode("utf-8"))
 

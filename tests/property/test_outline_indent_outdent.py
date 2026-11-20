@@ -80,6 +80,7 @@ def shape(root: Path) -> dict[str, tuple[str | None, int]]:
 def test_indent_then_outdent_restores_parent_and_sibling_order(
     tmp_path_factory, template: Path, phases: list[list], pick: int
 ) -> None:
+    """Indent a node under the sibling above, outdent it back: the outline is as it was."""
     root = tmp_path_factory.mktemp("outline")
     shutil.copytree(template, root, dirs_exist_ok=True)
     movable = write_outline(root, phases)
