@@ -207,9 +207,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Complete**
   - `M22.80` Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-multi-agent-on-the-harness-facts-and-shipped` — task — **Complete**
   - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Not Started**
-  - `M22.82` Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly `every-other-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
+  - `M22.82` Audit: every path that writes and reads back text, or rewrites a user's file, listed with its line-ending and line-break handling `audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
   - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Complete**
   - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Not Started**
+  - `M22.85` The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly `the-round-trip-and-rewrite-paths-the-audit-lists-keep-line` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**

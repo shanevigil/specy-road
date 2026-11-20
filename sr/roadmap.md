@@ -277,9 +277,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.79` | The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command | task | Agentic-led | Complete |
 | `M22.80` | Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it | task | Agentic-led | Complete |
 | `M22.81` | Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks | task | Agentic-led | Not Started |
-| `M22.82` | Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly | task | Agentic-led | Not Started |
+| `M22.82` | Audit: every path that writes and reads back text, or rewrites a user's file, listed with its line-ending and line-break handling | task | Agentic-led | Not Started |
 | `M22.83` | Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it | task | Agentic-led | Complete |
 | `M22.84` | Bundled harness facts and profiles take in the dated harness-facts report | task | Agentic-led | Not Started |
+| `M22.85` | The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
