@@ -91,7 +91,7 @@ WRAPPER_OPTIONS: dict[str, tuple[tuple[str, str, str], ...]] = {
         ("quiet", "no", "q"),
         ("verbose", "no", "v"),
         ("version", "no", "V"),
-        ("help", "no", ""),
+        ("help", "no", "h"),
     ),
     "nice": (
         ("adjustment", "required", "n"),

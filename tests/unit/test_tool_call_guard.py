@@ -496,7 +496,7 @@ _WRAPPER_SPELLINGS = (
     ("doas", "", ("-a bob", "-C bob", "-L", "-n", "-s", "-u bob")),
     ("nohup", "", ("--help", "--version")),
     ("exec", "", ("-a bob", "-c", "-l")),
-    ("time", "", ("-a", "-f bob", "-o bob", "-p", "-q", "-v", "-V", "--help")),
+    ("time", "", ("-a", "-f bob", "-o bob", "-p", "-q", "-v", "-V", "-h", "--help")),
     ("nice", "", ("-n bob", "--help", "--version")),
     ("ionice", "", ("-c bob", "-n bob", "-p bob", "-P bob", "-t", "-u bob", "-h", "-V")),
     ("xargs", "", (
@@ -508,8 +508,9 @@ _WRAPPER_SPELLINGS = (
         "--preserve-status", "--foreground", "-k bob", "-s bob", "-v", "--help", "--version",
     )),
     ("env", "", (
-        "-i", "-0", "-u bob", "-C /tmp", "-v", "--block-signal", "--default-signal",
-        "--ignore-signal", "--list-signal-handling", "--help", "--version",
+        "-i", "-0", "-u bob", "-C /tmp", "-v", "--block-signal", "--block-signal=INT",
+        "--default-signal", "--default-signal=INT", "--ignore-signal", "--ignore-signal=INT",
+        "--list-signal-handling", "--help", "--version",
     )),
 )
 
