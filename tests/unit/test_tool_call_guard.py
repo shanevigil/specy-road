@@ -482,6 +482,81 @@ def path_qualified_env_forms(command: str) -> list[str]:
     return forms
 
 
+# One spelling per documented option (a value where the option takes one). ``timeout``'s
+# duration stays in the gap, after the option. ``env -S`` is not here: the split string is
+# the command, covered by ``env_split_forms``.
+_WRAPPER_SPELLINGS = (
+    ("command", "", ("-p", "-v", "-V")),
+    ("sudo", "", (
+        "-A", "-B", "-b", "-C bob", "-D bob", "-E", "--preserve-env", "--preserve-env=bob",
+        "-e", "-g bob", "-H", "--help", "-h bob", "-i", "-K", "-k", "-l", "-N", "-n",
+        "-P", "-p bob", "-R bob", "-r bob", "-S", "-s", "-t bob", "-T bob", "-U bob",
+        "-u bob", "-V", "-v",
+    )),
+    ("doas", "", ("-a bob", "-C bob", "-L", "-n", "-s", "-u bob")),
+    ("nohup", "", ("--help", "--version")),
+    ("exec", "", ("-a bob", "-c", "-l")),
+    ("time", "", ("-a", "-f bob", "-o bob", "-p", "-q", "-v", "-V", "-h", "--help")),
+    ("nice", "", ("-n bob", "--help", "--version")),
+    ("ionice", "", ("-c bob", "-n bob", "-p bob", "-P bob", "-t", "-u bob", "-h", "-V")),
+    ("xargs", "", (
+        "-0", "-a bob", "-d bob", "-E bob", "-e", "--eof=bob", "-I bob", "-i", "--replace=bob",
+        "-L bob", "-l", "--max-lines=bob", "-n bob", "-P bob", "-o", "-p",
+        "--process-slot-var=bob", "-r", "-s bob", "--show-limits", "-t", "-x", "--help", "--version",
+    )),
+    ("timeout", "10 ", (
+        "--preserve-status", "--foreground", "-k bob", "-s bob", "-v", "--help", "--version",
+    )),
+    ("env", "", (
+        "-i", "-0", "-u bob", "-C /tmp", "-v", "--block-signal", "--block-signal=INT",
+        "--default-signal", "--default-signal=INT", "--ignore-signal", "--ignore-signal=INT",
+        "--list-signal-handling", "--help", "--version",
+    )),
+)
+
+
+def wrapper_option_forms(command: str) -> list[str]:
+    """Each wrapper option, with a value where it takes one, bare and path-qualified."""
+    forms = []
+    for name, gap, spellings in _WRAPPER_SPELLINGS:
+        for spelling in spellings:
+            body = f"{name} {spelling} {gap}{command}"
+            forms.append(body)
+            for prefix in _PATH_PREFIXES:
+                forms.append(f"{prefix}{body}")
+    return forms
+
+
+def assert_named_option_forms() -> None:
+    """The commands this leaf names keep the bare command's reason."""
+    for wrapped, bare_command in named_option_forms():
+        assert g.classify(wrapped) == g.classify(bare_command), (wrapped, g.classify(wrapped))
+
+
+def named_option_forms() -> list[tuple[str, str]]:
+    """Commands named for this leaf, each beside the bare command it must match."""
+    stash = "git stash"
+    return [
+        ("sudo -n git stash", stash),
+        ("command -p git stash", stash),
+        ("time -p git stash", stash),
+        ("doas -n git stash", stash),
+        ("xargs -r git stash", stash),
+        ("xargs -t git stash", stash),
+        ("ionice -t git stash", stash),
+        ("/usr/bin/sudo -n git reset --hard", "git reset --hard"),
+        ("( sudo -n git stash )", stash),
+        ("sudo -nu bob git stash", stash),
+        ("sudo -ubob git stash", stash),
+        ("sudo --user=bob git stash", stash),
+        ("sudo -- git stash", stash),
+        ("sudo -n -- git stash", stash),
+        ("command -- git stash", stash),
+        ("timeout -- 10 git stash", stash),
+        ("xargs -- git stash", stash),
+    ]
+
+
 def destructive_commands() -> list[str]:
     tables = (
         test_destructive_commands_are_classified,
@@ -546,6 +621,10 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     (with ``=`` and with a separate value) match the bare command. A path-qualified wrapper
     (``/usr/bin/<w>``, ``/bin/<w>``, ``./<w>``) matches that same bare reason, including
     ``/usr/bin/env -S``, a subshell around it, ``/bin/env --split=`` and ``/usr/bin/sudo``.
+    Each wrapper's own options, with a value where one is required, do too, bare and
+    path-qualified: ``sudo -n``, ``command -p``, ``time -p``, ``doas -n``, ``xargs -r``,
+    ``xargs -t``, ``ionice -t``. Short options cluster and take an attached or separate
+    value, and ``--`` ends that wrapper's options.
     A ``GIT_CONFIG*`` row also matches through ``env -S '-i <row>'`` and the same option
     with ``-v``, ``--``, ``-u HOME``, and ``sudo``. Ordinary commands stay allowed through
     those forms. A split string whose command needs runtime state (``$HOME``, ``${DIR}``,
@@ -560,6 +639,7 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     )
     for example in examples:
         assert g.classify(example) == stash, (example, g.classify(example))
+    assert_named_option_forms()
     for command in destructive_commands():
         bare = g.classify(command)
         assert bare, command
@@ -568,6 +648,7 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
             *env_split_forms(command),
             *path_qualified_forms(command),
             *path_qualified_env_forms(command),
+            *wrapper_option_forms(command),
         )
         for wrapped in wrapped_forms:
             assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
@@ -580,7 +661,9 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
     for command in ordinary:
         assert g.classify(command) is None, command
-        for wrapped in (*see_through_forms(command), *path_qualified_forms(command)):
+        for wrapped in (
+            *see_through_forms(command), *path_qualified_forms(command), *wrapper_option_forms(command),
+        ):
             assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
         if command in needs_runtime:
             continue
@@ -590,6 +673,33 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
         for wrapped in (*env_split_forms(command), *path_qualified_env_forms(command)):
             reason = g.classify(wrapped)
             assert reason and "cannot see" in reason, (wrapped, reason)
+
+
+def test_unlisted_wrapper_option_is_opaque() -> None:
+    """An option a wrapper does not list, before a word that could be git, is never allowed."""
+    hidden = (
+        "sudo --not-a-sudo-option git stash",
+        "sudo -Q git stash",
+        "command -x git stash",
+        "doas -Q git stash",
+        "nohup -x git stash",
+        "exec -x git stash",
+        "time --not-time git stash",
+        "nice --not-nice git stash",
+        "ionice -Q git stash",
+        "xargs -Q git stash",
+        "timeout --not-timeout 10 git stash",
+        "env --not-an-env-option git stash",
+        "/usr/bin/sudo -Q git reset --hard",
+        "( sudo -Q git stash )",
+        "sudo -n --not-a-sudo-option git stash",
+        "sudo -Q $X",
+    )
+    for command in hidden:
+        reason = g.classify(command)
+        assert reason and "does not list" in reason, (command, reason)
+    for command in ("sudo --not-a-sudo-option ls /tmp", "command -x echo hi", "nice --not-nice ls"):
+        assert g.classify(command) is None, (command, g.classify(command))
 
 
 def test_split_string_options_are_parsed_before_the_command() -> None:

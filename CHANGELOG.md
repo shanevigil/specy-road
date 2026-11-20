@@ -1120,6 +1120,14 @@ are removed in the release after 0.3.1:
   `xargs`, `timeout`, `doas` and `ionice` are that wrapper. `/usr/bin/env -S "git stash"`,
   `(/usr/bin/env -S "git stash")`, `/bin/env --split="git stash"` and
   `/usr/bin/sudo env -S "git stash"` get the bare command's reason.
+  Each other wrapper is read from its own option table (the short and long options that tool
+  documents, and which of them take a value) with those same getopt rules, so `sudo -n git stash`,
+  `command -p git stash`, `time -p git stash`, `doas -n git stash`, `xargs -r git stash`,
+  `xargs -t git stash`, `ionice -t git stash`, `/usr/bin/sudo -n git reset --hard` and
+  `( sudo -n git stash )` get the bare command's reason. Short options cluster and take an
+  attached or a separate value (`sudo -nu bob git stash`, `sudo -ubob git stash`,
+  `sudo --user=bob git stash`), and `--` ends that wrapper's options. An option the table does
+  not list, before a word that could be git, is refused as opaque and is never allowed.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
