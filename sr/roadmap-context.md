@@ -206,7 +206,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Complete**
   - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Complete**
   - `M22.80` Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-multi-agent-on-the-harness-facts-and-shipped` — task — **Complete**
-  - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Not Started**
+  - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Complete**
   - `M22.82` Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly `every-other-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
   - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
@@ -370,7 +370,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.81` on `feature/rm-text-round-trips-exactly-where-specy-road-writes-and-reads-back` since 2026-11-20
 
 ## Quality by area
 
