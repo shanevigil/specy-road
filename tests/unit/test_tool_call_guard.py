@@ -12,12 +12,21 @@ import pytest
 
 from tests.support.guard_cases import (
     DESTRUCTIVE,
+    ENV_SPLIT_LITERAL,
+    ENV_SPLIT_REFUSED_BEFORE,
+    ENV_SPLIT_SAME,
+    ENV_SPLIT_UNKNOWN_ESCAPE,
     MORE_DESTRUCTIVE_SHAPES,
     MORE_WRAPPER_SHAPES,
     OPAQUE_REFUSED,
     OPAQUE_WITHOUT_GIT,
     ORDINARY,
     PATH_PREFIXES,
+    SPLIT_OPTION_CONFIG_HELD,
+    SPLIT_OPTION_CONSUMED,
+    SPLIT_OPTION_RUNS,
+    UNLISTED_OPTION_ALLOWED,
+    UNLISTED_OPTION_HIDDEN,
     WRAPPER_SPELLINGS,
 )
 from tests.support.review import make_review_repo
@@ -419,40 +428,17 @@ def test_env_split_escapes_and_pre_leaf_refusals() -> None:
     refused are still refused.
     """
     stash = g.classify("git stash")
-    same = (
-        "env -S 'git\\_stash'", "env -vS 'git\\_stash'", "env -S'git\\_stash'",
-        "env --split 'git\\_stash'", "env --s 'git\\_stash'", "env --spl='git\\_stash'",
-        "env -S 'git\\tstash'", "env -S 'git\\nstash'", "env -S 'git\\fstash'",
-        "env -S 'git\\vstash'", "env -S 'git\\rstash'", "env -S 'git\tstash'",
-        "env -S 'git stash\\c --hard'",
-    )
+    same = ENV_SPLIT_SAME
     for command in same:
         assert g.classify(command) == stash, (command, g.classify(command))
-    literal = (
-        "env -S \"git'\\_stash'\"", "env -S '\"git\\_stash\"'", "env -S 'git\\\\_stash'",
-        "env -S 'gi\\ct stash'", "env -S '# git stash'",
-    )
+    literal = ENV_SPLIT_LITERAL
     for command in literal:
         assert g.classify(command) is None, (command, g.classify(command))
-    unknown = (
-        "env -S 'git\\x20stash'", "env -S '\\gitstash'",
-        "env -S -S '${CMD} stash'", "env -S --split '${CMD} stash'",
-        "env --split -S '${CMD} stash'", "env -vS -S '${DIR}'",
-        "env -S -S 'git\\x20stash'", "sudo env -S -S '${CMD} stash'",
-        "(env -S -S 'git\\x20stash')", "env -S -S -S '${CMD} stash'",
-        "env -i -S -S '${CMD} stash'",
-    )
+    unknown = ENV_SPLIT_UNKNOWN_ESCAPE
     for command in unknown:
         reason = g.classify(command)
         assert reason and "cannot see" in reason, (command, reason)
-    refused_before = (
-        'env -S "git stash"', '(env -S "git stash")', 'sudo env -S "git stash"',
-        'FOO=1 env -S "git stash"', 'env -vS "git stash"', 'env -iS "git stash"',
-        'env -S"git stash"', 'env -vS"git stash"', '(env -vS "git stash")',
-        'sudo env -iS "git stash"', 'FOO=1 env -S"git stash"', 'FOO=1 env -vS"git stash"',
-        "env -S 'git\\_stash'", "env -S 'git\\x20stash'", "env -S 'git\\tstash'",
-        "env -S 'git\\nstash'",
-    )
+    refused_before = ENV_SPLIT_REFUSED_BEFORE
     for command in refused_before:
         assert g.classify(command), command
 
@@ -520,44 +506,11 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
 
 def test_unlisted_wrapper_option_is_opaque() -> None:
     """An option a wrapper does not list, before a word that could be git, is never allowed."""
-    hidden = (
-        "sudo --not-a-sudo-option git stash",
-        "sudo -Q git stash",
-        "command -x git stash",
-        "doas -Q git stash",
-        "nohup -x git stash",
-        "exec -x git stash",
-        "time --not-time git stash",
-        "nice --not-nice git stash",
-        "ionice -Q git stash",
-        "xargs -Q git stash",
-        "timeout --not-timeout 10 git stash",
-        "env --not-an-env-option git stash",
-        "/usr/bin/sudo -Q git reset --hard",
-        "( sudo -Q git stash )",
-        "sudo -n --not-a-sudo-option git stash",
-        "sudo -Q $X",
-        "(sudo -Q $X)",
-        "( sudo -Q $X)",
-        '(sudo -Q "$X")',
-        "(sudo -Q ${X})",
-        "(sudo -Q g$X)",
-        "(env -Q $X)",
-        "(nohup -x $X)",
-        "(doas -Q $CMD)",
-        "(nice -5 $X)",
-        "x=1; (sudo -Q $X)",
-        "(sudo -Q $X); ls",
-        "! (sudo -Q $X)",
-        "{ (sudo -Q $X); }",
-    )
+    hidden = UNLISTED_OPTION_HIDDEN
     for command in hidden:
         reason = g.classify(command)
         assert reason and "does not list" in reason, (command, reason)
-    for command in (
-        "sudo --not-a-sudo-option ls /tmp", "command -x echo hi", "nice --not-nice ls",
-        "(sudo -Q ls)", "(sudo -Q ls )", "( (sudo -Q ls ))",
-    ):
+    for command in UNLISTED_OPTION_ALLOWED:
         assert g.classify(command) is None, (command, g.classify(command))
 
 
@@ -568,47 +521,13 @@ def test_split_string_options_are_parsed_before_the_command() -> None:
     keeps the env-config refusal, directly and inside the split string.
     """
     stash = g.classify("git stash")
-    consumed = (
-        "env -S '--unset git stash'", "env -S '--chdir git stash'", "env -S '-u git stash'",
-        "env -S '--un git stash'", "env -S '--ch git stash'", "env -S '-C git status'",
-        "sudo env -S '--unset git stash'", "(env -S '--chdir git stash')",
-        "FOO=1 env -S '-u git stash'", "env --split '--unset git stash'",
-        "env -S --unset git stash",
-    )
+    consumed = SPLIT_OPTION_CONSUMED
     for command in consumed:
         assert g.classify(command) is None, (command, g.classify(command))
-    runs = (
-        "env -S '-u HOME git stash'", "env -S '--unset=HOME git stash'",
-        "env -S '--debug git stash'", "env -S '--default-signal git stash'",
-        "env -S '-- git stash'", "env -S '--ch /tmp git stash'",
-        "env -S '-uHOME git stash'", "env -S 'FOO=1 git stash'",
-    )
+    runs = SPLIT_OPTION_RUNS
     for command in runs:
         assert g.classify(command) == stash, (command, g.classify(command))
     config = g.classify("GIT_CONFIG_GLOBAL=/tmp/c git x")
-    held = (
-        "env -i GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env -v GIT_CONFIG_PARAMETERS=x git status",
-        "env -- GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env -u HOME GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env --unset=HOME GIT_CONFIG_PARAMETERS=x git status",
-        "env -C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env -iv GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env --ignore-environment GIT_CONFIG_PARAMETERS=x git status",
-        "env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        'env -S "-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
-        "env -S '-v GIT_CONFIG_PARAMETERS=x git status'",
-        "env -S '-- GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '-u HOME GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '--unset=HOME GIT_CONFIG_PARAMETERS=x git status'",
-        "env -S '-C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '-iv GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '--ignore-environment GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -vS '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        'env --split-string="-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
-        "sudo env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "(env -S '-C /tmp GIT_CONFIG_PARAMETERS=x git status')",
-        "env -S -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-    )
+    held = SPLIT_OPTION_CONFIG_HELD
     for command in held:
         assert g.classify(command) == config, (command, g.classify(command))

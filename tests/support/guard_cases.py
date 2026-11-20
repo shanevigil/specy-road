@@ -1,9 +1,9 @@
 """The shared-checkout guard's classify-only case tables, and the wrapper spellings they draw from.
 
-``tests/unit/test_tool_call_guard.py`` and ``tests/cli/test_session_guard.py`` parametrize their
-classify-only tests over these tables, and ``tests/property/test_guard_wrappers.py`` wraps every
-row. They live here because a test module is never imported by another test file. Each table keeps
-the rows and order its test had, so the parametrized test ids are unchanged.
+``tests/unit/test_tool_call_guard.py`` and ``tests/cli/test_session_guard.py`` parametrize or loop
+their classify-only tests over these tables, and ``tests/property/test_guard_wrappers.py`` wraps
+every row. They live here because a test module is never imported by another test file. Each table
+keeps the rows and order its test had, so the test ids are unchanged.
 """
 
 from __future__ import annotations
@@ -239,6 +239,128 @@ EVAL_FORMS = [
     ("sudo eval 'git clean -f'", "deletes untracked files"),
 ]
 
+# --- tests/unit/test_tool_call_guard.py, classify-only tests that loop over literals ----------
+
+# test_env_split_escapes_and_pre_leaf_refusals
+#: ``env -S`` escapes that read as ``git stash``: the stash refusal.
+ENV_SPLIT_SAME = (
+    "env -S 'git\\_stash'", "env -vS 'git\\_stash'", "env -S'git\\_stash'",
+    "env --split 'git\\_stash'", "env --s 'git\\_stash'", "env --spl='git\\_stash'",
+    "env -S 'git\\tstash'", "env -S 'git\\nstash'", "env -S 'git\\fstash'",
+    "env -S 'git\\vstash'", "env -S 'git\\rstash'", "env -S 'git\tstash'",
+    "env -S 'git stash\\c --hard'",
+)
+
+#: ``env -S`` strings that keep the escape literal, end early or comment it out: allowed.
+ENV_SPLIT_LITERAL = (
+    "env -S \"git'\\_stash'\"", "env -S '\"git\\_stash\"'", "env -S 'git\\\\_stash'",
+    "env -S 'gi\\ct stash'", "env -S '# git stash'",
+)
+
+#: ``env -S`` strings with an unknown escape or runtime state: refused as opaque.
+ENV_SPLIT_UNKNOWN_ESCAPE = (
+    "env -S 'git\\x20stash'", "env -S '\\gitstash'",
+    "env -S -S '${CMD} stash'", "env -S --split '${CMD} stash'",
+    "env --split -S '${CMD} stash'", "env -vS -S '${DIR}'",
+    "env -S -S 'git\\x20stash'", "sudo env -S -S '${CMD} stash'",
+    "(env -S -S 'git\\x20stash')", "env -S -S -S '${CMD} stash'",
+    "env -i -S -S '${CMD} stash'",
+)
+
+#: ``env -S`` forms the pre-leaf guard refused: still refused.
+ENV_SPLIT_REFUSED_BEFORE = (
+    'env -S "git stash"', '(env -S "git stash")', 'sudo env -S "git stash"',
+    'FOO=1 env -S "git stash"', 'env -vS "git stash"', 'env -iS "git stash"',
+    'env -S"git stash"', 'env -vS"git stash"', '(env -vS "git stash")',
+    'sudo env -iS "git stash"', 'FOO=1 env -S"git stash"', 'FOO=1 env -vS"git stash"',
+    "env -S 'git\\_stash'", "env -S 'git\\x20stash'", "env -S 'git\\tstash'",
+    "env -S 'git\\nstash'",
+)
+
+# test_unlisted_wrapper_option_is_opaque
+#: An option a wrapper does not list, before a word that could be git: refused.
+UNLISTED_OPTION_HIDDEN = (
+    "sudo --not-a-sudo-option git stash",
+    "sudo -Q git stash",
+    "command -x git stash",
+    "doas -Q git stash",
+    "nohup -x git stash",
+    "exec -x git stash",
+    "time --not-time git stash",
+    "nice --not-nice git stash",
+    "ionice -Q git stash",
+    "xargs -Q git stash",
+    "timeout --not-timeout 10 git stash",
+    "env --not-an-env-option git stash",
+    "/usr/bin/sudo -Q git reset --hard",
+    "( sudo -Q git stash )",
+    "sudo -n --not-a-sudo-option git stash",
+    "sudo -Q $X",
+    "(sudo -Q $X)",
+    "( sudo -Q $X)",
+    '(sudo -Q "$X")',
+    "(sudo -Q ${X})",
+    "(sudo -Q g$X)",
+    "(env -Q $X)",
+    "(nohup -x $X)",
+    "(doas -Q $CMD)",
+    "(nice -5 $X)",
+    "x=1; (sudo -Q $X)",
+    "(sudo -Q $X); ls",
+    "! (sudo -Q $X)",
+    "{ (sudo -Q $X); }",
+)
+
+#: The same options before a word that cannot be git: allowed.
+UNLISTED_OPTION_ALLOWED = (
+    "sudo --not-a-sudo-option ls /tmp", "command -x echo hi", "nice --not-nice ls",
+    "(sudo -Q ls)", "(sudo -Q ls )", "( (sudo -Q ls ))",
+)
+
+# test_split_string_options_are_parsed_before_the_command
+#: An option inside ``-S`` consumes its value, so ``git`` is not the command: allowed.
+SPLIT_OPTION_CONSUMED = (
+    "env -S '--unset git stash'", "env -S '--chdir git stash'", "env -S '-u git stash'",
+    "env -S '--un git stash'", "env -S '--ch git stash'", "env -S '-C git status'",
+    "sudo env -S '--unset git stash'", "(env -S '--chdir git stash')",
+    "FOO=1 env -S '-u git stash'", "env --split '--unset git stash'",
+    "env -S --unset git stash",
+)
+
+#: Options inside ``-S`` that leave ``git stash`` as the command: the stash refusal.
+SPLIT_OPTION_RUNS = (
+    "env -S '-u HOME git stash'", "env -S '--unset=HOME git stash'",
+    "env -S '--debug git stash'", "env -S '--default-signal git stash'",
+    "env -S '-- git stash'", "env -S '--ch /tmp git stash'",
+    "env -S '-uHOME git stash'", "env -S 'FOO=1 git stash'",
+)
+
+#: A ``GIT_CONFIG*`` word after an env option, directly and inside ``-S``: the env-config refusal.
+SPLIT_OPTION_CONFIG_HELD = (
+    "env -i GIT_CONFIG_GLOBAL=/tmp/c git x",
+    "env -v GIT_CONFIG_PARAMETERS=x git status",
+    "env -- GIT_CONFIG_GLOBAL=/tmp/c git x",
+    "env -u HOME GIT_CONFIG_GLOBAL=/tmp/c git x",
+    "env --unset=HOME GIT_CONFIG_PARAMETERS=x git status",
+    "env -C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x",
+    "env -iv GIT_CONFIG_GLOBAL=/tmp/c git x",
+    "env --ignore-environment GIT_CONFIG_PARAMETERS=x git status",
+    "env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    'env -S "-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
+    "env -S '-v GIT_CONFIG_PARAMETERS=x git status'",
+    "env -S '-- GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    "env -S '-u HOME GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    "env -S '--unset=HOME GIT_CONFIG_PARAMETERS=x git status'",
+    "env -S '-C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    "env -S '-iv GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    "env -S '--ignore-environment GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    "env -vS '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    'env --split-string="-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
+    "sudo env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    "(env -S '-C /tmp GIT_CONFIG_PARAMETERS=x git status')",
+    "env -S -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+)
+
 #: The inputs of the single-input classify tests in those two files (unparseable shell,
 #: harmless process substitution, a staged path restore, harmless ``eval``).
 SINGLE_INPUT_CASES = (
@@ -257,6 +379,9 @@ CLASSIFY_CASES = tuple(
         DESTRUCTIVE, ORDINARY, OPAQUE_REFUSED, OPAQUE_WITHOUT_GIT, MORE_WRAPPER_SHAPES,
         MORE_DESTRUCTIVE_SHAPES, ENV_CONFIG_REFUSED, ENV_CONFIG_ORDINARY, DYNAMIC_SHELL_FORMS,
         BROAD_PATHSPECS, EXPLICIT_PATHSPECS, EVAL_FORMS, SINGLE_INPUT_CASES,
+        ENV_SPLIT_SAME, ENV_SPLIT_LITERAL, ENV_SPLIT_UNKNOWN_ESCAPE, ENV_SPLIT_REFUSED_BEFORE,
+        UNLISTED_OPTION_HIDDEN, UNLISTED_OPTION_ALLOWED,
+        SPLIT_OPTION_CONSUMED, SPLIT_OPTION_RUNS, SPLIT_OPTION_CONFIG_HELD,
     )
     for row in table
 )
