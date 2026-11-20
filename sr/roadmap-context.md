@@ -287,6 +287,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.9` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
   - `M23.10` Run the multi-operator brainstorm for 0.3.2 (two or more operators on several machines, plus a PM in the PM GUI) `multi-operator-brainstorm` — task — **Not Started**
   - `M23.11` The post-run zone check counts only the leaf's own commits, not integration commits a merge brings in `the-post-run-zone-check-counts-only-the-leaf-s-own-commits-not` — task — **Not Started**
+  - `M23.12` Registry and front-matter YAML round-trip a value containing U+0085 (NEL) `registry-and-front-matter-yaml-round-trip-a-value-containing-u` — task — **Not Started**
+  - `M23.13` A delta review packet carries the required test-removal check, so a delta approve is not refused `a-delta-review-packet-carries-the-required-test-removal-check-so` — task — **Not Started**
+  - `M23.14` Remove the stale vulture whitelist entry left by the private-to-public renames `remove-the-stale-vulture-whitelist-entry-left-by-the-private-to` — task — **Not Started**
 
 ## Open gates
 
