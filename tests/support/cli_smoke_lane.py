@@ -6,8 +6,8 @@ module, which wraps :class:`subprocess.Popen` in each pytest process. An item is
 code (the first frame above the start that lies in ``tests/`` or the package) starts a CLI
 spelling (:func:`starts_cli`); a start made by package code (git, a worker child, the CLI's own
 children) is not counted. A counted item not listed in ``cli_smoke_lane.txt`` fails at teardown;
-a listed id its collected file does not hold, or a lane over :data:`MAX_ITEMS` ids, fails the
-teardown of the item that reports it.
+a listed id the run does not collect although its file lies under a collected path, or a lane
+over :data:`MAX_ITEMS` ids, fails the teardown of the first item collected (:func:`lane_problems`).
 """
 
 from __future__ import annotations
@@ -120,30 +120,46 @@ def recorded_starts() -> Iterator[list[list[str]]]:
         _recording.pop()
 
 
-#: Lane-file problems, by the node id of the collected item whose teardown reports them.
+#: Lane problems (:func:`lane_problems`), by the node id of the item whose teardown reports them.
 _lane_errors: dict[str, str] = {}
+
+
+def lane_problems(
+    listed: list[str], collected: set[str], rootdir: Path, collect_paths: list[Path]
+) -> list[str]:
+    """What is wrong with the lane ``listed`` for a run that collected ``collected``.
+
+    One rule for listed ids: an id must be collected when its file lies under a path the run
+    collects (``collect_paths``: the command-line paths, or ``testpaths`` when none is given),
+    whether or not anything else from that file was collected, so a deleted or renamed file is
+    caught as well as a deleted or renamed test. A listed file outside every collected path is
+    not checked. Separately, the lane may hold at most :data:`MAX_ITEMS` ids.
+    """
+    problems = [f"lists {len(listed)} ids; at most {MAX_ITEMS}"] if len(listed) > MAX_ITEMS else []
+    roots = [path.resolve() for path in collect_paths]
+    files = {nodeid: (rootdir / nodeid.split("::", 1)[0]).resolve() for nodeid in listed}
+    missing = [
+        nodeid for nodeid, file in files.items()
+        if nodeid not in collected and any(file.is_relative_to(root) for root in roots)
+    ]
+    if missing:
+        problems.append(f"lists ids that are not collected: {missing}")
+    return problems
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Find a lane over :data:`MAX_ITEMS`, and listed ids their collected file does not hold.
+    """Record :func:`lane_problems` on the first item collected, whose teardown reports them.
 
-    The first item collected reports the first, the first item of the file the second; with
-    xdist every worker collects the same items, so whichever runs that item reports it.
+    With xdist every worker collects the same items, so whichever runs that item reports them.
+    A run that names node ids (``file::test``) collects part of a file and is not checked.
     """
-    listed = lane_ids()
-    if items and len(listed) > MAX_ITEMS:
-        _lane_errors[items[0].nodeid] = f"lists {len(listed)} ids; at most {MAX_ITEMS}"
-    if any("::" in arg for arg in config.args):
+    if not items or any("::" in arg for arg in config.args):
         return
-    collected = {item.nodeid for item in items}
-    first_of_file: dict[str, str] = {}
-    for item in items:
-        first_of_file.setdefault(item.nodeid.split("::", 1)[0], item.nodeid)
-    for file, first in first_of_file.items():
-        missing = [n for n in listed if n.split("::", 1)[0] == file and n not in collected]
-        if missing:
-            _lane_errors.setdefault(first, f"lists ids that are not collected: {missing}")
+    paths = [config.invocation_params.dir / arg for arg in config.args]
+    problems = lane_problems(lane_ids(), {i.nodeid for i in items}, config.rootpath, paths)
+    if problems:
+        _lane_errors[items[0].nodeid] = "; ".join(problems)
 
 
 @pytest.hookimpl(hookwrapper=True)

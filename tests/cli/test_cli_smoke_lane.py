@@ -12,7 +12,7 @@ import pytest
 
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
 from tests.support.cli import run_cli_subprocess
-from tests.support.cli_smoke_lane import recorded_starts
+from tests.support.cli_smoke_lane import MAX_ITEMS, lane_problems, recorded_starts
 
 
 def _start(argv: list[str]) -> None:
@@ -107,3 +107,29 @@ def test_every_package_module_imports_without_running_a_command() -> None:
         check=False,
     )
     assert (child.returncode, child.stdout, child.stderr) == (0, "", "")
+
+
+_LISTED = ["tests/a/test_x.py::test_one", "tests/b/test_gone.py::test_two"]
+
+
+@pytest.mark.parametrize(
+    ("listed", "collected", "paths", "problems"),
+    [
+        pytest.param(_LISTED, {_LISTED[0]}, ["tests"],
+                     [f"lists ids that are not collected: {[_LISTED[1]]}"], id="whole-file-absent"),
+        pytest.param(_LISTED, {_LISTED[0], "tests/b/test_gone.py::test_other"}, ["tests"],
+                     [f"lists ids that are not collected: {[_LISTED[1]]}"],
+                     id="test-absent-file-present"),
+        pytest.param(_LISTED, {_LISTED[0]}, ["tests/a"], [], id="file-outside-the-collected-paths"),
+        pytest.param(_LISTED, set(_LISTED), ["tests"], [], id="all-collected"),
+        pytest.param([f"tests/t.py::test_{n}" for n in range(MAX_ITEMS + 1)],
+                     {f"tests/t.py::test_{n}" for n in range(MAX_ITEMS + 1)}, ["tests"],
+                     [f"lists {MAX_ITEMS + 1} ids; at most {MAX_ITEMS}"], id="over-the-cap"),
+    ],
+)
+def test_lane_problems_names_listed_ids_a_run_should_collect_but_does_not(
+    tmp_path: Path, listed: list[str], collected: set[str], paths: list[str], problems: list[str]
+) -> None:
+    """A listed id is required when its file lies under a collected path, even when nothing else
+    from that file was collected; a file outside every collected path is not checked."""
+    assert lane_problems(listed, collected, tmp_path, [tmp_path / p for p in paths]) == problems
