@@ -14,7 +14,7 @@ supersedes: gpt-6.1-sol
 access:
   context_tokens: 500000
   output_tokens: unknown
-  cli: codex exec --model gpt-6.2-sol --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
+  cli: codex exec --model gpt-6.2-sol --disable memories --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
   cli_verified_from: 'not run with this model; the codex executor template (harness-facts.yaml) with the api_id the Codex catalog lists [S1]'
   subagents: 'yes Codex catalog lists multi_agent_version v2 and an ultra effort described as maximum reasoning with automatic task delegation [S1]'
   effort_controls: 'low, medium, high, xhigh, max, ultra (catalog default low) [S1]'
@@ -28,12 +28,11 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below pass these switches, for `specy-road prompt --channel cli` and generic-harness workers. **The default `worker delegate` codex launch does not pass them:** it turns memories off with `-c features.memories=false -c memories.use_memories=false -c memories.generate_memories=false` and the profile's own `CODEX_HOME`, and leaves multi_agent and goals at Codex's defaults (both on in the codex-cli 0.166.0 capture). A roster `channels.cli` that runs the executor template passes all three:
+When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below pass these switches, for `specy-road prompt --channel cli` and generic-harness workers. **The default `worker delegate` codex launch does not pass them:** it turns memories off with `-c features.memories=false -c memories.use_memories=false -c memories.generate_memories=false` and the profile's own `CODEX_HOME`, and leaves multi_agent and goals at Codex's defaults (both on in the codex-cli 0.166.0 capture). A roster `channels.cli` that runs the executor template disables memories and goals only; multi_agent stays on (operator 2026-11-19, supersedes the F15 avoid):
 
 | Feature | Switch |
 |---|---|
 | memories | `--disable memories` |
-| multi_agent | `--disable multi_agent` |
 | goals | `--disable goals` |
 
 Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.

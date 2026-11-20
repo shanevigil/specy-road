@@ -354,7 +354,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.80_codex-runs-with-multi-agent-on-the-harness-facts-and-shipped_26426e36-f3c5-4823-b226-ef5fe2d0d0a9.md",
       "sibling_order": 80,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/harness-facts.yaml",

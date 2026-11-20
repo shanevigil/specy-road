@@ -82,15 +82,3 @@ entries:
     started: '2026-11-19'
     owner: savigil
     implementation_review: pending
-  - codename: codex-runs-with-multi-agent-on-the-harness-facts-and-shipped
-    node_id: M22.80
-    branch: feature/rm-codex-runs-with-multi-agent-on-the-harness-facts-and-shipped
-    touch_zones:
-      - specy_road/templates/project/model-profiles/harness-facts.yaml
-      - specy_road/templates/project/model-profiles/openai-gpt/
-      - specy_road/templates/project/model-profiles/README.md
-      - tests/
-      - CHANGELOG.md
-    started: '2026-11-19'
-    owner: savigil
-    implementation_review: pending

@@ -154,10 +154,10 @@ harnesses:
       label: runtime
       source: specy_road/worker_adapters.py (codex-cli 0.165, run 2026-10-28)
     executor_template:
-      value: codex exec --model {api_id} --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
+      value: codex exec --model {api_id} --disable memories --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
       renders_cli_for: [OpenAI GPT]
       label: runtime
-      source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28); prompt on stdin as the codex adapter launches it (specy_road/worker_adapter_codex.py)
+      source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28); prompt on stdin as the codex adapter launches it (specy_road/worker_adapter_codex.py); multi_agent left on 2026-11-19 (operator decision, supersedes F15 avoid)
     session_flags:
       value: thread id from the thread.started event; codex exec resume <id> - to continue; --last is cwd-scoped. A resume carries only the conversation, so sandbox, approval, model and memory settings are passed again; 0.166.0 keeps acknowledged approval and permission settings on resume and fork; resume by id from a sibling worktree is undocumented
       label: documented
@@ -197,9 +197,9 @@ harnesses:
         label: documented
         source: https://learn.chatgpt.com/docs/changelog (Codex CLI 0.165.0); harness-captures/codex/inventory-features.txt (0.166.0); harness compatibility triage (2026-10-28); 2026-11-02 triage F13
       - action: multi_agent (stable, on in the 0.166.0 capture) lets the session spawn its own subagents
-        switch: --disable multi_agent
+        switch: none; leave multi_agent on (operator 2026-11-19, supersedes F15 avoid)
         label: runtime
-        source: harness-captures/codex/inventory-features.txt (0.166.0); 2026-11-02 triage F13
+        source: harness-captures/codex/inventory-features.txt (0.166.0); 2026-11-02 triage F13; operator 2026-11-19
       - action: goals (stable, on in the 0.166.0 capture) keeps durable goals across turns
         switch: --disable goals
         label: runtime
@@ -269,7 +269,7 @@ harnesses:
       local_thread_store_compression: neutral
       local_thread_store_shared_compression: neutral
       memories: avoid
-      multi_agent: avoid                            # F15
+      multi_agent: use                              # F15 avoid superseded 2026-11-19 (operator: let Codex run with multi_agent on)
       network_proxy: neutral
       non_prefixed_mcp_tool_names: neutral
       plugin_discovery_prefetch: neutral            # new in 0.166.0; matches "pr"
