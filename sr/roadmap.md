@@ -295,5 +295,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M23.11` | The post-run zone check counts only the leaf's own commits, not integration commits a merge brings in | task | — | Not Started |
 | `M23.13` | A delta review packet carries the required test-removal check, so a delta approve is not refused | task | Agentic-led | Not Started |
 | `M23.14` | Remove the stale vulture whitelist entry left by the private-to-public renames | task | Agentic-led | Not Started |
+| `M23.16` | 0.3.2 earmark: a coordination API service for several developers' orchestrators and their PMs, alongside git | task | Human-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

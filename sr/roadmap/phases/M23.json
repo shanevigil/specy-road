@@ -103,6 +103,27 @@
         "scripts/vulture_whitelist.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "human: the maintainer's earmark (2026-11-20) is carried into the 0.3.2 plan: the multi-operator brainstorm (M23.10) takes it as a maintainer seed, and the plan that comes out either promotes it to build leaves or records why not",
+        "The plan keeps the earmark's boundaries: the service augments git worktree and file orchestration and does not replace it for a single developer; it coordinates several developers' orchestrators where files in git are hard to manage; it gives one or more PMs the whole picture and can route overall design decisions to them",
+        "The plan states how this sits with the 2026-10-27 decisions it revisits (no MCP server, no daemon): what runs as a service, who hosts it, and what still works with the service absent"
+      ],
+      "codename": "0-3-2-earmark-a-coordination-api-service-for-several-developers",
+      "dependencies": [
+        "f7d4bb84-3c19-4dd8-abe2-9604fbd3e487"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M23.16",
+      "node_key": "65ac4286-b7d7-48b2-9d04-b6356bf92bc8",
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.16_0-3-2-earmark-a-coordination-api-service-for-several-developers_65ac4286-b7d7-48b2-9d04-b6356bf92bc8.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "0.3.2 earmark: a coordination API service for several developers' orchestrators and their PMs, alongside git",
+      "touch_zones": [],
+      "type": "task"
     }
   ]
 }

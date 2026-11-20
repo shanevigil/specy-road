@@ -295,6 +295,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.11` The post-run zone check counts only the leaf's own commits, not integration commits a merge brings in `the-post-run-zone-check-counts-only-the-leaf-s-own-commits-not` — task — **Not Started**
   - `M23.13` A delta review packet carries the required test-removal check, so a delta approve is not refused `a-delta-review-packet-carries-the-required-test-removal-check-so` — task — **Not Started**
   - `M23.14` Remove the stale vulture whitelist entry left by the private-to-public renames `remove-the-stale-vulture-whitelist-entry-left-by-the-private-to` — task — **Not Started**
+  - `M23.16` 0.3.2 earmark: a coordination API service for several developers' orchestrators and their PMs, alongside git `0-3-2-earmark-a-coordination-api-service-for-several-developers` — task — **Not Started**
 
 ## Open gates
 
