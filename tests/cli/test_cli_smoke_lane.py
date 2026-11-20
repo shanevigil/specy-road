@@ -88,3 +88,22 @@ def test_every_bundled_script_runs_as_a_file() -> None:
     for name, child in children.items():
         out, err = child.communicate(timeout=120)
         assert child.returncode == 0 and "usage:" in out.lower(), f"{name}: {err}"
+
+
+def test_every_package_module_imports_without_running_a_command() -> None:
+    """A fresh interpreter imports every ``specy_road`` module, bundled scripts included, and
+    prints nothing: importing a bundled script never runs its command.
+
+    Every other test imports the package once per pytest process, during collection; this child
+    is where each module's import runs inside a test.
+    """
+    code = (
+        "import importlib, pkgutil, specy_road\n"
+        "for module in pkgutil.walk_packages(specy_road.__path__, 'specy_road.'):\n"
+        "    importlib.import_module(module.name)\n"
+    )
+    child = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=script_subprocess_env(),
+        check=False,
+    )
+    assert (child.returncode, child.stdout, child.stderr) == (0, "", "")

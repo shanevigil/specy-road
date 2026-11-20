@@ -18,8 +18,10 @@ tests/flows/roadmap/test_roadmap_apply.py::test_top_level_cli_dispatches_apply
 tests/flows/support/test_support.py::test_run_cli_and_run_cli_subprocess_agree[argv0-0]
 tests/flows/support/test_support.py::test_run_cli_and_run_cli_subprocess_agree[argv1-2]
 
-# Every bundled script run as a file (its `if __name__ == "__main__"` guard)
+# Every bundled script run as a file, and every package module imported, in a child (the
+# `if __name__ == "__main__"` guard both ways, and each module's import-time code inside a test)
 tests/cli/test_cli_smoke_lane.py::test_every_bundled_script_runs_as_a_file
+tests/cli/test_cli_smoke_lane.py::test_every_package_module_imports_without_running_a_command
 
 # A fresh interpreter: import side effects, import counts, a synthetic checkout
 tests/cli/test_cli_imports_without_gui_extra.py::test_cli_module_imports_without_extras[specy_road.cli]
