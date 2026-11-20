@@ -82,7 +82,8 @@ entries:
       - specy_road/
     started: '2026-11-19'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-20T00:25:50+00:00'
   - codename: tests-five-named-properties-replace-the-single-input-tests-they-cover
     node_id: M16.7.7
     branch: feature/rm-tests-five-named-properties-replace-the-single-input-tests-they-cover
