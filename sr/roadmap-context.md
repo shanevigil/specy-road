@@ -304,6 +304,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-19 `M22.73` stopped depending on `M22.72 Gate: current harness facts delivered as a dated research report`
 - 2026-11-18 `M16.7.7` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
 - 2026-11-18 `M16.7.6` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
 - 2026-11-14 `M17.8` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
@@ -328,8 +329,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-09 `M16.5.12` stopped depending on `M16.1.6 Review-policy evidence: how often each optional review policy changed a gate outcome`
 - 2026-11-09 `M16.5.1` stopped depending on `M23.4 checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)`
 - 2026-11-09 `M16.5.9` stopped depending on `M23.8 The guard classifier becomes three rule tables with every verdict unchanged`
-- 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
-- _…and 83 earlier — `specy-road history --json`_
+- _…and 84 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
