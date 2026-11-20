@@ -694,11 +694,27 @@ def test_unlisted_wrapper_option_is_opaque() -> None:
         "( sudo -Q git stash )",
         "sudo -n --not-a-sudo-option git stash",
         "sudo -Q $X",
+        "(sudo -Q $X)",
+        "( sudo -Q $X)",
+        '(sudo -Q "$X")',
+        "(sudo -Q ${X})",
+        "(sudo -Q g$X)",
+        "(env -Q $X)",
+        "(nohup -x $X)",
+        "(doas -Q $CMD)",
+        "(nice -5 $X)",
+        "x=1; (sudo -Q $X)",
+        "(sudo -Q $X); ls",
+        "! (sudo -Q $X)",
+        "{ (sudo -Q $X); }",
     )
     for command in hidden:
         reason = g.classify(command)
         assert reason and "does not list" in reason, (command, reason)
-    for command in ("sudo --not-a-sudo-option ls /tmp", "command -x echo hi", "nice --not-nice ls"):
+    for command in (
+        "sudo --not-a-sudo-option ls /tmp", "command -x echo hi", "nice --not-nice ls",
+        "(sudo -Q ls)", "(sudo -Q ls )",
+    ):
         assert g.classify(command) is None, (command, g.classify(command))
 
 

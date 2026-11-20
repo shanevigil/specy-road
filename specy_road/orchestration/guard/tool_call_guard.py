@@ -433,6 +433,17 @@ def _skip_wrapper(tokens: list[str], i: int) -> tuple[list[str], int] | None:
     return tokens, found[0]
 
 
+def _strip_trailing_paren(word: str) -> str:
+    """Drop a subshell's closing ``)`` glued onto ``word``.
+
+    A word that is only ``)`` stays: stripping it would leave an empty word,
+    and an empty word reads as a name that could be git.
+    """
+    if word.endswith(")") and word != ")":
+        return word.rstrip(")")
+    return word
+
+
 def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
     """Strip ``VAR=x``, wrappers, control-flow openers, and subshell parens.
 
@@ -458,7 +469,7 @@ def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
             break
         tokens, i = step
     out = tokens[i:]
-    return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t not in (")", "}")]
+    return [_strip_trailing_paren(t) for t in out if t not in (")", "}")]
 
 
 def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
@@ -667,8 +678,11 @@ def _opaque(segment: str) -> str | None:
 
 
 def _hides_git(tokens: list[str], at: int) -> str | None:
-    """The opaque reason when a word at or after ``at`` could be git."""
-    if any(_may_name_git(word) for word in tokens[at:]):
+    """The opaque reason when a word at or after ``at`` could be git.
+
+    A trailing ``)`` is removed first, by the same helper ``_unwrap`` uses.
+    """
+    if any(_may_name_git(_strip_trailing_paren(word)) for word in tokens[at:]):
         return _UNLISTED_OPTION
     return None
 
