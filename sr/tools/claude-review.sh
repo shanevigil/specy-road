@@ -9,7 +9,7 @@ effort=$1 prompt=$2
 # The coordinator's weighted account split, when one is set up; otherwise the inherited account.
 pick=$ROOT/sr/work/orchestrator-2026-11-04/pick-account.py
 if [ -f "$pick" ] && d=$("$PY" "$pick"); then CLAUDE_CONFIG_DIR=$d; export CLAUDE_CONFIG_DIR; fi
-set -- --model claude-opus-5-5 --effort "$effort" --output-format stream-json --verbose --permission-mode acceptEdits \
+set -- --model "${SR_REVIEW_MODEL:-claude-opus-5-5}" --effort "$effort" --output-format stream-json --verbose --permission-mode acceptEdits \
   --allowedTools "Read,Grep,Glob,Write,Edit,Bash" --add-dir "$REVIEWS"
 # Since M8.3 the channel output must be one JSON object: append the notes self-check, keep the raw output in a side
 # file, and print only the answer's last top-level JSON object (as cursor-review.sh does).
