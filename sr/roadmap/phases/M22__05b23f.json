@@ -382,7 +382,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.81_text-round-trips-exactly-where-specy-road-writes-and-reads-back_fa400b72-a46c-4deb-b21e-4d5027146680.md",
       "sibling_order": 81,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks",
       "touch_zones": [
         "specy_road/fs_atomic.py",

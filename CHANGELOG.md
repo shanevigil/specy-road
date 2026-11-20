@@ -260,6 +260,12 @@ are removed in the release after 0.3.1:
 
 ### Fixed
 
+- Text round-trips exactly where specy-road writes and reads back, or rewrites, a file: `render_front_matter`
+  escapes U+0085, U+2028 and U+2029 and both front-matter readers split on `\n` only, so `{'\x85': None}` no longer
+  reads back as `{' ': None}`; the registry writes U+0085 escaped; and `apply_managed_block` keeps every byte
+  outside its block, including CRLF line endings, a whitespace-only tail and the blank lines after the block, and a
+  second apply with `\r` in a block line changes nothing. Files written by earlier versions parse as before.
+
 - A front-matter value's trailing non-ASCII space survives rendering: `render_front_matter` removes only the YAML
   dump's trailing newline, so `{'0': '\xa0'}` reads back as that mapping. `split_frontmatter` ends the block only
   at an unindented `---` line, so an indented `---` inside a value stays in the value.

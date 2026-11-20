@@ -27,6 +27,16 @@ class _IndentedDumper(yaml.Dumper):
         return super().increase_indent(flow, False)
 
 
+def _represent_str(dumper: yaml.Dumper, value: str) -> yaml.ScalarNode:
+    # allow_unicode writes U+0085 raw, and the loader reads a raw one as a line break;
+    # a double-quoted scalar escapes it as \N. Other text keeps the default style.
+    style = '"' if "\x85" in value else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", value, style=style)
+
+
+_IndentedDumper.add_representer(str, _represent_str)
+
+
 #: The registry's location, relative to the project root.
 REGISTRY_REL = Path("roadmap") / "registry.yaml"
 
@@ -49,8 +59,9 @@ def read_registry(path: Path, *, missing_ok: bool = True) -> dict[str, Any]:
         if not missing_ok:
             raise FileNotFoundError(path)
         return {"version": 1, "entries": []}
-    with path.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
+    from specy_road.fs_atomic import read_text_exact  # here: `validate` imports this module, not this read
+
+    return yaml.safe_load(read_text_exact(path)) or {"version": 1, "entries": []}
 
 
 def dump_registry_text(doc: dict[str, Any]) -> str:

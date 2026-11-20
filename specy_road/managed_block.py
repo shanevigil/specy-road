@@ -133,7 +133,11 @@ def render_block(
 
 
 def _split(text: str, style: MarkerStyle) -> tuple[str, str | None, str]:
-    """``(before, block, after)`` — ``block`` is ``None`` when absent."""
+    """``(before, block, after)`` — ``block`` is ``None`` when absent.
+
+    ``block`` ends at the end marker; ``after`` is every byte after it, the
+    marker's own line ending included.
+    """
     start = text.find(style.start)
     if start < 0:
         return text, None, ""
@@ -143,7 +147,7 @@ def _split(text: str, style: MarkerStyle) -> tuple[str, str | None, str]:
         # everything from the start marker on as ours to replace.
         return text[:start], text[start:], ""
     stop = end + len(style.end)
-    return text[:start], text[start:stop], text[stop:].lstrip("\n")
+    return text[:start], text[start:stop], text[stop:]
 
 
 def apply_managed_block(
@@ -185,17 +189,20 @@ def apply_managed_block(
         prefix = before if before.endswith("\n") or not before else before + "\n"
         joiner = "\n" if prefix.strip() else ""
         return _write(path, f"{prefix}{joiner}{block}", UPDATED, dry_run, strict)
-    tail = f"\n{after}" if after.strip() else ""
-    return _write(path, f"{before}{block}{tail}", UPDATED, dry_run, strict)
+    # Keep the bytes after the end marker as they are; with none, the block ends the file with its newline.
+    text = f"{before}{block[:-1]}{after}" if after else f"{before}{block}"
+    return _write(path, text, UPDATED, dry_run, strict)
 
 
 def _read(path: Path, strict: bool) -> str | None:
-    """``path``'s text, ``None`` when absent.
+    """``path``'s text with its line endings as they are, ``None`` when absent.
 
     With ``strict`` the safe-write rule is checked before it is read.
     """
+    from specy_road.fs_atomic import read_text_exact  # here: `validate` imports this module, not this read
+
     safe_write.check_all(path.parent, [path] if strict else [])
-    return path.read_text(encoding="utf-8") if path.is_file() else None
+    return read_text_exact(path) if path.is_file() else None
 
 
 def _store(path: Path, text: str, *, strict: bool = False) -> None:
@@ -209,7 +216,7 @@ def _store(path: Path, text: str, *, strict: bool = False) -> None:
         safe_write.write(path.parent, path, text)
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="")
 
 
 def _write(path: Path, text: str, outcome: str, dry_run: bool = False, strict: bool = False) -> str:

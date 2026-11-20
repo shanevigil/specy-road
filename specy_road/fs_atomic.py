@@ -23,3 +23,24 @@ def atomic_write_text(path: Path, text: str, *, tmp: Path | None = None) -> None
     tmp = tmp or path.with_name(f".{path.name}.{os.getpid()}.tmp")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
+
+
+def read_text_exact(path: Path) -> str:
+    """``path``'s UTF-8 text with its line endings kept exactly: no ``\\r\\n`` or ``\\r`` translation.
+
+    For a reader whose text is written back or compared with what was written:
+    :meth:`Path.read_text` would turn a user's CRLF into LF.
+    """
+    with path.open(encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def split_lines(text: str) -> list[str]:
+    """``text`` split on ``\\n`` only, as :meth:`str.splitlines` splits a ``\\n``-only text.
+
+    :meth:`str.splitlines` also breaks on ``\\r``, U+0085, U+2028, U+2029 and others,
+    which a value written by specy-road may hold. As with it, a final ``\\n`` ends the
+    last line rather than starting an empty one, and any ``\\r`` stays in its line.
+    """
+    lines = text.split("\n")
+    return lines[:-1] if lines[-1] == "" else lines
