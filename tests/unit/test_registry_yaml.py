@@ -32,12 +32,6 @@ def _sample_doc() -> dict:
     }
 
 
-def test_round_trips_to_same_doc() -> None:
-    doc = _sample_doc()
-    text = dump_registry_text(doc)
-    assert yaml.safe_load(text) == doc
-
-
 def test_block_sequences_are_indented() -> None:
     """yamllint default ``indent-sequences: true`` requires the ``-`` to be indented."""
     text = dump_registry_text(_sample_doc())

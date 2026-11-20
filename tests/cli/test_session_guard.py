@@ -11,6 +11,15 @@ from pathlib import Path
 
 import pytest
 
+from tests.support.guard_cases import (
+    BROAD_PATHSPECS,
+    DYNAMIC_SHELL_FORMS,
+    ENV_ALIAS,
+    ENV_CONFIG_ORDINARY,
+    ENV_CONFIG_REFUSED,
+    EVAL_FORMS,
+    EXPLICIT_PATHSPECS,
+)
 from tests.support.review import make_review_repo
 from tests.support.extracted.hook_adapters import DENY, PAYLOADS, run
 
@@ -18,33 +27,15 @@ from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as g
 from specy_road.orchestration.guard.tool_call_guard_adapters import ADAPTERS
 
-ENV_ALIAS = "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0='!git stash' git x"
-
-
 # --- B1: git config supplied through the environment --------------------------
 
-@pytest.mark.parametrize("command", [
-    ENV_ALIAS,
-    "GIT_CONFIG_PARAMETERS=\"'alias.x=!git stash'\" git x",
-    "env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0=stash git x",
-    "GIT_CONFIG=/tmp/c git x",
-    "GIT_CONFIG_GLOBAL=/tmp/c git x",
-    "GIT_CONFIG_SYSTEM=/tmp/c git x",
-    "git --config-env=alias.x=BODY x",
-    "git --config-env alias.x=BODY x",
-    "sh -c 'GIT_CONFIG_GLOBAL=/tmp/c git x'",
-])
+@pytest.mark.parametrize("command", ENV_CONFIG_REFUSED)
 def test_env_supplied_git_config_fails_closed(command: str) -> None:
     reason = g.classify(command)
     assert reason and "cannot see" in reason, (command, reason)
 
 
-@pytest.mark.parametrize("command", [
-    "GIT_TRACE=1 git log",
-    "git --config-env=user.name=NAME log",
-    "git commit -m 'GIT_CONFIG=x' src/a.py",       # the name inside an argument is not an assignment
-    "GIT_CONFIG_GLOBAL=/tmp/c make test",            # no git in the segment
-])
+@pytest.mark.parametrize("command", ENV_CONFIG_ORDINARY)
 def test_env_config_check_leaves_ordinary_commands_alone(command: str) -> None:
     assert g.classify(command) is None, command
 
@@ -64,17 +55,7 @@ def test_every_harness_form_denies_env_alias_with_a_live_peer(tmp_path: Path, fm
 
 # --- B15: process substitution and dynamic git verbs -------------------------
 
-@pytest.mark.parametrize("command, fragment", [
-    ("cat <(git stash)", "stash stack is shared"),
-    ("cat >(git stash)", "stash stack is shared"),
-    ("diff <(git log) <(git reset --hard)", "discards other sessions"),
-    ("git $(printf stash)", "shell expansion"),
-    ("git ${x:-stash}", "shell expansion"),
-    ('git "$x"', "shell expansion"),
-    ("git $x", "shell expansion"),
-    ("git `printf stash`", "shell expansion"),
-    ("cat <(git stash", "unbalanced"),
-])
+@pytest.mark.parametrize("command, fragment", DYNAMIC_SHELL_FORMS)
 def test_dynamic_shell_forms_fail_closed(command: str, fragment: str) -> None:
     reason = g.classify(command)
     assert reason and fragment in reason, (command, reason)
@@ -157,50 +138,20 @@ def test_cursor_non_denial_is_an_explicit_allow_pending_ide_confirmation() -> No
 
 # --- B17: broad commit / add pathspecs ----------------------------------------
 
-@pytest.mark.parametrize("command", [
-    "git commit --only . -m swept",
-    "git commit --only ./ -m swept",
-    "git commit --only :/ -m swept",
-    "git commit --only ':(glob)**' -m swept",
-    "git commit --only '*' -m x",
-    "git commit --only 'src/*.py' -m x",
-    "git commit --only .. -m x",
-    "git commit --only ../other -m x",
-    "git commit --only /abs/path/a.py -m x",
-    "git commit -m x -- .",
-    "git commit --only --pathspec-from-file=paths.txt -m x",
-    "git add 'src/*.py'",
-    "git add ..",
-    "git add ':(top)src'",
-    "git rm -r .",
-])
+@pytest.mark.parametrize("command", BROAD_PATHSPECS)
 def test_broad_pathspecs_are_refused(command: str) -> None:
     reason = g.classify(command)
     assert reason and "explicit repo-relative files" in reason, (command, reason)
 
 
-@pytest.mark.parametrize("command", [
-    "git commit --only src/a.py -m x",
-    "git commit -m x src/a.py docs/b.md",
-    "git commit --only src/ -m x",          # a plain directory is scoped: the caller vouches for it
-    "git commit -m 'a * b' src/a.py",       # a glob inside -m is a message, not a pathspec
-    "git add src/a.py",
-    "git add src/",
-    "git rm src/a.py",                      # refuses a file with uncommitted changes; stages a deletion like `git add`
-])
+@pytest.mark.parametrize("command", EXPLICIT_PATHSPECS)
 def test_explicit_pathspecs_pass(command: str) -> None:
     assert g.classify(command) is None, command
 
 
 # --- Gemini follow-ups: quoted eval, alias expansion vs tree scope -------------
 
-@pytest.mark.parametrize("command, fragment", [
-    ('eval "git stash"', "stash stack is shared"),
-    ("eval 'git reset --hard'", "discards other sessions"),
-    ("eval git stash", "stash stack is shared"),
-    ("eval \"$(printf 'git stash')\"", "cannot see"),
-    ("sudo eval 'git clean -f'", "deletes untracked files"),
-])
+@pytest.mark.parametrize("command, fragment", EVAL_FORMS)
 def test_eval_is_judged_by_what_it_runs(command: str, fragment: str) -> None:
     reason = g.classify(command)
     assert reason and fragment in reason, (command, reason)
