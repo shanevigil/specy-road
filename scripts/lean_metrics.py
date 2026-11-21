@@ -9,16 +9,21 @@ interpreter running this script; run it from an environment with every extra
 installed (``pip install -r requirements-ci.txt`` plus ``-e '.[review,gui]'``).
 
 Usage:
-    python scripts/lean_metrics.py             # measure and write the baseline
-    python scripts/lean_metrics.py --check     # measure and print deltas against it,
-                                               # then the line-width report
-                                               # (scripts/line_width_baseline.py) and
-                                               # the ruff quality-family report
-                                               # (scripts/ruff_quality_baseline.py)
+    python scripts/lean_metrics.py --check     # measure and print deltas against the
+                                               # M16.1.7 baseline, then the line-width
+                                               # report (scripts/line_width_baseline.py)
+                                               # and the ruff quality-family report
+                                               # (scripts/ruff_quality_baseline.py).
+                                               # Line counts and suite time never fail it.
+    python scripts/lean_metrics.py --record-end-state
+                                               # measure rc5 and write it as the
+                                               # rc5_end_state section, leaving the
+                                               # M16.1.7 baseline numbers in place
     python scripts/lean_metrics.py --contexts  # covered arcs per test -> work/lean/contexts.json
 
-The baseline is rewritten only by M16.8.1 and by maintainers; M16 leaves report
-``--check`` deltas in READY. ``--contexts`` is opt-in and never runs in CI.
+The M16.1.7 baseline stays as committed. M16.8.1 writes rc5 beside it;
+``--check`` prints deltas and the gates in its docstring. ``--contexts`` is
+opt-in and never runs in CI. With no mode, the script exits 2 and writes nothing.
 """
 
 from __future__ import annotations
@@ -36,6 +41,7 @@ import sqlite3
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 from collections.abc import Callable, Iterable
@@ -52,6 +58,11 @@ SCHEMAS = REPO / "specy_road" / "templates" / "project" / "schemas"
 WORKERS = 4
 SUITE_RUNS = 3
 HELP_RUNS = 5
+# M16.4.4's bound: 74 top-level names at claim, plus milestone and planning, minus the 15
+# retired names. It records that the planning figure of 56 no longer holds, because five
+# commands were registered after that figure was written and were not retired.
+CANONICAL_BOUND = 61
+PLANNING_COMMAND_FIGURE = 56
 PYTEST = ["-m", "pytest", "-n", str(WORKERS), "-p", "no:cacheprovider", "-q"]
 VALIDATE_ARGS = ["validate", "--repo-root", "tests/fixtures/specy_road_dogfood"]
 # What the `specy-road` console script runs; cwd=REPO puts this checkout's package first.
@@ -224,25 +235,51 @@ def noqa_c901(py_files: list[str]) -> dict[str, int]:
     )
 
 
+def command_words(text: str) -> tuple[str, bool]:
+    """``"specy-road doctor --prune"`` -> ``("specy-road doctor", True)``.
+
+    Words before the first option are the command. A word after that option is its value.
+    """
+    words = str(text).split()
+    command: list[str] = []
+    for word in words:
+        if word.startswith("-"):
+            return " ".join(command), True
+        command.append(word)
+    return " ".join(command), False
+
+
+def retired_top_level_names(rows: list) -> set[str]:
+    """Top-level names a command_map.yaml row retires, as M16.4.4 defines it.
+
+    A row counts only when ``old`` is ``specy-road NAME`` with no options and ``new`` is
+    neither that command nor under it. A subcommand row or a flag row retires nothing.
+    """
+    retired: set[str] = set()
+    for row in rows:
+        old, options = command_words(str(row.get("old") or ""))
+        new = command_words(str(row.get("new") or ""))[0]
+        words = old.split()
+        moved_under_itself = bool(new) and (new == old or new.startswith(old + " "))
+        if len(words) == 2 and words[0] == "specy-road" and not options and not moved_under_itself:
+            retired.add(words[1])
+    return retired
+
+
 def commands() -> dict:
     """The canonical command count as M16.4.4 defines it.
 
-    Distinct registered top-level ``specy-road`` names, minus the names whose
-    command_map.yaml row retires them as top-level aliases (``old`` is a bare
-    ``specy-road <name>`` and ``new`` differs); subcommand and flag rows do not count.
+    Distinct registered top-level ``specy-road`` names, except ``version``, minus the names
+    ``retired_top_level_names`` finds. Those retired names that are still registered are the
+    alias count.
     """
     code = (
         "import json; from specy_road.cli import registered_agent_command_names as r; "
         "print(json.dumps(sorted(r()['specy-road'])))"
     )
-    names = set(json.loads(run([sys.executable, "-c", code]).stdout))
+    names = set(json.loads(run([sys.executable, "-c", code]).stdout)) - {"version"}
     rows = (yaml.safe_load(COMMAND_MAP.read_text(encoding="utf-8")) or {}).get("rows") or []
-    aliases = sorted(
-        old.split()[1]
-        for old, new in ((str(r.get("old") or ""), str(r.get("new") or "")) for r in rows)
-        if len(old.split()) == 2 and old.startswith("specy-road ") and new != old
-        and old.split()[1] in names
-    )
+    aliases = sorted(retired_top_level_names(rows) & names)
     return {
         "canonical": len(names) - len(aliases),
         "aliases": len(aliases),
@@ -501,25 +538,384 @@ def write_contexts(db: Path, out: Path, pytest_exit: int) -> None:
         fh.write("}}\n")
 
 
+_ESTIMATE_LINE = re.compile(
+    r"Estimated net line change \(informational, not a gate\):\s*(.+)"
+)
+_ESTIMATE_PART = re.compile(r"\b(package|tests|docs)\b\s+(?:about\s+)?([+-]?\d+)")
+
+
+def line_estimates() -> dict[str, int]:
+    """Sum of M16 leaves' informational line estimates, by package, tests and docs.
+
+    A leaf that names a kind twice is counted once. Leaves that name no kind of that
+    sort add nothing. The sums are printed beside the measured line counts and never gate.
+    """
+    from specy_road.roadmap_load import load_roadmap
+    from specy_road.runtime_paths import project_root
+
+    sums = {kind: 0 for kind in ("package", "tests", "docs")}
+    leaves = {kind: 0 for kind in sums}
+    seen_ids: set[str] = set()
+    for node in load_roadmap(project_root())["nodes"]:
+        node_id = str(node.get("id") or "")
+        if not node_id.startswith("M16.") or node_id in seen_ids:
+            continue
+        seen_ids.add(node_id)
+        for raw in node.get("acceptance") or []:
+            found = _ESTIMATE_LINE.search(str(raw))
+            if not found:
+                continue
+            named: set[str] = set()
+            for kind, number in _ESTIMATE_PART.findall(found.group(1)):
+                if kind in named:
+                    continue
+                named.add(kind)
+                sums[kind] += int(number)
+                leaves[kind] += 1
+    return {**sums, **{f"{kind}_leaves": count for kind, count in leaves.items()}}
+
+
+def print_estimates(baseline: dict, current: dict, estimates: dict[str, int]) -> None:
+    """Measured line totals beside the summed informational estimates. Never a gate."""
+    before, after = numbers(baseline["metrics"]), numbers(current["metrics"])
+    print("line counts beside the sum of M16 leaves' informational estimates (not a gate):")
+    for kind, key in (
+        ("package", "package.total.lines"),
+        ("tests", "tests.total.lines"),
+        ("docs", "docs.total.lines"),
+    ):
+        old, new = before.get(key), after.get(key)
+        delta = "" if old is None or new is None else f" ({new - old:+g})"
+        print(
+            f"  {kind} lines: {old} -> {new}{delta} beside estimate sum "
+            f"{estimates[kind]:+g} ({estimates[f'{kind}_leaves']} leaves named {kind})"
+        )
+
+
+def print_command_bound(current: dict) -> None:
+    counted = current["metrics"]["commands"]
+    print(
+        f"canonical commands {counted['canonical']} (bound {CANONICAL_BOUND}, M16.4.4; "
+        f"planning figure {PLANNING_COMMAND_FIGURE} is not a gate: M16.4.4 records that "
+        "the earlier bound of 56 no longer holds)"
+    )
+    print(f"aliases {counted['aliases']}: {' '.join(counted['alias_names'])}")
+
+
+def print_suite(current: dict) -> None:
+    suite = current["metrics"]["suite_seconds"]
+    print(
+        f"suite time median {suite['median']}s runs {suite['runs']} "
+        f"exits {suite['exit_codes']} (informational, not a gate)"
+    )
+
+
+def fail_under() -> int:
+    report = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+    return int(report["tool"]["coverage"]["report"]["fail_under"])
+
+
+def end_state() -> dict | None:
+    found = json.loads(BASELINE.read_text(encoding="utf-8")).get("rc5_end_state")
+    return found if isinstance(found, dict) else None
+
+
+def changed_since(commit: str, *pathspecs: str) -> list[str]:
+    out = git("diff", "--name-only", commit, "HEAD", "--", *pathspecs)
+    return [line for line in out.splitlines() if line]
+
+
+def coverage_percent(data_file: Path) -> float:
+    """``totals.percent_covered`` of a combined coverage data file (branch coverage)."""
+    dest = LEAN_WORK / "coverage-total.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    proc = run([
+        sys.executable, "-m", "coverage", "json", "-q", "-o", str(dest),
+        "--data-file", str(data_file),
+    ])
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).strip()
+        raise RuntimeError(detail[-2000:] or f"coverage json exited {proc.returncode}")
+    return float(json.loads(dest.read_text(encoding="utf-8"))["totals"]["percent_covered"])
+
+
+def live_coverage_total() -> float:
+    """One full suite under the pyproject coverage settings, then its TOTAL."""
+    env = coverage_off_env()
+    proc = run([sys.executable, "-m", "coverage", "run", *PYTEST], env=env)
+    print(proc.stdout.splitlines()[-1] if proc.stdout else proc.stderr, flush=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"coverage suite exited {proc.returncode}")
+    combined = run([sys.executable, "-m", "coverage", "combine", "-q"], env=env)
+    if combined.returncode != 0:
+        detail = (combined.stderr or combined.stdout).strip()
+        raise RuntimeError(detail[-2000:] or "coverage combine failed")
+    data_file = REPO / "work" / ".coverage"
+    return coverage_percent(data_file)
+
+
+def coverage_for_check(recorded: dict | None) -> tuple[float, str]:
+    """The recorded TOTAL when this tree's package and tests are still that commit."""
+    if recorded and recorded.get("coverage") and not changed_since(
+        str(recorded["commit"]), "specy_road", "tests"
+    ):
+        total = float(recorded["coverage"]["total"])
+        return total, f"recorded at {str(recorded['commit'])[:12]} (specy_road and tests unchanged)"
+    print("measuring coverage ...", flush=True)
+    return live_coverage_total(), "measured now"
+
+
+def write_end_state(section: dict) -> None:
+    """Add ``rc5_end_state`` without changing the M16.1.7 baseline object."""
+    data = json.loads(BASELINE.read_text(encoding="utf-8"))
+    data["rc5_end_state"] = {"baseline_commit": data["commit"], **section}
+    BASELINE.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def arc_union(path: Path) -> dict[str, set[tuple[int, int]]]:
+    """Union of covered branch arcs per ``specy_road`` module, across every test."""
+    contexts = json.loads(path.read_text(encoding="utf-8"))["contexts"]
+    union: dict[str, set[tuple[int, int]]] = {}
+    for files in contexts.values():
+        for rel, arcs in files.items():
+            if rel.startswith("specy_road/") and rel.endswith(".py"):
+                union.setdefault(rel, set()).update((arc[0], arc[1]) for arc in arcs)
+    return union
+
+
+def pytest_exit_of(path: Path) -> int:
+    head = path.read_text(encoding="utf-8")[:1000]
+    match = re.search(r'"pytest_exit":\s*(-?\d+)', head)
+    return int(match.group(1)) if match else 1
+
+
+def package_py_files(rev: str) -> set[str]:
+    out = git("ls-tree", "-r", "--name-only", rev, "--", "specy_road")
+    return {line for line in out.splitlines() if line.endswith(".py")}
+
+
+def identical_package_files(base: str, head: str) -> list[str]:
+    """``specy_road`` modules present at both commits whose blob did not change."""
+    changed = set(git("diff", "--name-only", base, head, "--", "specy_road").splitlines())
+    return sorted((package_py_files(base) & package_py_files(head)) - changed)
+
+
+def only_before(
+    identical: list[str],
+    base_arcs: dict[str, set[tuple[int, int]]],
+    head_arcs: dict[str, set[tuple[int, int]]],
+) -> list[str]:
+    """Identical modules whose covered arcs at the merge base are not all covered at head."""
+    return [
+        rel for rel in identical
+        if base_arcs.get(rel, set()) - head_arcs.get(rel, set())
+    ]
+
+
+def run_contexts(root: Path) -> tuple[Path, Path]:
+    """``--contexts`` in ``root``. Returns the contexts file and the combined data file."""
+    env = {key: value for key, value in os.environ.items() if not key.startswith("COVERAGE_")}
+    env["PYTHONPATH"] = str(root)
+    proc = subprocess.run(
+        [sys.executable, "scripts/lean_metrics.py", "--contexts"],
+        cwd=root, capture_output=True, text=True, check=False, env=env,
+    )
+    print(proc.stdout.strip() or (proc.stderr or "")[-500:], flush=True)
+    if proc.returncode != 0:
+        raise RuntimeError((proc.stderr or proc.stdout or "contexts failed")[-2000:])
+    lean = root / "work" / "lean"
+    return lean / "contexts.json", lean / "contexts-data" / ".coverage"
+
+
+def measured_tree(root: Path) -> dict:
+    contexts, data_file = run_contexts(root)
+    return {
+        "arcs": arc_union(contexts),
+        "total": coverage_percent(data_file),
+        "pytest_exit": pytest_exit_of(contexts),
+    }
+
+
+def with_merge_base(sha: str, measure):
+    """Detach a temporary worktree at ``sha``, measure it, and remove the worktree."""
+    path = Path(tempfile.mkdtemp(prefix="m1681-base-"))
+    path.rmdir()
+    added = run(["git", "worktree", "add", "--detach", str(path), sha])
+    if added.returncode != 0:
+        raise RuntimeError((added.stderr or "worktree add failed")[-2000:])
+    try:
+        return measure(path)
+    finally:
+        run(["git", "worktree", "remove", "--force", str(path)])
+
+
+def integration_branch() -> str:
+    from specy_road.git_workflow_config import load_git_workflow_config
+    from specy_road.runtime_paths import project_root
+
+    data, err = load_git_workflow_config(project_root())
+    if err or not isinstance(data, dict) or not data.get("integration_branch"):
+        raise RuntimeError(err or "git-workflow.yaml has no integration_branch")
+    return str(data["integration_branch"])
+
+
+def merge_base_commit() -> str:
+    branch = integration_branch()
+    for name in (branch, f"origin/{branch}"):
+        if run(["git", "rev-parse", "--verify", "--quiet", name]).returncode == 0:
+            return git("merge-base", "HEAD", name).strip()
+    raise RuntimeError(f"{branch} is not in this clone")
+
+
+def measure_effectiveness() -> dict:
+    """M16.7.8's two measures: coverage against fail_under and the merge base, and arcs.
+
+    Mutation score is not a measure for 0.3.1. Suite time is not part of this.
+    """
+    base = merge_base_commit()
+    head = git("rev-parse", "HEAD").strip()
+    print(f"effectiveness: contexts at {head[:12]} ...", flush=True)
+    head_m = measured_tree(REPO)
+    print(f"effectiveness: contexts at merge base {base[:12]} ...", flush=True)
+    base_m = with_merge_base(base, measured_tree)
+    identical = identical_package_files(base, head)
+    problems = only_before(identical, base_m["arcs"], head_m["arcs"])
+    floor = fail_under()
+    effect = {
+        "coverage_at_least_fail_under": head_m["total"] >= floor,
+        "coverage_not_below_merge_base": head_m["total"] + 1e-9 >= base_m["total"],
+        "identical_modules": len(identical),
+        "identical_module_only_before_arcs_empty": not problems,
+        "only_before_modules": problems,
+        "head_pytest_exit": head_m["pytest_exit"],
+        "merge_base_pytest_exit": base_m["pytest_exit"],
+        "mutation_score": "not a measure for 0.3.1",
+    }
+    passed = (
+        effect["coverage_at_least_fail_under"]
+        and effect["coverage_not_below_merge_base"]
+        and effect["identical_module_only_before_arcs_empty"]
+        and effect["head_pytest_exit"] == 0
+        and effect["merge_base_pytest_exit"] == 0
+    )
+    return {
+        "ok": passed,
+        "coverage": {
+            "fail_under": floor,
+            "total": round(head_m["total"], 2),
+            "merge_base": base,
+            "merge_base_total": round(base_m["total"], 2),
+            "method": "coverage json totals.percent_covered after lean_metrics --contexts",
+        },
+        "effectiveness": effect,
+    }
+
+
+def gate_failures(current: dict, total: float, recorded: dict | None) -> list[str]:
+    """Hard gates. Line counts and suite time are never among them."""
+    failures: list[str] = []
+    canonical = current["metrics"]["commands"]["canonical"]
+    if canonical > CANONICAL_BOUND:
+        failures.append(f"canonical command count {canonical} is above {CANONICAL_BOUND}")
+    if total < fail_under():
+        failures.append(f"coverage TOTAL {total} is below fail_under {fail_under()}")
+    if not recorded or "effectiveness" not in recorded:
+        failures.append("rc5 effectiveness is not recorded; run --record-end-state")
+        return failures
+    effect = recorded["effectiveness"]
+    stale = changed_since(str(recorded["commit"]), "specy_road", "tests")
+    if stale:
+        shown = ", ".join(stale[:8])
+        failures.append(f"effectiveness was recorded before specy_road or tests changed: {shown}")
+    if not effect.get("coverage_at_least_fail_under"):
+        failures.append("recorded coverage is below fail_under")
+    if not effect.get("coverage_not_below_merge_base"):
+        failures.append("recorded coverage is below the merge base TOTAL")
+    if not effect.get("identical_module_only_before_arcs_empty"):
+        modules = ", ".join(effect.get("only_before_modules") or [])
+        failures.append(f"covered arcs shrank on unchanged modules: {modules}")
+    exits = (effect.get("head_pytest_exit"), effect.get("merge_base_pytest_exit"))
+    if any(exits):
+        failures.append(f"a pytest run in the effectiveness measurement exited {exits}")
+    return failures
+
+
+def check() -> int:
+    current = measure()
+    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
+    print_deltas(baseline, current)
+    print_width_report()
+    print_quality_report()
+    print_estimates(baseline, current, line_estimates())
+    print_command_bound(current)
+    print_suite(current)
+    recorded = end_state()
+    total, how = coverage_for_check(recorded)
+    print(f"coverage TOTAL {total}% against fail_under {fail_under()} ({how})")
+    if recorded and "effectiveness" in recorded:
+        effect = recorded["effectiveness"]
+        print(
+            f"effectiveness at {str(recorded['commit'])[:12]}: "
+            f"coverage >= fail_under {effect['coverage_at_least_fail_under']}; "
+            f"not below merge base {effect['coverage_not_below_merge_base']}; "
+            f"unchanged-module arcs kept {effect['identical_module_only_before_arcs_empty']} "
+            f"({effect['identical_modules']} identical modules)"
+        )
+    failures = gate_failures(current, total, recorded)
+    for item in failures:
+        print(f"FAIL: {item}")
+    if failures:
+        return 1
+    print("gates passed; line counts and suite time are not gates")
+    return 0
+
+
+def record_end_state() -> int:
+    current = measure()
+    effect = measure_effectiveness()
+    write_end_state({
+        "generated": current["generated"],
+        "commit": current["commit"],
+        "clean": current["clean"],
+        "machine": current["machine"],
+        "settings": current["settings"],
+        "metrics": current["metrics"],
+        "estimates": line_estimates(),
+        "coverage": effect["coverage"],
+        "effectiveness": effect["effectiveness"],
+    })
+    print(f"wrote rc5_end_state of {BASELINE.relative_to(REPO)} at {current['commit'][:12]}")
+    if not current["clean"]:
+        print("FAIL: measured paths were not a clean tree", flush=True)
+        return 1
+    return 0 if effect["ok"] else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--check", action="store_true", help="print deltas against the baseline")
+    mode.add_argument("--check", action="store_true", help="print deltas and the rc5 gates")
     mode.add_argument("--contexts", action="store_true", help="write per-test arcs (opt-in)")
+    mode.add_argument(
+        "--record-end-state",
+        action="store_true",
+        help="write rc5 measurements beside the M16.1.7 baseline",
+    )
     args = parser.parse_args(argv)
 
     if args.contexts:
         print(f"wrote {capture_contexts().relative_to(REPO)}")
         return 0
-    current = measure()
+    if args.record_end_state:
+        return record_end_state()
     if args.check:
-        print_deltas(json.loads(BASELINE.read_text(encoding="utf-8")), current)
-        print_width_report()
-        print_quality_report()
-        return 0
-    BASELINE.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {BASELINE.relative_to(REPO)} at {current['commit'][:12]}")
-    return 0
+        return check()
+    print(
+        "The M16.1.7 baseline stays as committed. "
+        "Use --check to measure against it, or --record-end-state to write rc5 beside it.",
+        file=sys.stderr,
+    )
+    return 2
 
 
 if __name__ == "__main__":
