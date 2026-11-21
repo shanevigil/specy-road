@@ -255,16 +255,26 @@ def test_a_tests_own_teardown_error_is_kept_beside_the_lane_messages(tmp_path: P
         assert text in out, out
 
 
-def test_last_failed_reports_no_false_missing_id(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("addopts", "skipped_with_failures"),
+    [pytest.param("", True, id="cache"), pytest.param("-p no:cacheprovider", False, id="no-cache")],
+)
+def test_last_failed_reports_no_false_missing_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, addopts: str, skipped_with_failures: bool
+) -> None:
     """``--lf`` with recorded failures collects only the failed test; the listed tests it drops
     are not reported. With no recorded failure ``--lf`` runs everything, and a missing listed id
-    is reported."""
+    is reported. With the cache plugin blocked there is no cache to read: the run does not crash
+    and the check runs as with no recorded failure."""
+    monkeypatch.setenv("PYTEST_ADDOPTS", addopts)
     test = "def test_ok():\n    pass\n\n\ndef test_bad():\n    assert False\n"
     files, lane = {"test_d.py": test}, ["test_d.py::test_ok", "test_d.py::test_gone"]
+    reported = "lists ids that are not collected: ['test_d.py::test_gone']"
     out = _inner_pytest(tmp_path, files, lane, "-p", "no:xdist", "--lf")   # empty cache
-    assert "lists ids that are not collected: ['test_d.py::test_gone']" in out, out
+    assert out.startswith("exit 1") and reported in out, out
     out = _inner_pytest(tmp_path, files, lane, "-p", "no:xdist", "--lf")   # test_bad recorded
-    assert "1 failed" in out and "not collected" not in out, out
+    assert out.startswith("exit 1") and "1 failed" in out, out
+    assert (reported not in out) is skipped_with_failures, out
 
 
 @pytest.mark.parametrize("workers", ["0", "2"])

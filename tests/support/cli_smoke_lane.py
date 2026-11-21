@@ -257,7 +257,8 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     ``--deselect`` drop any. Under ``--lf`` with recorded failures only the duplicate and cap
     checks run; with none, ``--lf`` runs every test and the missing-id check runs too."""
     selections = [str(config.invocation_params.dir / arg) for arg in config.args]
-    if config.getoption("lf", False) and config.cache and config.cache.get("cache/lastfailed", {}):
+    cache = getattr(config, "cache", None)   # absent when the cacheprovider plugin is blocked
+    if config.getoption("lf", False) and cache and cache.get("cache/lastfailed", {}):
         selections = []
     collected = {item.nodeid for item in items}
     _pending[:] = lane_problems(lane_ids(), collected, config.rootpath, selections)
