@@ -70,14 +70,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.6.7` Integrity follows moved test files: a renamed test file and its tests are not removals `integrity-follows-moved-test-files` — task — **Complete**
     - `M16.6.8` Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates `worker-tests-wait-under-the-workers-lock` — task — **Complete**
     - `M16.6.9` Docs name the moved test files at their lane paths `docs-name-moved-test-files-at-lane-paths` — task — **Complete**
-  - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **Not Started**
+  - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **In Progress**
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Complete**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Complete**
     - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Complete**
     - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Complete**
     - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Complete**
     - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Complete**
-    - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Not Started**
+    - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Complete**
   - `M16.8` rc5 close, alias window, end-to-end pass and the 0.3.1 tag `rc5-close-alias-window-end-to-end-pass-and-the-0-3-1-tag` — milestone — **Not Started**
     - `M16.8.1` rc5 close: lean metrics measured against the baseline `rc5-close-lean-metrics-measured-against-the-baseline` — task — **Not Started**
     - `M16.8.4` Pre-release pass in the agentic sandbox: release runbook section 3 with the three apps, on a branch-head wheel, before the 0.3.1 release candidate `e2e-pass-and-fix-round` — task — **Not Started**
@@ -368,7 +368,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.7.8` on `feature/rm-tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` since 2026-11-20
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -382,24 +381,22 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 26 | 0 | 2.58 | 65% | 19 | 1 |
+| `CHANGELOG.md` **flagged** | 23 | 0 | 2.74 | 70% | 18 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 20 | 0 | 3.05 | 60% | 382 | 1 |
-| `docs` **flagged** | 18 | 0 | 3.11 | 72% | 335 | 1 |
+| `constraints` **flagged** | 22 | 0 | 2.86 | 55% | 386 | 1 |
+| `docs` **flagged** | 18 | 0 | 3.28 | 78% | 335 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
-| `pyproject.toml` **flagged** | 2 | 0 | 5.00 | 100% | 5 | 0 |
-| `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 5 | 0 |
-| `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 5 | 0 |
+| `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `scripts` **flagged** | 19 | 0 | 3.16 | 63% | 397 | 1 |
-| `specy_road` **flagged** | 37 | 0 | 2.43 | 57% | 82 | 1 |
+| `scripts` **flagged** | 20 | 0 | 3.05 | 60% | 399 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.45 | 55% | 85 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 47 | 0 | 2.64 | 62% | 430 | 2 |
-| `gui` | 4 | 0 | 2.75 | 50% | 0 | 0 |
+| `tests` **flagged** | 47 | 0 | 2.62 | 60% | 428 | 2 |
+| `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
