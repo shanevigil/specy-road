@@ -166,6 +166,10 @@ _PY = sys.executable
         pytest.param(f"{_PY} -c 'import specy_road'", True, id="shell-string"),
         pytest.param(["python3.11", "-m", "specy_road.cli"], True, id="versioned-interpreter"),
         pytest.param(["python-config", "-c", "import specy_road"], False, id="not-an-interpreter"),
+        pytest.param(["python3.13t", "-m", "specy_road.cli"], True, id="free-threaded-interpreter"),
+        pytest.param([_PY, "--check-hash-based-pycs", "always", "-c", "import specy_road"], True,
+                     id="long-option-value"),
+        pytest.param("echo hi # don't", False, id="shell-string-shlex-refuses"),
     ],
 )
 def test_starts_cli_reads_each_argv_shape(args: str | list[str], counted: bool) -> None:
@@ -252,11 +256,14 @@ def test_a_tests_own_teardown_error_is_kept_beside_the_lane_messages(tmp_path: P
 
 
 def test_last_failed_reports_no_false_missing_id(tmp_path: Path) -> None:
-    """``--lf`` collects only the failed test; the listed test it drops is not reported."""
+    """``--lf`` with recorded failures collects only the failed test; the listed tests it drops
+    are not reported. With no recorded failure ``--lf`` runs everything, and a missing listed id
+    is reported."""
     test = "def test_ok():\n    pass\n\n\ndef test_bad():\n    assert False\n"
-    files, lane = {"test_d.py": test}, ["test_d.py::test_ok"]
-    assert _inner_pytest(tmp_path, files, lane, "-p", "no:xdist").startswith("exit 1")
-    out = _inner_pytest(tmp_path, files, lane, "-p", "no:xdist", "--lf")
+    files, lane = {"test_d.py": test}, ["test_d.py::test_ok", "test_d.py::test_gone"]
+    out = _inner_pytest(tmp_path, files, lane, "-p", "no:xdist", "--lf")   # empty cache
+    assert "lists ids that are not collected: ['test_d.py::test_gone']" in out, out
+    out = _inner_pytest(tmp_path, files, lane, "-p", "no:xdist", "--lf")   # test_bad recorded
     assert "1 failed" in out and "not collected" not in out, out
 
 
@@ -269,3 +276,23 @@ def test_collect_only_reports_a_missing_listed_id(tmp_path: Path, workers: str) 
     )
     assert out.startswith("exit 4"), out
     assert "lists ids that are not collected: ['test_e.py::test_gone']" in out
+
+
+def test_collect_only_exits_zero_on_a_clean_lane(tmp_path: Path) -> None:
+    """``--collect-only`` with every listed id collected is a normal run."""
+    out = _inner_pytest(
+        tmp_path, {"test_f.py": "def test_here():\n    pass\n"}, ["test_f.py::test_here"],
+        "--collect-only",
+    )
+    assert out.startswith("exit 0"), out
+
+
+def test_a_shell_string_shlex_cannot_split_still_starts_and_is_not_counted(tmp_path: Path) -> None:
+    """Counting never stops a child from starting: ``echo hi # don't`` (an unbalanced quote for
+    :mod:`shlex`) runs through the real hook, passes and is not counted."""
+    test = (
+        "import subprocess\n\n\ndef test_echo():\n"
+        "    subprocess.run(\"echo hi # don't\", shell=True, check=True)\n"
+    )
+    out = _inner_pytest(tmp_path, {"test_g.py": test}, [], "-p", "no:xdist")
+    assert out.startswith("exit 0") and "1 passed" in out, out

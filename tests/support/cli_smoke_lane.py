@@ -14,9 +14,10 @@ adds the lane message after it.
 Limits: a start in a module- or session-scoped fixture's teardown, or from a background thread
 left running by an earlier test, is charged to the item running at that moment; Windows-only
 spellings (``specy-road.exe``, ``py -m``) are matched by name only; a selected file that collects
-no item, or a run whose deselection leaves no item, is not checked; under ``--lf`` the
-missing-id check is skipped, because the last-failed plugin drops items before this module sees
-them.
+no item, or a run whose deselection leaves no item, is not checked; under ``--lf`` with
+recorded failures the missing-id check is skipped, because the last-failed plugin drops items
+before this module sees them. Counting never stops a child from starting: the real
+``Popen.__init__`` runs whatever the counting does.
 """
 
 from __future__ import annotations
@@ -47,7 +48,9 @@ WORKER_MODULES = frozenset(
 )
 _BUNDLED_SCRIPT = re.compile(r"(?:^|[\\/])specy_road[\\/]bundled_scripts[\\/][^\\/]+\.py$")
 _THIS_FILE = Path(__file__).resolve()
-_PYTHON = re.compile(r"python(\d+(\.\d+)?)?(\.exe)?")
+_PYTHON = re.compile(r"python(\d+(\.\d+t?)?)?(\.exe)?")
+#: The interpreter's long options that take a value as the next word.
+_LONG_OPTIONS_WITH_VALUE = frozenset({"--check-hash-based-pycs"})
 
 #: The running item's starts first, then one list per open :func:`recorded_starts` block; a start
 #: is added to every list.
@@ -64,10 +67,11 @@ def lane_ids() -> list[str]:
 def starts_cli(args: str | bytes | Sequence[str | bytes]) -> bool:
     """Whether the child ``args`` (as :class:`subprocess.Popen` takes them; a string is split as
     a shell would) starts the CLI: one of the console scripts; a Python interpreter (``python``,
-    ``pythonN``, ``pythonN.M``, optionally ``.exe``, or this interpreter) running ``-m`` on a
-    ``specy_road`` module other than a worker wrapper, ``-c`` code that imports ``specy_road``
-    (:func:`imports_package`), or a bundled script file. Short options may be combined or joined
-    to their value (``-Im specy_road``, ``-mspecy_road``, ``-cimport specy_road``).
+    ``pythonN``, ``pythonN.M``, free-threaded ``pythonN.Mt``, optionally ``.exe``, or this
+    interpreter) running ``-m`` on a ``specy_road`` module other than a worker wrapper, ``-c``
+    code that imports ``specy_road`` (:func:`imports_package`), or a bundled script file. Short
+    options may be combined or joined to their value (``-Im specy_road``, ``-mspecy_road``,
+    ``-cimport specy_road``).
     """
     argv = _argv(args)
     program = os.path.basename(argv[0]) if argv else ""
@@ -90,11 +94,13 @@ def starts_cli(args: str | bytes | Sequence[str | bytes]) -> bool:
 def _interpreter_target(args: list[str]) -> tuple[str, str] | None:
     """What a Python command line runs: ``("-m", module)``, ``("-c", code)``,
     ``("script", path)``, or None. Short options are read one letter at a time; ``-X`` and ``-W``
-    take a value."""
+    take a value, and so does ``--check-hash-based-pycs``."""
     rest = list(args)
     while rest and rest[0].startswith("-") and rest[0] != "-":
         token = rest.pop(0)
         if token.startswith("--"):
+            if token in _LONG_OPTIONS_WITH_VALUE and rest:
+                rest.pop(0)
             continue
         for i, letter in enumerate(token[1:], start=2):
             if letter in "mcXW":
@@ -133,8 +139,14 @@ def _is_import_call(func: ast.expr) -> bool:
 
 
 def _argv(args: object) -> list[str]:
+    """``args`` as a list of words. A string is split as a shell would, or on whitespace when it
+    is not valid shell-word syntax for :mod:`shlex` (``echo hi # don't``: an unbalanced quote)."""
     if isinstance(args, (str, bytes)):
-        return shlex.split(os.fsdecode(args))
+        text = os.fsdecode(args)
+        try:
+            return shlex.split(text)
+        except ValueError:
+            return text.split()
     return [os.fsdecode(a) if isinstance(a, bytes) else str(a) for a in args]
 
 
@@ -155,12 +167,16 @@ _original_init = subprocess.Popen.__init__
 
 
 def _counting_init(self: subprocess.Popen, args: object, *a: object, **kw: object) -> None:
-    argv = _argv(args)
-    if starts_cli(argv) and _started_by_tests():
-        with _lock:
-            for record in _recording:
-                record.append(argv)
-    _original_init(self, args, *a, **kw)
+    """Record the start if it counts, then start the child; the child starts whatever the
+    recording does."""
+    try:
+        argv = _argv(args)
+        if starts_cli(argv) and _started_by_tests():
+            with _lock:
+                for record in _recording:
+                    record.append(argv)
+    finally:
+        _original_init(self, args, *a, **kw)
 
 
 def install() -> None:
@@ -223,9 +239,10 @@ def _selects(selection: str, rootdir: Path, nodeid: str) -> bool:
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Find the lane problems against every collected item, before ``-k``, ``-m`` or
-    ``--deselect`` drop any. Under ``--lf`` only the duplicate and cap checks run."""
+    ``--deselect`` drop any. Under ``--lf`` with recorded failures only the duplicate and cap
+    checks run; with none, ``--lf`` runs every test and the missing-id check runs too."""
     selections = [str(config.invocation_params.dir / arg) for arg in config.args]
-    if config.getoption("lf", False):
+    if config.getoption("lf", False) and config.cache and config.cache.get("cache/lastfailed", {}):
         selections = []
     collected = {item.nodeid for item in items}
     _pending[:] = lane_problems(lane_ids(), collected, config.rootpath, selections)
