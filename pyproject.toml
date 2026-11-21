@@ -36,6 +36,9 @@ dev = [
   # The advisory dead-code step in CI (.github/workflows/validate.yml); pinned exactly
   # so its findings do not change under the step. Never a runtime dependency.
   "vulture==2.16",
+  # The property tests under tests/property/; pinned exactly so a new release cannot change
+  # which examples the derandomized profile checks. Never a runtime dependency.
+  "hypothesis==6.170.14",
 ]
 review = [
   "openai>=1.40",

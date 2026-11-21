@@ -76,7 +76,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Complete**
     - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Complete**
     - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Complete**
-    - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Not Started**
+    - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Complete**
     - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Not Started**
   - `M16.8` rc5 close, alias window, end-to-end pass and the 0.3.1 tag `rc5-close-alias-window-end-to-end-pass-and-the-0-3-1-tag` — milestone — **Not Started**
     - `M16.8.1` rc5 close: lean metrics measured against the baseline `rc5-close-lean-metrics-measured-against-the-baseline` — task — **Not Started**
@@ -209,8 +209,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Complete**
   - `M22.82` Audit: every path that writes and reads back text, or rewrites a user's file, listed with its line-ending and line-break handling `audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
   - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Complete**
-  - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Not Started**
+  - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Complete**
   - `M22.85` The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly `the-round-trip-and-rewrite-paths-the-audit-lists-keep-line` — task — **Not Started**
+  - `M22.86` The tool-call guard keeps the unlisted-option refusal when a subshell's closing paren touches the next word `the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a` — task — **Complete**
+  - `M22.87` The tool-call guard classifies the command in a case arm `the-tool-call-guard-classifies-the-command-in-a-case-arm` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -366,13 +368,13 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.7.7` on `feature/rm-tests-five-named-properties-replace-the-single-input-tests-they-cover` since 2026-11-19
 - `M16.7.8` on `feature/rm-tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` since 2026-11-20
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M22.82` on `feature/rm-audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` since 2026-11-20
 
 ## Quality by area
 
@@ -380,22 +382,24 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 24 | 0 | 2.67 | 67% | 19 | 1 |
+| `CHANGELOG.md` **flagged** | 26 | 0 | 2.58 | 65% | 19 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 21 | 0 | 2.95 | 57% | 384 | 1 |
-| `docs` **flagged** | 18 | 0 | 3.28 | 78% | 335 | 1 |
+| `constraints` **flagged** | 20 | 0 | 3.05 | 60% | 382 | 1 |
+| `docs` **flagged** | 18 | 0 | 3.11 | 72% | 335 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
-| `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
+| `pyproject.toml` **flagged** | 2 | 0 | 5.00 | 100% | 5 | 0 |
+| `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 5 | 0 |
+| `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 19 | 0 | 3.16 | 63% | 397 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.45 | 55% | 84 | 1 |
+| `specy_road` **flagged** | 37 | 0 | 2.43 | 57% | 82 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 47 | 0 | 2.62 | 60% | 427 | 2 |
-| `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
+| `tests` **flagged** | 47 | 0 | 2.64 | 62% | 430 | 2 |
+| `gui` | 4 | 0 | 2.75 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

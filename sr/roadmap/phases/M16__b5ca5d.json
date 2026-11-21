@@ -304,7 +304,7 @@
       ],
       "planning_dir": "planning/M16.7.7_tests-five-named-properties-replace-the-single-input-tests-they-cover_e99367d9-1efa-4aec-850b-bd88121d9757.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: five named properties replace the single-input tests they cover",
       "touch_zones": [
         "tests/property/",

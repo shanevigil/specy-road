@@ -121,6 +121,13 @@ body. Keep section bodies focused; link to PRs for detail.
   only when trusted, and no specy-road Codex launch passes a trust flag, so reviewers stay untrusted. The same page
   notes that Claude Code's opt-in Bash sandbox blocks `git worktree add`, `remove` and `prune` inside a session
   (2.1.329; `prune` still exits 0). No roster default or launch command changes.
+- Bundled harness facts and the `claude-fable-5-2`, `gpt-6.2-sol` and `gpt-6.2-astra` profiles take the checked
+  rows of the 2026-11-19 harness-facts report. Fable 5.2's API price is $8 / $40 per MTok with cache hits at $0.20
+  (CC-BILL); its output limit and release date stay unknown. GPT-6.2 Sol and Astra take their API prices and a 128K
+  output limit (SOL-PRICE, AST-PRICE, SOL-CTX, AST-CTX); their release dates stay unknown and their role scores stay
+  not piloted (SOL-ROLE and AST-ROLE are not checked). `harness-facts.yaml` records that codex-cli 0.168.0 deprecates
+  the `multi_agent` feature flag in favour of `agents.enabled` (CX-FLAG-MULTI) and that 0.169.0 keeps project
+  configuration and MCP servers off in an untrusted directory and adds `--trust` (CX-TRUST). Launch argv is unchanged.
 - A `human:` acceptance criterion is met only by a person's closed entry in `roadmap/decisions.yaml`: a `kind: human-action` entry with the new optional `criterion: A#`, `decided_by: operator` and `channel: terminal` (new value) or `pm-gui`, committed on the leaf or integration branch. Existing planning-sheet `A#:` lines stop counting: `finish-this-task` refuses with the undecided ids, says a sheet line no longer counts, and names `decisions add <NODE> --kind human-action --criterion A#` and the two ways a person closes it (`decisions close` at their own interactive terminal, with a `y/N` prompt and no `--yes`, or the PM GUI's answer). No migration copies sheet lines into the ledger: a copy would turn an agent-writable line into a person's record. `handoff status` lists the undecided criteria (`human_criteria_undecided` in `--json`); the review gate is unchanged. `decisions close` no longer needs a planning-sheet line for any other entry, and `grind-session --status` does not list a GUI answer on a criterion entry. Refresh copied schemas with `specy-road refresh-schemas`. See `docs/roadmap-authoring.md` (the `acceptance` row).
 
 - The managed `.gitignore` block now ignores all of `work/` (`work/*`, child directories included) in place of
@@ -1153,6 +1160,16 @@ are removed in the release after 0.3.1:
   attached or a separate value (`sudo -nu bob git stash`, `sudo -ubob git stash`,
   `sudo --user=bob git stash`), and `--` ends that wrapper's options. An option the table does
   not list, before a word that could be git, is refused as opaque and is never allowed.
+  That check drops a trailing `)` glued to the later word, the same way a subshell is
+  unwrapped, so the refusal holds when the closing parenthesis touches the word
+  (`(sudo -Q $X)`, `( sudo -Q $X)`, `(sudo -Q "$X")`, `(sudo -Q ${X})`, `(sudo -Q g$X)`,
+  `(env -Q $X)`, `(nohup -x $X)`, `(doas -Q $CMD)`, `(nice -5 $X)`, `x=1; (sudo -Q $X)`,
+  `(sudo -Q $X); ls`, `! (sudo -Q $X)`, `{ (sudo -Q $X); }`). A quoted or escaped
+  literal `)` ending a could-be-git word after an unlisted option (`sudo -Q 'g)'`,
+  `sudo -Q g\)`) is now refused: splitting the words drops the quoting, so that `)`
+  cannot be told from a subshell's. `(sudo -Q ls)`, `(sudo -Q ls )`,
+  `sudo --not-a-sudo-option ls /tmp` and a word made only of `)`
+  (`( (sudo -Q ls ))`) stay allowed.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
