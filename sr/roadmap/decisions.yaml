@@ -239,5 +239,9 @@ entries:
       measured against (91.81% to 91.97%, 0 arcs lost at 12de0e0e)
     default_if_unanswered: confirm
     asked: '2026-11-21'
-    status: open
+    status: closed
     criterion: A1
+    answer: confirm (recorded by savigil <5241009+shanevigil@users.noreply.github.com>)
+    closed: '2026-11-21T18:09:19+00:00'
+    decided_by: operator
+    channel: terminal
