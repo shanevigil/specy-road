@@ -242,7 +242,7 @@ def test_maybe_auto_git_fetch_records_nonzero_exit_status(
     def _succeed(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         if list(args)[:2] == ["git", "fetch"]:
             return subprocess.CompletedProcess(args, 0, "", "")
-        return real_run(args, **kwargs)  # type: ignore[arg-type]
+        return real_run(args, **kwargs)
 
     monkeypatch.setattr(subprocess, "run", _succeed)
     maybe_auto_git_fetch(repo, "origin")   # inside the cooldown: no fetch; the failure stays
