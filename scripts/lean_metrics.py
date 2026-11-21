@@ -683,7 +683,7 @@ def arc_union(path: Path) -> dict[str, set[tuple[int, int]]]:
     return union
 
 
-def pytest_exit_of(path: Path) -> int:
+def contexts_pytest_exit(path: Path) -> int:
     head = path.read_text(encoding="utf-8")[:1000]
     match = re.search(r'"pytest_exit":\s*(-?\d+)', head)
     return int(match.group(1)) if match else 1
@@ -715,7 +715,8 @@ def only_before(
 def run_contexts(root: Path) -> tuple[Path, Path]:
     """``--contexts`` in ``root``. Returns the contexts file and the combined data file."""
     env = {key: value for key, value in os.environ.items() if not key.startswith("COVERAGE_")}
-    env["PYTHONPATH"] = str(root)
+    previous = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(root) if not previous else str(root) + os.pathsep + previous
     proc = subprocess.run(
         [sys.executable, "scripts/lean_metrics.py", "--contexts"],
         cwd=root, capture_output=True, text=True, check=False, env=env,
@@ -732,7 +733,7 @@ def measured_tree(root: Path) -> dict:
     return {
         "arcs": arc_union(contexts),
         "total": coverage_percent(data_file),
-        "pytest_exit": pytest_exit_of(contexts),
+        "pytest_exit": contexts_pytest_exit(contexts),
     }
 
 
