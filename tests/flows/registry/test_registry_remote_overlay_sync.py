@@ -213,8 +213,9 @@ def test_maybe_auto_git_fetch_records_nonzero_exit_status(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """A failed fetch is recorded, and a second call inside the cooldown starts no new fetch."""
     monkeypatch.setenv("SPECY_ROAD_GUI_REGISTRY_AUTO_FETCH", "1")
-    monkeypatch.setenv("SPECY_ROAD_GUI_REGISTRY_FETCH_INTERVAL_S", "0")
+    monkeypatch.setenv("SPECY_ROAD_GUI_REGISTRY_FETCH_INTERVAL_S", "3600")
     repo = _init_integration_ff_repo(tmp_path)
     real_run = subprocess.run
 
@@ -237,6 +238,15 @@ def test_maybe_auto_git_fetch_records_nonzero_exit_status(
     assert st.get("step") == "fetch"
     assert st.get("returncode") == 1
     assert "auth failed" in str(st.get("error", ""))
+
+    def _succeed(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        if list(args)[:2] == ["git", "fetch"]:
+            return subprocess.CompletedProcess(args, 0, "", "")
+        return real_run(args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(subprocess, "run", _succeed)
+    maybe_auto_git_fetch(repo, "origin")   # inside the cooldown: no fetch; the failure stays
+    assert last_registry_auto_fetch_status(repo) == st
 
 
 def test_maybe_auto_git_fetch_records_timeout_status(
