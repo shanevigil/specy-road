@@ -10,6 +10,25 @@ from pathlib import Path
 
 import pytest
 
+from tests.support.guard_cases import (
+    DESTRUCTIVE,
+    ENV_SPLIT_LITERAL,
+    ENV_SPLIT_REFUSED_BEFORE,
+    ENV_SPLIT_SAME,
+    ENV_SPLIT_UNKNOWN_ESCAPE,
+    MORE_DESTRUCTIVE_SHAPES,
+    MORE_WRAPPER_SHAPES,
+    OPAQUE_REFUSED,
+    OPAQUE_WITHOUT_GIT,
+    ORDINARY,
+    PATH_PREFIXES,
+    SPLIT_OPTION_CONFIG_HELD,
+    SPLIT_OPTION_CONSUMED,
+    SPLIT_OPTION_RUNS,
+    UNLISTED_OPTION_ALLOWED,
+    UNLISTED_OPTION_HIDDEN,
+    WRAPPER_SPELLINGS,
+)
 from tests.support.review import make_review_repo
 
 from specy_road.orchestration.guard import session_presence as sp
@@ -21,136 +40,13 @@ from specy_road.orchestration.workers import worker_process as wp
 from specy_road.orchestration.workers import worker_state as ws
 
 
-@pytest.mark.parametrize("command, fragment", [
-    ("git stash", "stash stack is shared"),
-    ("git stash push -u -m x", "stash stack is shared"),
-    ("git reset --hard HEAD~1", "discards other sessions"),
-    ("git checkout main", "switching branches"),
-    ("git checkout -b feature/x", "switching branches"),
-    ("git switch dev", "switching branches"),
-    ("git checkout -- .", "discards working-tree changes"),
-    ("git checkout -- src/a.py", "discards working-tree changes"),
-    ("git restore .", "discards other sessions"),
-    ("git restore --staged .", "discards other sessions"),
-    ("git clean -fd", "deletes untracked files"),
-    ("git clean --force", "deletes untracked files"),
-    ("git rebase -i HEAD~3", "rewrites history"),
-    ("git commit --amend --no-edit", "rewrites a commit"),
-    ("git commit -a -m x", "sweeps every session"),
-    ("git commit -am x", "sweeps every session"),
-    ("git commit --all -m x", "sweeps every session"),
-    ("git add -A", "stages other sessions"),
-    ("git add .", "stages other sessions"),
-    ("git add -u", "stages other sessions"),
-    ("git add --all", "stages other sessions"),
-    ("git push --force origin main", "rewrites the remote"),
-    ("git push -f", "rewrites the remote"),
-    ("git push --force-with-lease", "rewrites the remote"),
-    ("git push origin +main", "rewrites the remote"),
-    ("make test && git stash", "stash stack is shared"),
-    ("cd x; git reset --hard", "discards other sessions"),
-    ("git -C /tmp/repo checkout main", "switching branches"),
-    ("GIT_DIR=.git git rebase main", "rewrites history"),
-    ("echo x\ngit stash", "stash stack is shared"),
-    ("git reset --hard  # don't", "discards other sessions"),
-    ('git commit -m "a; b" -a', "sweeps every session"),
-    ("sh -c 'git stash'", "stash stack is shared"),
-    ("bash -lc 'cd x && git rebase main'", "rewrites history"),
-    ("(git stash)", "stash stack is shared"),
-    ("make test & git stash", "stash stack is shared"),
-    ("/usr/bin/git stash", "stash stack is shared"),
-    ("command git stash", "stash stack is shared"),
-    ("env GIT_TRACE=1 git stash", "stash stack is shared"),
-    ("sudo -u bob git clean -f", "deletes untracked files"),
-    ("git -c alias.s=stash s", "stash stack is shared"),
-    ("git -c alias.rh='reset --hard' rh", "discards other sessions"),
-    ("git -c alias.x='!git stash' x", "stash stack is shared"),
-    ("git commit -m 'x'", "commits whatever another session staged"),
-    ("git commit -m 'a; b' --no-verify", "commits whatever another session staged"),
-    ("git -c alias.x='!cd /tmp && git reset --hard' x", "discards other sessions"),
-    ("if true; then git stash; fi", "stash stack is shared"),
-    ("! git stash", "stash stack is shared"),
-    ("while ! git diff --quiet; do git reset --hard; done", "discards other sessions"),
-    ("if true; then sh -c 'git stash'; fi", "stash stack is shared"),
-    ("case x in a) git stash;; esac", "stash stack is shared"),
-    ("find . -name '*.py' -exec git rm -f {} +", "git rm -f"),
-    ("git rm -f src/a.py", "git rm -f"),
-    ("git rm -rf src", "git rm -f"),
-    ("git rm --force src/a.py", "git rm -f"),
-    ("if true; then git${IFS}stash; fi", "shell expansion"),
-    ("git${IFS}stash", "shell expansion"),
-    ("$(echo git) stash", "shell expansion"),
-    ("`echo git` stash", "shell expansion"),
-    ("{git,stash}", "shell expansion"),
-    ("gi? stash", "shell expansion"),
-    ("case x in a) git${IFS}stash;; esac", "shell expansion could build `git`"),
-    ("$X stash", "shell expansion"),
-    ("g{i,}t stash", "shell expansion"),
-    ("G=git; case x in x) ${G} stash;; esac", "stash stack is shared"),
-    ("X=i; g${X}t stash", "shell expansion"),
-    ("! (git stash)", "stash stack is shared"),
-    ("{ (git stash); }", "stash stack is shared"),
-    ("if true; then (git stash); fi", "stash stack is shared"),
-    ('(env -S "git stash")', "stash stack is shared"),
-    ('sudo env -S "git stash"', "stash stack is shared"),
-    ('FOO=1 env -S "git stash"', "stash stack is shared"),
-    ('env -vS "git stash"', "stash stack is shared"),
-    ('env -iS "git stash"', "stash stack is shared"),
-    ('env -S"git stash"', "stash stack is shared"),
-    ('env -vS"git stash"', "stash stack is shared"),
-    ('(env -vS "git stash")', "stash stack is shared"),
-    ('sudo env -iS "git stash"', "stash stack is shared"),
-    ('FOO=1 env -S"git stash"', "stash stack is shared"),
-    ('FOO=1 env -vS"git stash"', "stash stack is shared"),
-    ("env -S 'git\\_stash'", "stash stack is shared"),
-    ("(GIT_CONFIG_GLOBAL=/tmp/c git x)", "GIT_CONFIG*"),
-    ("(git --config-env=alias.x=BODY x)", "--config-env=alias"),
-    ("env --u HOME git stash", "stash stack is shared"),
-    ("env --ch /tmp git stash", "stash stack is shared"),
-    ("env --unset=HOME git stash", "stash stack is shared"),
-    ("env --chdir=/tmp git switch dev", "switching branches"),
-    ("env --default-signal git stash", "stash stack is shared"),
-    ("env --default-signal=PIPE git stash", "stash stack is shared"),
-    ("env --debug git stash", "stash stack is shared"),
-])
+@pytest.mark.parametrize("command, fragment", DESTRUCTIVE)
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
     assert reason and fragment in reason, (command, reason)
 
 
-@pytest.mark.parametrize("command", [
-    "git add src/a.py docs/x.md",
-    "git commit -m 'x' src/a.py",
-    "git commit --only src/a.py -m x",
-    "git push origin feature/rm-thing",
-    "git worktree add ../wt -b feature/x main",
-    "git status --porcelain",
-    "git diff --cached",
-    "git log --oneline -3",
-    "git fetch origin",
-    "git merge --no-ff feature/x",
-    "git restore --staged src/a.py",
-    "git reset src/a.py",
-    "git checkout",
-    "git add -p src/a.py",
-    "make test && python -m pytest",
-    "echo 'git stash' > notes.txt",
-    "gitk",
-    "grep -rn git src",
-    "echo $HOME",
-    "ls ${DIR}",
-    "[ -f x ] && ls src/*.py",
-    "git commit -m 'git: bump $V' src/a.py",
-    "$HOME/bin/pytest -q",
-    "${PYTHON:-python} -m pytest",
-    "env -i git status",
-    "env -u HOME ls",
-    "env -uHOME ls",
-    "env --u=HOME ls",
-    "env --unset git stash",
-    "env --chdir git stash",
-    "env --ch git status",
-])
+@pytest.mark.parametrize("command", ORDINARY)
 def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command
 
@@ -261,16 +157,13 @@ def test_cli_generic_payload(tmp_path: Path) -> None:
 # path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
 # says so; search results are delimited; the verifier's byte cap is a cap.
 
-@pytest.mark.parametrize("command", [
-    "f(){ git stash; }; f", "sh -c 'f(){ git reset --hard; }; f'", "gitcmd=git; $gitcmd stash",
-    "python -c 'import subprocess; subprocess.run([\"git\",\"stash\"])'", "git commit -m x",
-])
+@pytest.mark.parametrize("command", OPAQUE_REFUSED)
 def test_opaque_shapes_and_bare_commits_are_refused(command: str) -> None:
     assert tg.classify(command), command
 
 
 
-@pytest.mark.parametrize("command", ["f(){ echo hi; }; f", "python -c 'print(1)'", "git commit -m x src/a.py"])
+@pytest.mark.parametrize("command", OPAQUE_WITHOUT_GIT)
 def test_opaque_shapes_without_git_pass(command: str) -> None:
     assert tg.classify(command) is None
 
@@ -299,11 +192,7 @@ def test_git_dash_c_into_another_tree_counts_that_trees_session(tmp_path: Path) 
 # its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
 # mismatched slug is refused.
 
-@pytest.mark.parametrize("command", [
-    'env -S "git stash"', "echo $(git reset --hard $(echo HEAD))", "sudo --user root git stash",
-    "env --unset HOME git stash", "nice --adjustment 5 git stash", "timeout 10 git stash",
-    "printf 'stash\\n' | xargs git",
-])
+@pytest.mark.parametrize("command", MORE_WRAPPER_SHAPES)
 def test_more_wrapper_shapes_are_classified(command: str) -> None:
     assert tg.classify(command), command
 
@@ -362,10 +251,7 @@ def test_a_worker_does_not_count_itself(tmp_path: Path, monkeypatch) -> None:
 
 
 
-@pytest.mark.parametrize("command", [
-    "git checkout -f", "git checkout --force", "git restore src/a.py", "git restore -W src/a.py",
-    "{ git stash; }", "eval git stash", "echo $(git reset --hard)", "x=`git stash`",
-])
+@pytest.mark.parametrize("command", MORE_DESTRUCTIVE_SHAPES)
 def test_more_destructive_shapes_are_classified(command: str) -> None:
     assert tg.classify(command), command
 
@@ -444,7 +330,6 @@ def env_split_forms(command: str) -> list[str]:
     return forms
 
 
-_PATH_PREFIXES = ("/usr/bin/", "/bin/", "./")
 # ``timeout``'s first positional is a duration, so the guarded command stays the next word.
 _PATH_WRAPPERS = (
     ("command", ""),
@@ -466,7 +351,7 @@ def path_qualified_forms(command: str) -> list[str]:
     return [
         f"{prefix}{name} {gap}{command}"
         for name, gap in _PATH_WRAPPERS
-        for prefix in _PATH_PREFIXES
+        for prefix in PATH_PREFIXES
     ]
 
 
@@ -474,7 +359,7 @@ def path_qualified_env_forms(command: str) -> list[str]:
     """Each split-string spelling with a path-qualified ``env`` or ``sudo``, and a subshell around ``env``."""
     forms = []
     for form in env_split_forms(command):
-        for prefix in _PATH_PREFIXES:
+        for prefix in PATH_PREFIXES:
             spelled = f"{prefix}{form}"
             forms.append(spelled)
             if form.startswith("env"):
@@ -482,47 +367,14 @@ def path_qualified_env_forms(command: str) -> list[str]:
     return forms
 
 
-# One spelling per documented option (a value where the option takes one). ``timeout``'s
-# duration stays in the gap, after the option. ``env -S`` is not here: the split string is
-# the command, covered by ``env_split_forms``.
-_WRAPPER_SPELLINGS = (
-    ("command", "", ("-p", "-v", "-V")),
-    ("sudo", "", (
-        "-A", "-B", "-b", "-C bob", "-D bob", "-E", "--preserve-env", "--preserve-env=bob",
-        "-e", "-g bob", "-H", "--help", "-h bob", "-i", "-K", "-k", "-l", "-N", "-n",
-        "-P", "-p bob", "-R bob", "-r bob", "-S", "-s", "-t bob", "-T bob", "-U bob",
-        "-u bob", "-V", "-v",
-    )),
-    ("doas", "", ("-a bob", "-C bob", "-L", "-n", "-s", "-u bob")),
-    ("nohup", "", ("--help", "--version")),
-    ("exec", "", ("-a bob", "-c", "-l")),
-    ("time", "", ("-a", "-f bob", "-o bob", "-p", "-q", "-v", "-V", "-h", "--help")),
-    ("nice", "", ("-n bob", "--help", "--version")),
-    ("ionice", "", ("-c bob", "-n bob", "-p bob", "-P bob", "-t", "-u bob", "-h", "-V")),
-    ("xargs", "", (
-        "-0", "-a bob", "-d bob", "-E bob", "-e", "--eof=bob", "-I bob", "-i", "--replace=bob",
-        "-L bob", "-l", "--max-lines=bob", "-n bob", "-P bob", "-o", "-p",
-        "--process-slot-var=bob", "-r", "-s bob", "--show-limits", "-t", "-x", "--help", "--version",
-    )),
-    ("timeout", "10 ", (
-        "--preserve-status", "--foreground", "-k bob", "-s bob", "-v", "--help", "--version",
-    )),
-    ("env", "", (
-        "-i", "-0", "-u bob", "-C /tmp", "-v", "--block-signal", "--block-signal=INT",
-        "--default-signal", "--default-signal=INT", "--ignore-signal", "--ignore-signal=INT",
-        "--list-signal-handling", "--help", "--version",
-    )),
-)
-
-
 def wrapper_option_forms(command: str) -> list[str]:
     """Each wrapper option, with a value where it takes one, bare and path-qualified."""
     forms = []
-    for name, gap, spellings in _WRAPPER_SPELLINGS:
+    for name, gap, spellings in WRAPPER_SPELLINGS:
         for spelling in spellings:
             body = f"{name} {spelling} {gap}{command}"
             forms.append(body)
-            for prefix in _PATH_PREFIXES:
+            for prefix in PATH_PREFIXES:
                 forms.append(f"{prefix}{body}")
     return forms
 
@@ -576,40 +428,17 @@ def test_env_split_escapes_and_pre_leaf_refusals() -> None:
     refused are still refused.
     """
     stash = g.classify("git stash")
-    same = (
-        "env -S 'git\\_stash'", "env -vS 'git\\_stash'", "env -S'git\\_stash'",
-        "env --split 'git\\_stash'", "env --s 'git\\_stash'", "env --spl='git\\_stash'",
-        "env -S 'git\\tstash'", "env -S 'git\\nstash'", "env -S 'git\\fstash'",
-        "env -S 'git\\vstash'", "env -S 'git\\rstash'", "env -S 'git\tstash'",
-        "env -S 'git stash\\c --hard'",
-    )
+    same = ENV_SPLIT_SAME
     for command in same:
         assert g.classify(command) == stash, (command, g.classify(command))
-    literal = (
-        "env -S \"git'\\_stash'\"", "env -S '\"git\\_stash\"'", "env -S 'git\\\\_stash'",
-        "env -S 'gi\\ct stash'", "env -S '# git stash'",
-    )
+    literal = ENV_SPLIT_LITERAL
     for command in literal:
         assert g.classify(command) is None, (command, g.classify(command))
-    unknown = (
-        "env -S 'git\\x20stash'", "env -S '\\gitstash'",
-        "env -S -S '${CMD} stash'", "env -S --split '${CMD} stash'",
-        "env --split -S '${CMD} stash'", "env -vS -S '${DIR}'",
-        "env -S -S 'git\\x20stash'", "sudo env -S -S '${CMD} stash'",
-        "(env -S -S 'git\\x20stash')", "env -S -S -S '${CMD} stash'",
-        "env -i -S -S '${CMD} stash'",
-    )
+    unknown = ENV_SPLIT_UNKNOWN_ESCAPE
     for command in unknown:
         reason = g.classify(command)
         assert reason and "cannot see" in reason, (command, reason)
-    refused_before = (
-        'env -S "git stash"', '(env -S "git stash")', 'sudo env -S "git stash"',
-        'FOO=1 env -S "git stash"', 'env -vS "git stash"', 'env -iS "git stash"',
-        'env -S"git stash"', 'env -vS"git stash"', '(env -vS "git stash")',
-        'sudo env -iS "git stash"', 'FOO=1 env -S"git stash"', 'FOO=1 env -vS"git stash"',
-        "env -S 'git\\_stash'", "env -S 'git\\x20stash'", "env -S 'git\\tstash'",
-        "env -S 'git\\nstash'",
-    )
+    refused_before = ENV_SPLIT_REFUSED_BEFORE
     for command in refused_before:
         assert g.classify(command), command
 
@@ -677,44 +506,11 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
 
 def test_unlisted_wrapper_option_is_opaque() -> None:
     """An option a wrapper does not list, before a word that could be git, is never allowed."""
-    hidden = (
-        "sudo --not-a-sudo-option git stash",
-        "sudo -Q git stash",
-        "command -x git stash",
-        "doas -Q git stash",
-        "nohup -x git stash",
-        "exec -x git stash",
-        "time --not-time git stash",
-        "nice --not-nice git stash",
-        "ionice -Q git stash",
-        "xargs -Q git stash",
-        "timeout --not-timeout 10 git stash",
-        "env --not-an-env-option git stash",
-        "/usr/bin/sudo -Q git reset --hard",
-        "( sudo -Q git stash )",
-        "sudo -n --not-a-sudo-option git stash",
-        "sudo -Q $X",
-        "(sudo -Q $X)",
-        "( sudo -Q $X)",
-        '(sudo -Q "$X")',
-        "(sudo -Q ${X})",
-        "(sudo -Q g$X)",
-        "(env -Q $X)",
-        "(nohup -x $X)",
-        "(doas -Q $CMD)",
-        "(nice -5 $X)",
-        "x=1; (sudo -Q $X)",
-        "(sudo -Q $X); ls",
-        "! (sudo -Q $X)",
-        "{ (sudo -Q $X); }",
-    )
+    hidden = UNLISTED_OPTION_HIDDEN
     for command in hidden:
         reason = g.classify(command)
         assert reason and "does not list" in reason, (command, reason)
-    for command in (
-        "sudo --not-a-sudo-option ls /tmp", "command -x echo hi", "nice --not-nice ls",
-        "(sudo -Q ls)", "(sudo -Q ls )", "( (sudo -Q ls ))",
-    ):
+    for command in UNLISTED_OPTION_ALLOWED:
         assert g.classify(command) is None, (command, g.classify(command))
 
 
@@ -725,47 +521,13 @@ def test_split_string_options_are_parsed_before_the_command() -> None:
     keeps the env-config refusal, directly and inside the split string.
     """
     stash = g.classify("git stash")
-    consumed = (
-        "env -S '--unset git stash'", "env -S '--chdir git stash'", "env -S '-u git stash'",
-        "env -S '--un git stash'", "env -S '--ch git stash'", "env -S '-C git status'",
-        "sudo env -S '--unset git stash'", "(env -S '--chdir git stash')",
-        "FOO=1 env -S '-u git stash'", "env --split '--unset git stash'",
-        "env -S --unset git stash",
-    )
+    consumed = SPLIT_OPTION_CONSUMED
     for command in consumed:
         assert g.classify(command) is None, (command, g.classify(command))
-    runs = (
-        "env -S '-u HOME git stash'", "env -S '--unset=HOME git stash'",
-        "env -S '--debug git stash'", "env -S '--default-signal git stash'",
-        "env -S '-- git stash'", "env -S '--ch /tmp git stash'",
-        "env -S '-uHOME git stash'", "env -S 'FOO=1 git stash'",
-    )
+    runs = SPLIT_OPTION_RUNS
     for command in runs:
         assert g.classify(command) == stash, (command, g.classify(command))
     config = g.classify("GIT_CONFIG_GLOBAL=/tmp/c git x")
-    held = (
-        "env -i GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env -v GIT_CONFIG_PARAMETERS=x git status",
-        "env -- GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env -u HOME GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env --unset=HOME GIT_CONFIG_PARAMETERS=x git status",
-        "env -C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env -iv GIT_CONFIG_GLOBAL=/tmp/c git x",
-        "env --ignore-environment GIT_CONFIG_PARAMETERS=x git status",
-        "env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        'env -S "-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
-        "env -S '-v GIT_CONFIG_PARAMETERS=x git status'",
-        "env -S '-- GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '-u HOME GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '--unset=HOME GIT_CONFIG_PARAMETERS=x git status'",
-        "env -S '-C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '-iv GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -S '--ignore-environment GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "env -vS '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        'env --split-string="-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
-        "sudo env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-        "(env -S '-C /tmp GIT_CONFIG_PARAMETERS=x git status')",
-        "env -S -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
-    )
+    held = SPLIT_OPTION_CONFIG_HELD
     for command in held:
         assert g.classify(command) == config, (command, g.classify(command))

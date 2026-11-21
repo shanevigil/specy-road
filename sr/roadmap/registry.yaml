@@ -70,18 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: tests-five-named-properties-replace-the-single-input-tests-they-cover
-    node_id: M16.7.7
-    branch: feature/rm-tests-five-named-properties-replace-the-single-input-tests-they-cover
-    touch_zones:
-      - tests/property/
-      - pyproject.toml
-      - tests/
-      - requirements-ci.in
-      - requirements-ci.txt
-    started: '2026-11-19'
-    owner: savigil
-    implementation_review: pending
   - codename: tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the
     node_id: M16.7.8
     branch: feature/rm-tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the
