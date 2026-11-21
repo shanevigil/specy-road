@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 from specy_road.finish_land_integration import (
@@ -19,6 +18,7 @@ from tests.support.same.commit_553cf5f7a1bf import commit
 from tests.support.same.git_df16ee62bf81 import git as git_cmd
 from tests.support.extracted.finish_merge_mode import bootstrap, merge_mode_finish_repo
 import pytest
+from tests.support.cli import run_cli
 
 BR = "feature/rm-x"
 
@@ -71,14 +71,7 @@ def test_integration_branch_present_finds_local_branch(tmp_path: Path) -> None:
 def _finish_cli(repo: Path, *extra: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO)
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "finish-this-task", "--repo-root", str(repo), *extra],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-    )
+    return run_cli(["finish-this-task", "--repo-root", str(repo), *extra], cwd=repo, env=env)
 
 
 def _push_disclosure(out: str, feature_branch: str) -> tuple[int, int]:
@@ -160,10 +153,9 @@ def test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted(
 # Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
 
 def test_finish_help_and_merge_notice(tmp_path: Path, capsys) -> None:
-    help_text = subprocess.check_output(
-        [sys.executable, "-m", "specy_road.cli", "finish-this-task", "--help"],
-        text=True,
-    )
+    result = run_cli(["finish-this-task", "--help"])
+    result.check_returncode()
+    help_text = result.stdout
     assert "merge lands on the integration branch and pushes it" in help_text
     assert "--push only pushes the feature branch" in help_text
     repo = make_review_repo(tmp_path)

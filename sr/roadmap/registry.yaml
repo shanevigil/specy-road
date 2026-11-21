@@ -70,16 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the
-    node_id: M16.7.8
-    branch: feature/rm-tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the
-    touch_zones:
-      - tests/
-      - pyproject.toml
-      - .github/workflows/validate.yml
-    started: '2026-11-20'
-    owner: savigil
-    implementation_review: pending
   - codename: audit-every-path-that-writes-and-reads-back-text-or-rewrites-a
     node_id: M22.82
     branch: feature/rm-audit-every-path-that-writes-and-reads-back-text-or-rewrites-a

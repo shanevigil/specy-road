@@ -4,25 +4,20 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.cli import run_module
 
 from specy_road.specyrd_init import ROLE_COMMAND_FILES
 
 
 def _run(module: str, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", module, *args],
-        cwd=REPO,
-        env=script_subprocess_env(),
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    result = run_module(module, list(args), cwd=REPO, env=script_subprocess_env())
+    result.check_returncode()
+    return result
 
 
 @pytest.fixture()
@@ -61,8 +56,9 @@ def test_specyrd_init_notes_already_initialized_only_once_stubs_exist(tmp_path: 
 def test_specyrd_init_role_help_lists_the_installed_stubs() -> None:
     # Review round 7, R7-6: the --role help is built from the install table.
     env = {**script_subprocess_env(), "COLUMNS": "2000"}
-    out = subprocess.run([sys.executable, "-m", "specy_road.specyrd_cli", "init", "--help"], cwd=REPO, env=env,
-                         check=True, capture_output=True, text=True).stdout
+    result = run_module("specy_road.specyrd_cli", ["init", "--help"], cwd=REPO, env=env)
+    result.check_returncode()
+    out = result.stdout
     for role in ("pm", "dev"):
         names = ", ".join(f.removeprefix("specyrd-").removesuffix(".md") for f in ROLE_COMMAND_FILES[role])
         assert f"{role} ({names})" in out

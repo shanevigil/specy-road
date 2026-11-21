@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import subprocess
 import shutil
-import sys
 from pathlib import Path
 
 import pytest
@@ -18,6 +17,7 @@ from specy_road.pm_publish import (
 
 from tests.helpers import DOGFOOD
 from tests.support.same.git_04549aebf210 import git
+from tests.support.cli import run_cli
 
 
 def test_path_in_publish_scope() -> None:
@@ -253,11 +253,7 @@ def test_publish_regenerates_generated_files_and_pushes(dogfood_repo: Path) -> N
     )
     assert "renamed for publish" in (clone / "roadmap.md").read_text(encoding="utf-8")
     for command in ("export", "digest"):
-        done = subprocess.run(
-            [sys.executable, "-m", "specy_road.cli", command, "--check",
-             "--repo-root", str(clone)],
-            capture_output=True, text=True, check=False,
-        )
+        done = run_cli([command, "--check", "--repo-root", str(clone)])
         assert done.returncode == 0, (command, done.stdout, done.stderr)
 
 

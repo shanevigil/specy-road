@@ -11,10 +11,8 @@ from __future__ import annotations
 
 import argparse
 import functools
-import os
 import tempfile
 from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from specy_road.cli_args import subcommand_parsers
@@ -86,10 +84,7 @@ def crawl() -> dict[str, dict]:
         if len(path) == 1:
             inventory = {**inventory, "subcommands": []}  # the roots' commands: registered names
         found[" ".join(path)] = {"inventory": inventory}
-    with (
-        tempfile.TemporaryDirectory() as tmp,
-        ThreadPoolExecutor(min(8, os.cpu_count() or 1)) as pool,
-    ):
-        for path, text_out in pool.map(lambda p: _help(p, Path(tmp)), [p for p, _ in tree]):
-            found[" ".join(path)]["transcript"] = text_out
+    with tempfile.TemporaryDirectory() as tmp:
+        for path, _parser in tree:
+            found[" ".join(path)]["transcript"] = _help(path, Path(tmp))[1]
     return found

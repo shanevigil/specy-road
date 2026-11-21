@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
-from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, script_subprocess_env
+from tests.helpers import DOGFOOD, script_subprocess_env
 
 
 from specy_road.roadmap_chunk_utils import (
@@ -19,6 +18,7 @@ from specy_road.bundled_scripts.roadmap_rebalance import (
     build_normalize_plan,
     build_pack_plan,
 )
+from tests.support.cli import run_script
 
 
 def _copy_dogfood(dest: Path) -> Path:
@@ -27,16 +27,9 @@ def _copy_dogfood(dest: Path) -> Path:
 
 
 def _run_rebal(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "roadmap_rebalance.py"),
-            "--repo-root",
-            str(repo),
-            *args,
-        ],
-        capture_output=True,
-        text=True,
+    return run_script(
+        "roadmap_rebalance.py",
+        ["--repo-root", str(repo), *args],
         env=script_subprocess_env(),
     )
 

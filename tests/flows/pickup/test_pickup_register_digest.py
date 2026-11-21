@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import yaml
@@ -11,6 +10,7 @@ import yaml
 from tests.helpers import REPO, script_subprocess_env
 from tests.support.same.cli_fda77d440965 import cli
 import pytest
+from tests.support.cli import run_cli
 
 
 
@@ -23,8 +23,7 @@ def _app(tmp_path: Path) -> tuple[Path, Path]:
     remote, app = tmp_path / "remote.git", tmp_path / "app"
     _git(tmp_path, "init", "-q", "--bare", str(remote))
     subprocess.run(["git", "init", "-q", str(app)], check=True)
-    r = subprocess.run([sys.executable, "-m", "specy_road.cli", "init", "project", str(app)],
-                       cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True)
+    r = run_cli(["init", "project", str(app)], cwd=REPO, env=script_subprocess_env())
     assert r.returncode == 0, r.stderr
     assert cli(app, "export").returncode == 0 and cli(app, "digest").returncode == 0
     _git(app, "config", "user.email", "t@example.com")

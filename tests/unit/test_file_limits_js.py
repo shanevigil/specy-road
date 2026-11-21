@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import io
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -13,7 +11,8 @@ import pytest
 from specy_road.file_limits_engine import run_file_limits_scan
 from specy_road.file_limits_js import js_function_metrics
 from tests.support import REPO
-from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
+from tests.helpers import script_subprocess_env
+from tests.support.cli import run_script
 
 FIXTURES = REPO / "tests" / "fixtures" / "file_limits_js"
 
@@ -202,13 +201,11 @@ def test_validator_does_not_print_ok_with_over_cap_ts_function(
     )
     (tmp_path / "src").mkdir()
     shutil.copy(FIXTURES / fixture, tmp_path / "src" / fixture)
-    r = subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "validate_file_limits.py"), "--repo-root", str(tmp_path)],
+    r = run_script(
+        "validate_file_limits.py",
+        ["--repo-root", str(tmp_path)],
         cwd=REPO,
         env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
-        check=False,
     )
     assert r.returncode == 1
     assert "OK" not in r.stdout

@@ -7,7 +7,6 @@ specy-road files as the record.
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -17,7 +16,7 @@ from tests.helpers import script_subprocess_env
 from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, fake_prompts, launches,
                                            set_steps, verdict_step)
 from tests.support.review import NODE, commit_file, make_review_repo, review_output, git
-from tests.support.cli import run_main
+from tests.support.cli import run_main, run_module
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.orchestration import role_prompt_cli
@@ -329,8 +328,7 @@ def test_prompt_cli_exception_closes_the_run_incomplete(tmp_path: Path, monkeypa
 
 
 def test_review_cli_module_main_prints_usage() -> None:
-    done = subprocess.run([sys.executable, "-m", "specy_road.bundled_scripts.review_cli", "-h"],
-                          capture_output=True, text=True, env=script_subprocess_env())
+    done = run_module("specy_road.bundled_scripts.review_cli", ["-h"], env=script_subprocess_env())
     assert done.returncode == 0
     assert "usage:" in done.stdout.lower()
 

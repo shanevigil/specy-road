@@ -18,6 +18,7 @@ from tests.fixture_guard import (
     record_session_start,
 )
 from tests.helpers import REPO
+from tests.support import cli_smoke_lane
 from tests.support.fixtures import (  # noqa: F401 — registered for every test
     repo,
     api_client,
@@ -72,6 +73,8 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "real_review_caller: run `review record`'s caller check (M21.31) for real")
     config.addinivalue_line("markers", "slow: this test took over 1 second at M16.6.4")
     config.addinivalue_line("markers", "repo: checks this repository rather than a temporary one")
+    cli_smoke_lane.install()
+    config.pluginmanager.register(cli_smoke_lane, "cli_smoke_lane")
 
 
 @pytest.fixture(autouse=True)

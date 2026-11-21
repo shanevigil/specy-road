@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -28,14 +27,12 @@ from tests.support.review import (
     git,
 )
 from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
+from tests.support.cli import run_cli
 
 
 def _cli(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     """Run the public ``specy-road`` CLI in ``repo``."""
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(repo)],
-        cwd=repo, capture_output=True, text=True, check=False, env=script_subprocess_env(),
-    )
+    return run_cli([*args, "--repo-root", str(repo)], cwd=repo, env=script_subprocess_env())
 
 
 def _assert_generated_files_current(repo: Path) -> None:

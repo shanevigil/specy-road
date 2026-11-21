@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
-from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
+from tests.helpers import REPO, SCHEMAS, script_subprocess_env
+from tests.support.cli import run_script
 from tests.support.roadmap import roadmap_repo
 
 
@@ -75,15 +75,8 @@ def crud_fixture_repo(dest: Path) -> None:
 
 
 def run_crud(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    """Run ``roadmap_crud.py <args>`` from ``tmp`` as a child process; never raises on its exit."""
-    return subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "roadmap_crud.py"), *args],
-        cwd=tmp,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-        check=False,
-    )
+    """Run ``roadmap_crud.py <args>`` from ``tmp`` in this process; never raises on its exit."""
+    return run_script("roadmap_crud.py", list(args), cwd=tmp, env=script_subprocess_env())
 
 
 def write_registry_claim(

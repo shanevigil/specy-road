@@ -4,24 +4,21 @@ from __future__ import annotations
 
 from tests.support import REPO
 import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from specy_road.behaviour_changes import CATALOGUE
 from specy_road.cli import registered_agent_command_names
+from tests.support.cli import run_cli
 
 
 
 @pytest.mark.parametrize("command", sorted({entry.command for entry in CATALOGUE}))
 def test_every_entry_names_a_registered_command_and_flag(command: str) -> None:
     assert command in registered_agent_command_names()["specy-road"]
-    proc = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", command, "--help"],
-        capture_output=True, text=True, check=True, cwd=REPO,
-    )
+    proc = run_cli([command, "--help"], cwd=REPO)
+    proc.check_returncode()
     known = set(re.findall(r"--[a-z][a-z-]*", proc.stdout))
     for entry in CATALOGUE:
         if entry.command == command:

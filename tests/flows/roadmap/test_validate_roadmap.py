@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
+from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 from specy_road import __version__
 from specy_road.bundled_scripts import validate_roadmap as vr
@@ -29,21 +28,16 @@ from tests.support.extracted.folded_review_policy import PROFILE_REL, ROSTER
 from tests.helpers import SCHEMAS
 from tests.support.review import git
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
+from tests.support.cli import run_script
 
 
 def test_validate_script_is_quiet_when_no_parent_status_drifted() -> None:
     """The dogfood fixture's parents agree with their rollups, so nothing is reported."""
-    r = subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
-            "--repo-root",
-            str(DOGFOOD),
-        ],
+    r = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(DOGFOOD)],
         cwd=REPO,
         env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
     )
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert "rolls up to" not in (r.stderr or "")
@@ -215,17 +209,9 @@ def test_validate_required_planning_dirs_ok_when_set() -> None:
 
 
 def test_validate_script_exits_zero_on_repo() -> None:
-    subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
-            "--repo-root",
-            str(DOGFOOD),
-        ],
-        cwd=REPO,
-        env=script_subprocess_env(),
-        check=True,
-    )
+    argv = ["--repo-root", str(DOGFOOD)]
+    result = run_script("validate_roadmap.py", argv, cwd=REPO, env=script_subprocess_env())
+    result.check_returncode()
 
 
 def test_validate_node_keys_rejects_empty() -> None:
@@ -280,17 +266,11 @@ def test_validate_script_rejects_registry_unknown_node_id(tmp_path: Path) -> Non
         "    touch_zones: [tests/]\n",
         encoding="utf-8",
     )
-    r = subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
-            "--repo-root",
-            str(root),
-        ],
+    r = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(root)],
         cwd=REPO,
         env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
     )
     assert r.returncode == 1
     combined = (r.stderr or "") + (r.stdout or "")

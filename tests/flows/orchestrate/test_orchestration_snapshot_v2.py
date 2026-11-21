@@ -8,8 +8,6 @@ import re
 import shlex
 import shutil
 import stat
-import subprocess
-import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -31,6 +29,7 @@ from specy_road.orchestration.workers.worker_state import (
 from tests.helpers import REPO
 from tests.support.review import advance_dev, commit_file, make_review_repo, review_text, git
 from tests.support.same.quoted_aa331427ddf7 import quoted
+from tests.support.cli import run_cli
 
 ONE = """version: 1
 roster:
@@ -116,10 +115,7 @@ def _gate(state: str, approvals: int = 0, blocks: int = 0, fresh: bool = True) -
 
 
 def _handoff_state(repo: Path) -> str:
-    proc = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "handoff", "status", NODE, "--json", "--repo-root", str(repo)],
-        capture_output=True, text=True, check=False,
-    )
+    proc = run_cli(["handoff", "status", NODE, "--json", "--repo-root", str(repo)])
     return json.loads(proc.stdout)["nodes"][0]["state"]
 
 

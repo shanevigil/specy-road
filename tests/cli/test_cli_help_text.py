@@ -8,14 +8,13 @@ specy_road/bundled_scripts/...`` paths, ``usage: roadmap_crud.py ...`` lines and
 from __future__ import annotations
 
 import re
-import subprocess
-import sys
 
 import pytest
 
 from specy_road.cli import registered_agent_command_names
 from specy_road.doc_links import SHIPPED_DOCS
 from tests.helpers import script_subprocess_env
+from tests.support.cli import run_cli
 
 _DOC_REF = re.compile(r"(?<![\w/.-])docs/([\w-]+\.md)")
 _PY_FILE = re.compile(r"[\w/.-]+\.py\b")
@@ -27,14 +26,7 @@ _ROWS = [["--help"]] + [
 
 
 def _help(args: list[str], cwd) -> str:
-    proc = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *args],
-        cwd=cwd,
-        env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    proc = run_cli(args, cwd=cwd, env=script_subprocess_env())
     assert proc.returncode == 0, proc.stderr
     return proc.stdout
 

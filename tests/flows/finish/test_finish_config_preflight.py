@@ -16,40 +16,44 @@ from pathlib import Path
 import pytest
 import yaml
 
+import specy_road.bundled_scripts.finish_task as ft
 from specy_road.finish_bookkeeping_undo import restore_pre_commit, snapshot_pre_commit
 from specy_road.review_policy_pin import GATE_FIX
 from tests.helpers import REPO
+from tests.support.cli import run_cli
 from tests.support.review import commit_file, git
 from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
 
 ORCHESTRATION = (REPO / "specy_road" / "templates" / "project" / "roadmap" / "orchestration.yaml").read_text()
 AGAIN = "nothing was committed; fix it and run finish-this-task again"
 
-#: Runs finish with the failure named by ``INJECT`` (validate, digest or registry) injected.
-_INJECTED = """
-import os, subprocess, sys
-from pathlib import Path
-from unittest import mock
-import specy_road.bundled_scripts.finish_task as ft
+def _inject(mp: pytest.MonkeyPatch, where: str) -> None:
+    """Make finish fail at ``where``: the validate or digest command exits 3, or the registry write fails.
 
-where = os.environ["INJECT"]
-real = subprocess.check_call
+    Finish runs each of validate, export and digest as ``python -m specy_road.cli <command>``; the
+    ones not failed here run in this process, their output written where the child's would go.
+    """
 
-def check_call(argv, **kw):
-    if where in ("validate", "digest") and argv[1:4] == ["-m", "specy_road.cli", where]:
-        if where == "digest":
-            # export rewrote it first
-            assert "Complete" in (Path(kw["cwd"]) / "roadmap.md").read_text()
-        raise subprocess.CalledProcessError(3, argv)   # what check_call raises when the command exits 3
-    return real(argv, **kw)
+    def check_call(argv, **kw):
+        assert argv[1:3] == ["-m", "specy_road.cli"], argv
+        if where in ("validate", "digest") and argv[3] == where:
+            if where == "digest":
+                # export rewrote it first
+                assert "Complete" in (Path(kw["cwd"]) / "roadmap.md").read_text()
+            raise subprocess.CalledProcessError(3, argv)   # what check_call raises when the command exits 3
+        result = run_cli(argv[3:], cwd=kw["cwd"])
+        sys.stdout.write(result.stdout)
+        sys.stderr.write(result.stderr)
+        if result.returncode:
+            raise subprocess.CalledProcessError(result.returncode, argv)
+        return 0
 
-def write_registry(path, doc):
-    raise OSError(28, "No space left on device", str(path))
+    def write_registry(path, doc):
+        raise OSError(28, "No space left on device", str(path))
 
-with mock.patch.object(subprocess, "check_call", check_call), \\
-        mock.patch.object(ft, "write_registry", write_registry if where == "registry" else ft.write_registry):
-    ft.main(sys.argv[1:])
-"""
+    mp.setattr(subprocess, "check_call", check_call)
+    if where == "registry":
+        mp.setattr(ft, "write_registry", write_registry)
 
 
 def _repo(tmp_path: Path, monkeypatch) -> Path:
@@ -81,12 +85,10 @@ def _state(repo: Path) -> tuple[dict[str, bytes], str, str]:
     return files, git(repo, "ls-files", "-s"), git(repo, "rev-parse", "HEAD")
 
 
-def _run(repo: Path, argv: list[str], **env_over: str) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "PYTHONPATH": str(REPO), **env_over}
-    return subprocess.run(
-        [sys.executable, *argv, "--repo-root", str(repo)], cwd=repo, env=env,
-        capture_output=True, text=True, check=False,
-    )
+def _run(repo: Path, argv: list[str]) -> subprocess.CompletedProcess[str]:
+    """``specy-road <argv>`` in this process."""
+    env = {**os.environ, "PYTHONPATH": str(REPO)}
+    return run_cli([*argv, "--repo-root", str(repo)], cwd=repo, env=env)
 
 
 def _config_on_dev(repo: Path, rel: str, text: str, msg: str) -> None:
@@ -146,7 +148,7 @@ def test_refused_before_any_write(tmp_path: Path, monkeypatch, arrange, named: s
     repo = _repo(tmp_path, monkeypatch)
     arrange(repo, tmp_path)
     before, outside = _state(repo), _entry(tmp_path / "outside.md")
-    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    result = _run(repo, ["finish-this-task"])
     assert result.returncode == 1, result.stdout + result.stderr
     assert named in result.stderr, result.stderr
     assert "finish-this-task: nothing was changed" in result.stderr
@@ -231,11 +233,11 @@ def test_failure_before_the_commit_restores_the_tree(
         (repo / "work" / "brief-M1.1.md").write_text("# brief M1.1\n\nstaged\n")
         git(repo, "add", "work/brief-M1.1.md")
         (repo / "work" / "brief-M1.1.md").write_text("# brief M1.1\n\nunstaged\n")
-        argv = ["-m", "specy_road.cli", "finish-this-task"]
-    else:
-        argv = ["-c", _INJECTED]
     before = _state(repo)
-    result = _run(repo, argv, INJECT=inject)
+    with monkeypatch.context() as mp:
+        if inject != "commit":
+            _inject(mp, inject)
+        result = _run(repo, ["finish-this-task"])
     out = result.stdout + result.stderr
     assert result.returncode == 1, out
     assert named in result.stderr, out
@@ -256,7 +258,7 @@ def test_staging_by_the_hook_is_saved_and_named(tmp_path: Path, monkeypatch, sta
     repo = _repo(tmp_path, monkeypatch)
     _pre_commit_hook(repo, f"mkdir -p {Path(staged).parent} && echo 'hook bytes' > {staged} && git add -f {staged}")
     before = _state(repo)
-    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    result = _run(repo, ["finish-this-task"])
     out = result.stdout + result.stderr
     assert result.returncode == 1, out
     assert AGAIN in result.stderr and "could not restore" not in result.stderr and "Traceback" not in out, out

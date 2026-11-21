@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 from specy_road.roadmap_chunk_utils import (
@@ -17,7 +16,8 @@ from specy_road.roadmap_chunk_utils import (
     write_json_chunk,
 )
 from specy_road.roadmap_load import load_roadmap
-from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
+from tests.helpers import REPO, SCHEMAS, script_subprocess_env
+from tests.support import cli as support_cli
 
 NK_A = "20000000-0000-4000-8000-00000000aa01"
 NK_A1 = "20000000-0000-4000-8000-00000000aa02"
@@ -92,12 +92,8 @@ def base_fixture(dest: Path) -> None:
 
 
 def run_move_node(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "roadmap_move_node.py"), *args],
-        cwd=tmp,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
+    return support_cli.run_script(
+        "roadmap_move_node.py", list(args), cwd=tmp, env=script_subprocess_env()
     )
 
 
@@ -122,14 +118,9 @@ def commit_project(top: Path, project: Path) -> None:
 
 
 def run_cli(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    """Run a `specy-road` command through the real dispatcher, on ``tmp``."""
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(tmp)],
-        cwd=tmp,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-    )
+    """Run a `specy-road` command through the real dispatcher, on ``tmp``, in this process."""
+    argv = [*args, "--repo-root", str(tmp)]
+    return support_cli.run_cli(argv, cwd=tmp, env=script_subprocess_env())
 
 
 def nodes_by_key(root: Path) -> dict[str, dict]:

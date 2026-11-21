@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -11,8 +9,9 @@ from starlette.testclient import TestClient
 
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.roadmap_load import load_roadmap
-from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
+from tests.helpers import script_subprocess_env
 from tests.support.crud import crud_fixture_repo, run_crud, write_registry_claim
+from tests.support.cli import run_script
 
 
 def _tree_bytes(repo: Path) -> bytes:
@@ -39,15 +38,9 @@ def test_remove_node_succeeds_and_validates(tmp_path: Path) -> None:
     assert not planning.exists()
     nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
     assert {n["id"] for n in nodes} == {"M99", "M99.1"}
-    v = subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
-            "--repo-root",
-            str(tmp_path),
-        ],
-        capture_output=True,
-        text=True,
+    v = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(tmp_path)],
         env=script_subprocess_env(),
     )
     assert v.returncode == 0, v.stderr

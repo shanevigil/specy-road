@@ -3,30 +3,20 @@
 from __future__ import annotations
 
 import subprocess
-import sys
-from tests.helpers import BUNDLED_SCRIPTS, REPO, script_subprocess_env
+from tests.helpers import REPO, script_subprocess_env
 import pytest
+from tests.support.cli import run_script
 
 
 @pytest.mark.slow
 def test_file_limits_passes_on_repo() -> None:
-    subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "validate_file_limits.py")],
-        cwd=REPO,
-        env=script_subprocess_env(),
-        check=True,
-    )
+    result = run_script("validate_file_limits.py", [], cwd=REPO, env=script_subprocess_env())
+    result.check_returncode()
 
 
 def test_file_limits_help_names_ts_js_function_counts() -> None:
-    r = subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "validate_file_limits.py"), "--help"],
-        cwd=REPO,
-        env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    r = run_script("validate_file_limits.py", ["--help"], cwd=REPO, env=script_subprocess_env())
+    r.check_returncode()
     assert "optional Python and TS/JS function counts" in " ".join(r.stdout.split())
 
 
@@ -46,19 +36,11 @@ def _repo_with_an_ignored_oversize_file(tmp_path) -> None:
 
 
 def _run_file_limits(tmp_path, *extra: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "validate_file_limits.py"),
-            "--repo-root",
-            str(tmp_path),
-            *extra,
-        ],
+    return run_script(
+        "validate_file_limits.py",
+        ["--repo-root", str(tmp_path), *extra],
         cwd=REPO,
         env=script_subprocess_env(),
-        capture_output=True,
-        text=True,
-        check=False,
     )
 
 

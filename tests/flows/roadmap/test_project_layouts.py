@@ -20,12 +20,12 @@ import json
 import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, script_subprocess_env
+from tests.helpers import DOGFOOD, script_subprocess_env
+from tests.support.cli import run_script
 from tests.support.same.git_736cc1f249f0 import git
 
 #: (script, extra args) — the read-mostly commands a consumer runs constantly.
@@ -68,14 +68,7 @@ def layout(request: pytest.FixtureRequest, tmp_path: Path) -> tuple[Path, Path]:
 
 
 def _run(script: str, args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / script), *args],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-        check=False,
-    )
+    return run_script(script, args, cwd=cwd, env=script_subprocess_env())
 
 
 @pytest.mark.parametrize(("script", "args"), COMMANDS)

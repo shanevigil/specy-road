@@ -11,6 +11,7 @@ import pytest
 import yaml
 
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
+from tests.support.cli import run_module
 from tests.support.same.snapshot_3fe0117d744f import snapshot
 
 
@@ -35,8 +36,7 @@ def test_concurrent_add_idea_keeps_every_idea_with_distinct_ids(tmp_path: Path) 
 
 
 def _cli(repo: Path, *args: str, module: str = "specy_road.cli") -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, "-m", module, *args], cwd=repo, capture_output=True, text=True,
-                          env=script_subprocess_env())
+    return run_module(module, list(args), cwd=repo, env=script_subprocess_env())
 
 
 

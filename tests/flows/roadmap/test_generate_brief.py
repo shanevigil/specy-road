@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
-from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
+from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 from specy_road.bundled_scripts import generate_brief as gb
 import pytest
+from tests.support.cli import run_script
 
 
 @pytest.mark.slow
@@ -180,17 +180,7 @@ def test_render_brief_is_deterministic() -> None:
 
 @pytest.mark.slow
 def test_unknown_node_exits() -> None:
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(BUNDLED_SCRIPTS / "generate_brief.py"),
-            "M999.9",
-        ],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-    )
+    proc = run_script("generate_brief.py", ["M999.9"], cwd=REPO, env=script_subprocess_env())
     assert proc.returncode != 0
 
 

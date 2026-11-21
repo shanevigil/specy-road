@@ -395,7 +395,7 @@
       "parent_id": "M16.7",
       "planning_dir": "planning/M16.7.8_tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the_79115c79-0035-4781-9d38-d5a3b117631d.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses",
       "touch_zones": [
         "tests/",

@@ -15,6 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from tests.helpers import REPO
+from tests.support.cli import run_module
 
 PARITY = Path(__file__).resolve().parent
 GOLDEN = PARITY / "golden"
@@ -38,15 +39,8 @@ def cli_env(**extra: str) -> dict[str, str]:
 def run_cli(
     module: str, argv: list[str], *, cwd: Path, env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str]:
-    """Run ``python -m <module> <argv>`` as a user would, capturing its output."""
-    return subprocess.run(
-        [sys.executable, "-m", module, *argv],
-        cwd=cwd,
-        env=env or cli_env(),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    """Run ``python -m <module> <argv>`` as a user would, in this process, capturing its output."""
+    return run_module(module, argv, cwd=cwd, env=env or cli_env())
 
 
 def repo_copy(src: Path, dest: Path) -> Path:
