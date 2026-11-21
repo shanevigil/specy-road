@@ -620,9 +620,13 @@ def end_state() -> dict | None:
     return found if isinstance(found, dict) else None
 
 
-def changed_since(commit: str, *pathspecs: str) -> list[str]:
-    out = git("diff", "--name-only", commit, "HEAD", "--", *pathspecs)
+def changed_between(older: str, newer: str, *pathspecs: str) -> list[str]:
+    out = git("diff", "--name-only", older, newer, "--", *pathspecs)
     return [line for line in out.splitlines() if line]
+
+
+def changed_since(commit: str, *pathspecs: str) -> list[str]:
+    return changed_between(commit, "HEAD", *pathspecs)
 
 
 def coverage_percent(data_file: Path) -> float:
@@ -738,16 +742,43 @@ def measured_tree(root: Path) -> dict:
 
 
 def with_merge_base(sha: str, measure):
-    """Detach a temporary worktree at ``sha``, measure it, and remove the worktree."""
+    """Clone this checkout shared, detach it at ``sha``, measure, and delete the clone.
+
+    A linked worktree is not used: creating one writes under the common git directory.
+    """
     path = Path(tempfile.mkdtemp(prefix="m1681-base-"))
     path.rmdir()
-    added = run(["git", "worktree", "add", "--detach", str(path), sha])
-    if added.returncode != 0:
-        raise RuntimeError((added.stderr or "worktree add failed")[-2000:])
+    cloned = run(["git", "clone", "--shared", "--no-checkout", str(REPO), str(path)])
+    if cloned.returncode != 0:
+        raise RuntimeError((cloned.stderr or "clone failed")[-2000:])
+    checked = subprocess.run(
+        ["git", "checkout", "--detach", sha],
+        cwd=path, capture_output=True, text=True, check=False,
+    )
+    if checked.returncode != 0:
+        shutil.rmtree(path, ignore_errors=True)
+        raise RuntimeError((checked.stderr or "checkout failed")[-2000:])
     try:
         return measure(path)
     finally:
-        run(["git", "worktree", "remove", "--force", str(path)])
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def reusable_head_contexts(head: str) -> dict | None:
+    """The contexts run already on disk, when package and tests still match its commit."""
+    path = LEAN_WORK / "contexts.json"
+    data = LEAN_WORK / "contexts-data" / ".coverage"
+    if not path.is_file() or not data.is_file():
+        return None
+    header = path.read_text(encoding="utf-8")[:500]
+    match = re.search(r'"commit": "([0-9a-f]+)"', header)
+    if not match or '"pytest_exit": 0' not in header:
+        return None
+    recorded = match.group(1)
+    if changed_between(recorded, head, "specy_road", "tests"):
+        return None
+    print(f"reusing contexts at {recorded[:12]} (specy_road and tests unchanged)", flush=True)
+    return {"arcs": arc_union(path), "total": coverage_percent(data), "pytest_exit": 0}
 
 
 def integration_branch() -> str:
@@ -776,7 +807,7 @@ def measure_effectiveness() -> dict:
     base = merge_base_commit()
     head = git("rev-parse", "HEAD").strip()
     print(f"effectiveness: contexts at {head[:12]} ...", flush=True)
-    head_m = measured_tree(REPO)
+    head_m = reusable_head_contexts(head) or measured_tree(REPO)
     print(f"effectiveness: contexts at merge base {base[:12]} ...", flush=True)
     base_m = with_merge_base(base, measured_tree)
     identical = identical_package_files(base, head)
