@@ -218,3 +218,26 @@ entries:
     answer: 'keep (maintainer, 2026-11-10): composer-2.5 and grok-4.7-exec keep cursor_force:
       true until M20 provides isolation or Cursor''s sandbox starts on this host'
     closed: '2026-11-11T05:55:37+00:00'
+  - id: D9
+    node: M16.7.8
+    kind: human-action
+    summary: Confirm the suite effectiveness measures chosen for M16.7.8 (acceptance
+      A1), as recorded on its planning sheet
+    why_now: finish-this-task refuses M16.7.8 until a person closes this entry; a
+      planning-sheet A1 line no longer counts. The maintainer chose the measures on
+      2026-11-19 and they are on the sheet.
+    options:
+      - label: confirm
+        effect: 'The measures on the sheet stand: (1) TOTAL coverage of the reviewed
+          commit is at least fail_under and not below the merge base; (2) no covered
+          branch arc is lost on byte-identical modules; a mutation score comes after
+          0.3.1'
+      - label: change
+        effect: Name different measures; the leaf is measured again before it lands
+    recommendation: confirm
+    recommendation_reason: It is the choice already made and the one the leaf was
+      measured against (91.81% to 91.97%, 0 arcs lost at 12de0e0e)
+    default_if_unanswered: confirm
+    asked: '2026-11-21'
+    status: open
+    criterion: A1
