@@ -296,3 +296,14 @@ def test_a_shell_string_shlex_cannot_split_still_starts_and_is_not_counted(tmp_p
     )
     out = _inner_pytest(tmp_path, {"test_g.py": test}, [], "-p", "no:xdist")
     assert out.startswith("exit 0") and "1 passed" in out, out
+
+
+def test_a_path_like_args_start_runs_and_is_not_counted(tmp_path: Path) -> None:
+    """``subprocess.Popen`` takes a path-like as ``args``: through the real hook the child runs,
+    nothing is counted and the item passes."""
+    test = (
+        "import subprocess, sys\nfrom pathlib import Path\n\n\ndef test_path():\n"
+        "    subprocess.run(Path(sys.executable), input=b'', check=True)\n"
+    )
+    out = _inner_pytest(tmp_path, {"test_h.py": test}, [], "-p", "no:xdist")
+    assert out.startswith("exit 0") and "1 passed" in out, out

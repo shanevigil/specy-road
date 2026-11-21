@@ -11,13 +11,16 @@ duplicate id, more than :data:`MAX_ITEMS` ids) fails the teardown of the first i
 deselection, or a ``--collect-only`` run. A teardown failure keeps the test's own error text and
 adds the lane message after it.
 
-Limits: a start in a module- or session-scoped fixture's teardown, or from a background thread
+Limits: only the four spellings of :func:`starts_cli` are counted; any other way of reaching the
+CLI (another launcher such as ``py`` or ``uv run``, ``os.system``, ``os.exec*``,
+``multiprocessing``, a shell string that runs ``cd x && ...``) is not. A start in a module- or
+session-scoped fixture's teardown, or from a background thread
 left running by an earlier test, is charged to the item running at that moment; Windows-only
 spellings (``specy-road.exe``, ``py -m``) are matched by name only; a selected file that collects
 no item, or a run whose deselection leaves no item, is not checked; under ``--lf`` with
 recorded failures the missing-id check is skipped, because the last-failed plugin drops items
-before this module sees them. Counting never stops a child from starting: the real
-``Popen.__init__`` runs whatever the counting does.
+before this module sees them. Counting never stops a child from starting: a start the counting
+cannot read is not counted, and the real ``Popen.__init__`` runs once, after it.
 """
 
 from __future__ import annotations
@@ -139,15 +142,18 @@ def _is_import_call(func: ast.expr) -> bool:
 
 
 def _argv(args: object) -> list[str]:
-    """``args`` as a list of words. A string is split as a shell would, or on whitespace when it
-    is not valid shell-word syntax for :mod:`shlex` (``echo hi # don't``: an unbalanced quote)."""
+    """``args`` as a list of words. A path-like is one word, and path-like items are words; a
+    string is split as a shell would, or on whitespace when it is not valid shell-word syntax for
+    :mod:`shlex` (``echo hi # don't``: an unbalanced quote)."""
+    if isinstance(args, os.PathLike):
+        return [os.fsdecode(args)]
     if isinstance(args, (str, bytes)):
         text = os.fsdecode(args)
         try:
             return shlex.split(text)
         except ValueError:
             return text.split()
-    return [os.fsdecode(a) if isinstance(a, bytes) else str(a) for a in args]
+    return [os.fsdecode(a) if isinstance(a, (bytes, os.PathLike)) else str(a) for a in args]
 
 
 def _started_by_tests() -> bool:
@@ -167,16 +173,25 @@ _original_init = subprocess.Popen.__init__
 
 
 def _counting_init(self: subprocess.Popen, args: object, *a: object, **kw: object) -> None:
-    """Record the start if it counts, then start the child; the child starts whatever the
-    recording does."""
+    """Record the start if it counts (:func:`_record`), then start the child, once."""
+    _record(args)
+    _original_init(self, args, *a, **kw)
+
+
+def _record(args: object) -> None:
+    """Add ``args`` to every open record when it starts the CLI from test code.
+
+    Any error here means the start is not counted; it never reaches the caller, whose child
+    starts as it would without this module.
+    """
     try:
         argv = _argv(args)
         if starts_cli(argv) and _started_by_tests():
             with _lock:
                 for record in _recording:
                     record.append(argv)
-    finally:
-        _original_init(self, args, *a, **kw)
+    except Exception:   # a start the counting cannot read is not counted
+        return
 
 
 def install() -> None:
