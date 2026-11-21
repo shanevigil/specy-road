@@ -5,20 +5,31 @@ contexts and mutation runs see the code the test exercises. ``tests/conftest.py`
 module, which wraps :class:`subprocess.Popen` in each pytest process. An item is counted when test
 code (the first frame above the start that lies in ``tests/`` or the package) starts a CLI
 spelling (:func:`starts_cli`); a start made by package code (git, a worker child, the CLI's own
-children) is not counted. A counted item not listed in ``cli_smoke_lane.txt`` fails at teardown;
-a listed id the run does not collect although its file lies under a collected path, or a lane
-over :data:`MAX_ITEMS` ids, fails the teardown of the first item collected (:func:`lane_problems`).
+children) is not counted. A counted item not listed in ``cli_smoke_lane.txt`` fails at teardown.
+A lane problem (:func:`lane_problems`: a listed id the run selects but does not collect, a
+duplicate id, more than :data:`MAX_ITEMS` ids) fails the teardown of the first item left after
+deselection, or a ``--collect-only`` run. A teardown failure keeps the test's own error text and
+adds the lane message after it.
+
+Limits: a start in a module- or session-scoped fixture's teardown, or from a background thread
+left running by an earlier test, is charged to the item running at that moment; Windows-only
+spellings (``specy-road.exe``, ``py -m``) are matched by name only; a selected file that collects
+no item, or a run whose deselection leaves no item, is not checked; under ``--lf`` the
+missing-id check is skipped, because the last-failed plugin drops items before this module sees
+them.
 """
 
 from __future__ import annotations
 
+import ast
 import functools
 import os
 import re
+import shlex
 import subprocess
 import sys
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -36,6 +47,7 @@ WORKER_MODULES = frozenset(
 )
 _BUNDLED_SCRIPT = re.compile(r"(?:^|[\\/])specy_road[\\/]bundled_scripts[\\/][^\\/]+\.py$")
 _THIS_FILE = Path(__file__).resolve()
+_PYTHON = re.compile(r"python(\d+(\.\d+)?)?(\.exe)?")
 
 #: The running item's starts first, then one list per open :func:`recorded_starts` block; a start
 #: is added to every list.
@@ -49,36 +61,80 @@ def lane_ids() -> list[str]:
     return [s for s in (line.strip() for line in lines) if s and not s.startswith("#")]
 
 
-def starts_cli(argv: list[str]) -> bool:
-    """Whether ``argv`` starts the CLI: one of the console scripts, ``python -m specy_road...``
-    (but not a worker wrapper), ``python -c`` code naming the package (an ``import`` statement or
-    an ``importlib`` call), or a bundled script file. Interpreter options before them (``-P``,
-    ``-X utf8``) are skipped.
+def starts_cli(args: str | bytes | Sequence[str | bytes]) -> bool:
+    """Whether the child ``args`` (as :class:`subprocess.Popen` takes them; a string is split as
+    a shell would) starts the CLI: one of the console scripts; a Python interpreter (``python``,
+    ``pythonN``, ``pythonN.M``, optionally ``.exe``, or this interpreter) running ``-m`` on a
+    ``specy_road`` module other than a worker wrapper, ``-c`` code that imports ``specy_road``
+    (:func:`imports_package`), or a bundled script file. Short options may be combined or joined
+    to their value (``-Im specy_road``, ``-mspecy_road``, ``-cimport specy_road``).
     """
+    argv = _argv(args)
     program = os.path.basename(argv[0]) if argv else ""
     if program in ("specy-road", "specyrd"):
         return True
-    if not argv or not (program.startswith("python") or argv[0] == sys.executable):
+    if not argv or not (_PYTHON.fullmatch(program) or argv[0] == sys.executable):
         return False
-    rest = argv[1:]
-    while rest and rest[0].startswith("-") and rest[0] not in ("-m", "-c"):
-        rest = rest[2:] if rest[0] in ("-X", "-W") else rest[1:]
-    match rest:
-        case ["-m", module, *_]:
+    match _interpreter_target(argv[1:]):
+        case ("-m", module):
             found = module.split(".")[0] == "specy_road" and module not in WORKER_MODULES
-        case ["-c", code, *_]:
-            found = "specy_road" in code
-        case [path, *_]:
+        case ("-c", code):
+            found = imports_package(code)
+        case ("script", path):
             found = bool(_BUNDLED_SCRIPT.search(path))
         case _:
             found = False
     return found
 
 
+def _interpreter_target(args: list[str]) -> tuple[str, str] | None:
+    """What a Python command line runs: ``("-m", module)``, ``("-c", code)``,
+    ``("script", path)``, or None. Short options are read one letter at a time; ``-X`` and ``-W``
+    take a value."""
+    rest = list(args)
+    while rest and rest[0].startswith("-") and rest[0] != "-":
+        token = rest.pop(0)
+        if token.startswith("--"):
+            continue
+        for i, letter in enumerate(token[1:], start=2):
+            if letter in "mcXW":
+                value = token[i:] or (rest.pop(0) if rest else "")
+                if letter in "mc":
+                    return f"-{letter}", value
+                break
+    return ("script", rest[0]) if rest else None
+
+
+def imports_package(code: str) -> bool:
+    """Whether Python ``code`` imports ``specy_road``: an ``import`` or ``from ... import`` of it
+    or a submodule, or ``__import__`` / ``importlib.import_module`` called with a string naming
+    one. Code that does not parse imports nothing."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    names: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names += [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            names.append(node.module)
+        elif isinstance(node, ast.Call) and _is_import_call(node.func) and node.args:
+            first = node.args[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                names.append(first.value)
+    return any(name.split(".")[0] == "specy_road" for name in names)
+
+
+def _is_import_call(func: ast.expr) -> bool:
+    if isinstance(func, ast.Name):
+        return func.id in ("__import__", "import_module")
+    return isinstance(func, ast.Attribute) and func.attr == "import_module"
+
+
 def _argv(args: object) -> list[str]:
     if isinstance(args, (str, bytes)):
-        text = os.fsdecode(args)
-        return text.split()
+        return shlex.split(os.fsdecode(args))
     return [os.fsdecode(a) if isinstance(a, bytes) else str(a) for a in args]
 
 
@@ -122,8 +178,10 @@ def recorded_starts() -> Iterator[list[list[str]]]:
         _recording.pop()
 
 
-#: Lane problems (:func:`lane_problems`), by the node id of the item whose teardown reports them.
+#: Lane problems (:func:`lane_problems`) found when the run collected; reported by the first item
+#: left after deselection (its node id is the key once known) or by a ``--collect-only`` run.
 _lane_errors: dict[str, str] = {}
+_pending: list[str] = []
 
 
 def lane_problems(
@@ -137,12 +195,15 @@ def lane_problems(
     the selected path or inside it and, if the selection names a node, the id is that node, one
     of its parametrized rows (``node[...]``) or a member of it (``node::...``). So a deleted or
     renamed file, test or row is caught by a full run, a directory or file run and a run naming
-    that test alike. A listed id outside every selection is not checked. Separately, the lane may
-    hold at most :data:`MAX_ITEMS` ids.
+    that test alike. A listed id outside every selection is not checked. Separately, an id may
+    be listed once, and the lane may hold at most :data:`MAX_ITEMS` ids.
     """
     problems = [f"lists {len(listed)} ids; at most {MAX_ITEMS}"] if len(listed) > MAX_ITEMS else []
+    duplicates = sorted({nodeid for nodeid in listed if listed.count(nodeid) > 1})
+    if duplicates:
+        problems.append(f"lists ids more than once: {duplicates}")
     missing = [
-        nodeid for nodeid in listed
+        nodeid for nodeid in dict.fromkeys(listed)
         if nodeid not in collected and any(_selects(s, rootdir, nodeid) for s in selections)
     ]
     if missing:
@@ -161,16 +222,38 @@ def _selects(selection: str, rootdir: Path, nodeid: str) -> bool:
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Record :func:`lane_problems` on the first item collected, whose teardown reports them.
-
-    With xdist every worker collects the same items, so whichever runs that item reports them.
-    """
-    if not items:
-        return
+    """Find the lane problems against every collected item, before ``-k``, ``-m`` or
+    ``--deselect`` drop any. Under ``--lf`` only the duplicate and cap checks run."""
     selections = [str(config.invocation_params.dir / arg) for arg in config.args]
-    problems = lane_problems(lane_ids(), {i.nodeid for i in items}, config.rootpath, selections)
-    if problems:
-        _lane_errors[items[0].nodeid] = "; ".join(problems)
+    if config.getoption("lf", False):
+        selections = []
+    collected = {item.nodeid for item in items}
+    _pending[:] = lane_problems(lane_ids(), collected, config.rootpath, selections)
+
+
+class AfterDeselection:
+    """The plugin that hands lane problems to the first item left after deselection."""
+
+    @pytest.hookimpl(trylast=True)
+    def pytest_collection_modifyitems(self, items: list[pytest.Item]) -> None:
+        """That item's teardown reports them. With xdist every worker collects and deselects the
+        same items, so whichever runs that item reports them, once."""
+        if _pending and items:
+            _lane_errors[items[0].nodeid] = "; ".join(_pending)
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register :class:`AfterDeselection` beside this module."""
+    config.pluginmanager.register(AfterDeselection(), "cli_smoke_lane_after_deselection")
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """A ``--collect-only`` run runs no teardown: it reports lane problems as a usage error.
+
+    xdist does not distribute a collect-only run, so this is the one process that collected.
+    """
+    if session.config.option.collectonly and _pending:
+        raise pytest.UsageError(f"tests/support/{LANE_FILE.name} " + "; ".join(_pending))
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -184,24 +267,25 @@ def pytest_runtest_protocol(item: pytest.Item) -> Iterator[None]:
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> Iterator[None]:
     """Fail the teardown of an item that started the CLI but is not in the smoke lane, and of the
-    item that reports a lane-file problem."""
+    item that reports lane problems; a test's own teardown failure stays, the lane text after it."""
     outcome = yield
     report = outcome.get_result()
     if call.when != "teardown":
         return
+    messages = []
     if item.nodeid in _lane_errors:
-        report.outcome = "failed"
-        report.longrepr = f"tests/support/{LANE_FILE.name} {_lane_errors[item.nodeid]}"
-        return
+        messages.append(f"tests/support/{LANE_FILE.name} {_lane_errors[item.nodeid]}")
     starts = _recording[0]
-    if not starts or item.nodeid in _lane():
-        return
-    report.outcome = "failed"
-    report.longrepr = (
-        f"{item.nodeid} started the CLI as a child process ({' '.join(starts[0][:4])} ...) "
-        f"but is not in tests/support/{LANE_FILE.name}: call it in process with "
-        "tests.support.cli.run_cli or run_main"
-    )
+    if starts and item.nodeid not in _lane():
+        messages.append(
+            f"{item.nodeid} started the CLI as a child process ({' '.join(starts[0][:4])} ...) "
+            f"but is not in tests/support/{LANE_FILE.name}: call it in process with "
+            "tests.support.cli.run_cli or run_main"
+        )
+    if messages:
+        own = [str(report.longrepr)] if report.failed and report.longrepr else []
+        report.outcome = "failed"
+        report.longrepr = "\n\n".join(own + messages)
 
 
 @functools.cache
