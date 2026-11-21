@@ -127,26 +127,36 @@ _lane_errors: dict[str, str] = {}
 
 
 def lane_problems(
-    listed: list[str], collected: set[str], rootdir: Path, collect_paths: list[Path]
+    listed: list[str], collected: set[str], rootdir: Path, selections: list[str]
 ) -> list[str]:
     """What is wrong with the lane ``listed`` for a run that collected ``collected``.
 
-    One rule for listed ids: an id must be collected when its file lies under a path the run
-    collects (``collect_paths``: the command-line paths, or ``testpaths`` when none is given),
-    whether or not anything else from that file was collected, so a deleted or renamed file is
-    caught as well as a deleted or renamed test. A listed file outside every collected path is
-    not checked. Separately, the lane may hold at most :data:`MAX_ITEMS` ids.
+    One rule for listed ids: an id must be collected when it lies under something the run selects
+    (``selections``: the command-line arguments, or ``testpaths`` when none is given, each an
+    absolute path with an optional ``::`` node part). It lies under a selection when its file is
+    the selected path or inside it and, if the selection names a node, the id is that node, one
+    of its parametrized rows (``node[...]``) or a member of it (``node::...``). So a deleted or
+    renamed file, test or row is caught by a full run, a directory or file run and a run naming
+    that test alike. A listed id outside every selection is not checked. Separately, the lane may
+    hold at most :data:`MAX_ITEMS` ids.
     """
     problems = [f"lists {len(listed)} ids; at most {MAX_ITEMS}"] if len(listed) > MAX_ITEMS else []
-    roots = [path.resolve() for path in collect_paths]
-    files = {nodeid: (rootdir / nodeid.split("::", 1)[0]).resolve() for nodeid in listed}
     missing = [
-        nodeid for nodeid, file in files.items()
-        if nodeid not in collected and any(file.is_relative_to(root) for root in roots)
+        nodeid for nodeid in listed
+        if nodeid not in collected and any(_selects(s, rootdir, nodeid) for s in selections)
     ]
     if missing:
         problems.append(f"lists ids that are not collected: {missing}")
     return problems
+
+
+def _selects(selection: str, rootdir: Path, nodeid: str) -> bool:
+    """Whether ``selection`` (an absolute path, optionally ``::node``) selects ``nodeid``."""
+    path, _, node = selection.partition("::")
+    file, _, name = nodeid.partition("::")
+    if not (rootdir / file).resolve().is_relative_to(Path(path).resolve()):
+        return False
+    return not node or name == node or name.startswith((f"{node}[", f"{node}::"))
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -154,12 +164,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     """Record :func:`lane_problems` on the first item collected, whose teardown reports them.
 
     With xdist every worker collects the same items, so whichever runs that item reports them.
-    A run that names node ids (``file::test``) collects part of a file and is not checked.
     """
-    if not items or any("::" in arg for arg in config.args):
+    if not items:
         return
-    paths = [config.invocation_params.dir / arg for arg in config.args]
-    problems = lane_problems(lane_ids(), {i.nodeid for i in items}, config.rootpath, paths)
+    selections = [str(config.invocation_params.dir / arg) for arg in config.args]
+    problems = lane_problems(lane_ids(), {i.nodeid for i in items}, config.rootpath, selections)
     if problems:
         _lane_errors[items[0].nodeid] = "; ".join(problems)
 

@@ -110,6 +110,7 @@ def test_every_package_module_imports_without_running_a_command() -> None:
 
 
 _LISTED = ["tests/a/test_x.py::test_one", "tests/b/test_gone.py::test_two"]
+_TWO, _THREE = _LISTED[1], "tests/b/test_gone.py::test_three"
 
 
 @pytest.mark.parametrize(
@@ -121,6 +122,12 @@ _LISTED = ["tests/a/test_x.py::test_one", "tests/b/test_gone.py::test_two"]
                      [f"lists ids that are not collected: {[_LISTED[1]]}"],
                      id="test-absent-file-present"),
         pytest.param(_LISTED, {_LISTED[0]}, ["tests/a"], [], id="file-outside-the-collected-paths"),
+        pytest.param(_LISTED, set(), [_TWO],
+                     [f"lists ids that are not collected: {[_LISTED[1]]}"], id="named-node-absent"),
+        pytest.param([f"{_TWO}[1]"], set(), [_TWO],
+                     [f"lists ids that are not collected: {[f'{_TWO}[1]']}"],
+                     id="row-of-the-named-node-absent"),
+        pytest.param(_LISTED, {_THREE}, [_THREE], [], id="other-node-of-the-file-not-checked"),
         pytest.param(_LISTED, set(_LISTED), ["tests"], [], id="all-collected"),
         pytest.param([f"tests/t.py::test_{n}" for n in range(MAX_ITEMS + 1)],
                      {f"tests/t.py::test_{n}" for n in range(MAX_ITEMS + 1)}, ["tests"],
@@ -130,6 +137,8 @@ _LISTED = ["tests/a/test_x.py::test_one", "tests/b/test_gone.py::test_two"]
 def test_lane_problems_names_listed_ids_a_run_should_collect_but_does_not(
     tmp_path: Path, listed: list[str], collected: set[str], paths: list[str], problems: list[str]
 ) -> None:
-    """A listed id is required when its file lies under a collected path, even when nothing else
-    from that file was collected; a file outside every collected path is not checked."""
-    assert lane_problems(listed, collected, tmp_path, [tmp_path / p for p in paths]) == problems
+    """A listed id is required when it lies under a selection: a path containing its file (even
+    when nothing else from that file was collected), or a named node that is it, a row of it or
+    contains it. An id outside every selection is not checked."""
+    selections = [str(tmp_path / p) for p in paths]
+    assert lane_problems(listed, collected, tmp_path, selections) == problems
