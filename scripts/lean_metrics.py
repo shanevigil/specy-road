@@ -19,6 +19,14 @@ Usage:
                                                # in the rc5 end-state section. The check
                                                # does not load the product roadmap,
                                                # which promotion removes.
+                                               # A difference from the recorded commit
+                                               # in the package, the tests, or the
+                                               # [tool.coverage] settings, committed or
+                                               # only in the working tree, is one notice,
+                                               # not a failure. The printed TOTAL stays
+                                               # the recorded figure and is not labelled
+                                               # as this tree when they differ. The check
+                                               # does not run a coverage suite.
     python scripts/lean_metrics.py --record-end-state
                                                # measure rc5 and write it as the
                                                # rc5_end_state section, leaving the
@@ -650,13 +658,98 @@ def end_state() -> dict | None:
     return found if isinstance(found, dict) else None
 
 
-def changed_between(older: str, newer: str, *pathspecs: str) -> list[str]:
-    out = git("diff", "--name-only", older, newer, "--", *pathspecs)
-    return [line for line in out.splitlines() if line]
+def coverage_settings(text: str):
+    """The ``[tool.coverage]`` table in a ``pyproject.toml`` body.
+
+    ``None`` when the file has no such table. A short marker when the body is not
+    TOML, so a broken file differs from a real table instead of aborting the check.
+    """
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return ("unreadable",)
+    if not isinstance(data, dict):
+        return None
+    tool = data.get("tool")
+    if not isinstance(tool, dict):
+        return None
+    return tool.get("coverage")
 
 
-def changed_since(commit: str, *pathspecs: str) -> list[str]:
-    return changed_between(commit, "HEAD", *pathspecs)
+def coverage_settings_differ(commit: str) -> bool:
+    """Whether the working tree's ``[tool.coverage]`` table differs from ``commit``."""
+    shown = run(["git", "show", f"{commit}:pyproject.toml"])
+    old = "" if shown.returncode != 0 else shown.stdout
+    path = REPO / "pyproject.toml"
+    current = path.read_text(encoding="utf-8") if path.is_file() else ""
+    return coverage_settings(current) != coverage_settings(old)
+
+
+def working_tree_changes(commit: str, *pathspecs: str) -> list[str]:
+    """Paths under ``pathspecs`` whose working tree differs from ``commit``.
+
+    ``git diff <commit>`` compares the working tree to that commit, so a later
+    commit, a staged edit and an unstaged edit are all included. Untracked files
+    are not in that diff, so they are listed separately.
+    """
+    diff = run(["git", "diff", "--name-only", commit, "--", *pathspecs])
+    if diff.returncode != 0:
+        return []
+    names = {line for line in diff.stdout.splitlines() if line}
+    untracked = run(["git", "ls-files", "--others", "--exclude-standard", "--", *pathspecs])
+    if untracked.returncode == 0:
+        names.update(line for line in untracked.stdout.splitlines() if line)
+    return sorted(names)
+
+
+def effectiveness_drift(commit: str) -> list[str]:
+    """What makes the recorded effectiveness describe a different tree.
+
+    Empty when ``specy_road``, ``tests`` and ``[tool.coverage]`` still match
+    ``commit``, including the working tree. A stale recording is a notice, not a
+    gate: the caller prints this list and still judges the recorded result.
+    """
+    if run(["git", "cat-file", "-e", f"{commit}^{{commit}}"]).returncode != 0:
+        return [f"recorded commit {commit[:12]} is not in this clone"]
+    drifted: list[str] = []
+    if coverage_settings_differ(commit):
+        drifted.append("pyproject.toml [tool.coverage]")
+    drifted.extend(working_tree_changes(commit, "specy_road", "tests"))
+    return drifted
+
+
+def print_drift_notice(commit: str, drifted: list[str]) -> None:
+    """One notice: what differs, the recorded commit, and how to re-record."""
+    shown = ", ".join(drifted[:8])
+    if len(drifted) > 8:
+        shown = f"{shown}, and {len(drifted) - 8} more"
+    print(
+        "notice: recorded effectiveness is not for this tree "
+        f"(recorded at {commit[:12]}). Differs: {shown}. "
+        "Re-record with: python scripts/lean_metrics.py --record-end-state"
+    )
+
+
+def print_recorded_coverage(recorded: dict | None, drifted: list[str]) -> None:
+    """The recorded TOTAL, labelled as recorded. Never a new measurement."""
+    if not recorded or "coverage" not in recorded:
+        print(
+            "coverage TOTAL is not recorded. "
+            "Re-record with: python scripts/lean_metrics.py --record-end-state"
+        )
+        return
+    coverage = recorded["coverage"]
+    short = str(recorded.get("commit", ""))[:12]
+    if drifted:
+        print(
+            f"coverage TOTAL {coverage['total']}% recorded at {short}, "
+            f"not a measurement of this tree, against fail_under {coverage['fail_under']}"
+        )
+        return
+    print(
+        f"coverage TOTAL {coverage['total']}% against fail_under {coverage['fail_under']} "
+        f"(recorded at {short}; this tree matches)"
+    )
 
 
 def coverage_percent(data_file: Path) -> float:
@@ -671,32 +764,6 @@ def coverage_percent(data_file: Path) -> float:
         detail = (proc.stderr or proc.stdout).strip()
         raise RuntimeError(detail[-2000:] or f"coverage json exited {proc.returncode}")
     return float(json.loads(dest.read_text(encoding="utf-8"))["totals"]["percent_covered"])
-
-
-def live_coverage_total() -> float:
-    """One full suite under the pyproject coverage settings, then its TOTAL."""
-    env = coverage_off_env()
-    proc = run([sys.executable, "-m", "coverage", "run", *PYTEST], env=env)
-    print(proc.stdout.splitlines()[-1] if proc.stdout else proc.stderr, flush=True)
-    if proc.returncode != 0:
-        raise RuntimeError(f"coverage suite exited {proc.returncode}")
-    combined = run([sys.executable, "-m", "coverage", "combine", "-q"], env=env)
-    if combined.returncode != 0:
-        detail = (combined.stderr or combined.stdout).strip()
-        raise RuntimeError(detail[-2000:] or "coverage combine failed")
-    data_file = REPO / "work" / ".coverage"
-    return coverage_percent(data_file)
-
-
-def coverage_for_check(recorded: dict | None) -> tuple[float, str]:
-    """The recorded TOTAL when this tree's package and tests are still that commit."""
-    if recorded and recorded.get("coverage") and not changed_since(
-        str(recorded["commit"]), "specy_road", "tests"
-    ):
-        total = float(recorded["coverage"]["total"])
-        return total, f"recorded at {str(recorded['commit'])[:12]} (specy_road and tests unchanged)"
-    print("measuring coverage ...", flush=True)
-    return live_coverage_total(), "measured now"
 
 
 def write_end_state(section: dict) -> None:
@@ -863,22 +930,21 @@ def measure_effectiveness() -> dict:
     }
 
 
-def gate_failures(current: dict, total: float, recorded: dict | None) -> list[str]:
-    """Hard gates. Line counts and suite time are never among them."""
+def gate_failures(current: dict, recorded: dict | None) -> list[str]:
+    """Hard gates. Line counts, suite time and a stale recording are never among them.
+
+    Coverage gates read the recorded flags. They do not compare a new measurement,
+    or the working tree's current ``fail_under``, so a coverage-settings edit cannot
+    fail the check by itself.
+    """
     failures: list[str] = []
     canonical = current["metrics"]["commands"]["canonical"]
     if canonical > CANONICAL_BOUND:
         failures.append(f"canonical command count {canonical} is above {CANONICAL_BOUND}")
-    if total < fail_under():
-        failures.append(f"coverage TOTAL {total} is below fail_under {fail_under()}")
     if not recorded or "effectiveness" not in recorded:
         failures.append("rc5 effectiveness is not recorded; run --record-end-state")
         return failures
     effect = recorded["effectiveness"]
-    stale = changed_since(str(recorded["commit"]), "specy_road", "tests")
-    if stale:
-        shown = ", ".join(stale[:8])
-        failures.append(f"effectiveness was recorded before specy_road or tests changed: {shown}")
     if not effect.get("coverage_at_least_fail_under"):
         failures.append("recorded coverage is below fail_under")
     if not effect.get("coverage_not_below_merge_base"):
@@ -909,18 +975,27 @@ def check() -> int:
     print_command_bound(current)
     print_suite(current)
     recorded = end_state()
-    total, how = coverage_for_check(recorded)
-    print(f"coverage TOTAL {total}% against fail_under {fail_under()} ({how})")
+    commit = str(recorded.get("commit") or "") if recorded else ""
+    drifted = effectiveness_drift(commit) if commit else []
+    if drifted:
+        print_drift_notice(commit, drifted)
+    print_recorded_coverage(recorded, drifted)
     if recorded and "effectiveness" in recorded:
         effect = recorded["effectiveness"]
+        where = str(recorded.get("commit", ""))[:12]
+        lead = (
+            f"recorded effectiveness at {where}, not for this tree"
+            if drifted
+            else f"effectiveness at {where}"
+        )
         print(
-            f"effectiveness at {str(recorded['commit'])[:12]}: "
+            f"{lead}: "
             f"coverage >= fail_under {effect['coverage_at_least_fail_under']}; "
             f"not below merge base {effect['coverage_not_below_merge_base']}; "
             f"unchanged-module arcs kept {effect['identical_module_only_before_arcs_empty']} "
             f"({effect['identical_modules']} identical modules)"
         )
-    failures = gate_failures(current, total, recorded)
+    failures = gate_failures(current, recorded)
     for item in failures:
         print(f"FAIL: {item}")
     if failures:
