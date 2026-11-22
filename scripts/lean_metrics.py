@@ -22,10 +22,13 @@ Usage:
                                                # A difference from the recorded commit
                                                # in the package, the tests, or the
                                                # [tool.coverage] settings, committed or
-                                               # only in the working tree, is one notice,
-                                               # not a failure. The printed TOTAL stays
-                                               # the recorded figure and is not labelled
-                                               # as this tree when they differ. The check
+                                               # only in the working tree, means that
+                                               # recording is for another tree. The check
+                                               # says so, labels the recorded figures as
+                                               # recorded, and does not say the gates
+                                               # passed. Staleness alone exits 0. The
+                                               # recorded TOTAL is compared with the
+                                               # current fail_under every time. The check
                                                # does not run a coverage suite.
     python scripts/lean_metrics.py --record-end-state
                                                # measure rc5 and write it as the
@@ -706,8 +709,8 @@ def effectiveness_drift(commit: str) -> list[str]:
     """What makes the recorded effectiveness describe a different tree.
 
     Empty when ``specy_road``, ``tests`` and ``[tool.coverage]`` still match
-    ``commit``, including the working tree. A stale recording is a notice, not a
-    gate: the caller prints this list and still judges the recorded result.
+    ``commit``, including the working tree. Anything else means the recording is
+    for another tree: the check does not judge it and does not call that a pass.
     """
     if run(["git", "cat-file", "-e", f"{commit}^{{commit}}"]).returncode != 0:
         return [f"recorded commit {commit[:12]} is not in this clone"]
@@ -718,20 +721,31 @@ def effectiveness_drift(commit: str) -> list[str]:
     return drifted
 
 
-def print_drift_notice(commit: str, drifted: list[str]) -> None:
-    """One notice: what differs, the recorded commit, and how to re-record."""
+def print_not_judged(commit: str, recorded: dict | None, drifted: list[str]) -> None:
+    """The recording belongs to another tree. It is not a result for this one."""
     shown = ", ".join(drifted[:8])
     if len(drifted) > 8:
         shown = f"{shown}, and {len(drifted) - 8} more"
+    coverage = recorded.get("coverage") if isinstance(recorded, dict) else None
+    if isinstance(coverage, dict) and "total" in coverage:
+        figures = f"Recorded coverage TOTAL {coverage['total']}%. "
+        if "fail_under" in coverage:
+            figures = (
+                f"Recorded coverage TOTAL {coverage['total']}% "
+                f"(recorded fail_under {coverage['fail_under']}). "
+            )
+    else:
+        figures = ""
     print(
-        "notice: recorded effectiveness is not for this tree "
-        f"(recorded at {commit[:12]}). Differs: {shown}. "
+        "effectiveness and coverage were recorded at "
+        f"{commit[:12]} for another tree and are not judged for this one. "
+        f"{figures}Differs: {shown}. "
         "Re-record with: python scripts/lean_metrics.py --record-end-state"
     )
 
 
-def print_recorded_coverage(recorded: dict | None, drifted: list[str]) -> None:
-    """The recorded TOTAL, labelled as recorded. Never a new measurement."""
+def print_recorded_coverage(recorded: dict | None) -> None:
+    """The recorded TOTAL for this tree, which matches the recorded commit."""
     if not recorded or "coverage" not in recorded:
         print(
             "coverage TOTAL is not recorded. "
@@ -740,14 +754,8 @@ def print_recorded_coverage(recorded: dict | None, drifted: list[str]) -> None:
         return
     coverage = recorded["coverage"]
     short = str(recorded.get("commit", ""))[:12]
-    if drifted:
-        print(
-            f"coverage TOTAL {coverage['total']}% recorded at {short}, "
-            f"not a measurement of this tree, against fail_under {coverage['fail_under']}"
-        )
-        return
     print(
-        f"coverage TOTAL {coverage['total']}% against fail_under {coverage['fail_under']} "
+        f"coverage TOTAL {coverage['total']}% against fail_under {fail_under()} "
         f"(recorded at {short}; this tree matches)"
     )
 
@@ -930,23 +938,29 @@ def measure_effectiveness() -> dict:
     }
 
 
-def gate_failures(current: dict, recorded: dict | None) -> list[str]:
-    """Hard gates. Line counts, suite time and a stale recording are never among them.
+def gate_failures(current: dict, recorded: dict | None, *, fresh: bool) -> list[str]:
+    """Hard gates. Line counts, suite time and staleness itself are never among them.
 
-    Coverage gates read the recorded flags. They do not compare a new measurement,
-    or the working tree's current ``fail_under``, so a coverage-settings edit cannot
-    fail the check by itself.
+    The floor is the current ``[tool.coverage.report] fail_under`` compared with the
+    recorded TOTAL, not the pass flag stored at record time. Merge-base and arc
+    results are judged only when this tree is the recorded tree.
     """
     failures: list[str] = []
     canonical = current["metrics"]["commands"]["canonical"]
     if canonical > CANONICAL_BOUND:
         failures.append(f"canonical command count {canonical} is above {CANONICAL_BOUND}")
-    if not recorded or "effectiveness" not in recorded:
+    if not recorded or "coverage" not in recorded or "effectiveness" not in recorded:
         failures.append("rc5 effectiveness is not recorded; run --record-end-state")
         return failures
+    total = recorded["coverage"]["total"]
+    floor = fail_under()
+    if float(total) < floor:
+        failures.append(
+            f"recorded coverage TOTAL {total} is below the current fail_under {floor}"
+        )
+    if not fresh:
+        return failures
     effect = recorded["effectiveness"]
-    if not effect.get("coverage_at_least_fail_under"):
-        failures.append("recorded coverage is below fail_under")
     if not effect.get("coverage_not_below_merge_base"):
         failures.append("recorded coverage is below the merge base TOTAL")
     if not effect.get("identical_module_only_before_arcs_empty"):
@@ -956,6 +970,33 @@ def gate_failures(current: dict, recorded: dict | None) -> list[str]:
     if any(exits):
         failures.append(f"a pytest run in the effectiveness measurement exited {exits}")
     return failures
+
+
+def report_gates(current: dict, recorded: dict | None, drifted: list[str]) -> int:
+    """Print what A2 holds for this tree. A stale recording is not a pass."""
+    if drifted:
+        commit = str(recorded.get("commit") or "") if recorded else ""
+        print_not_judged(commit, recorded, drifted)
+    else:
+        print_recorded_coverage(recorded)
+        if recorded and "effectiveness" in recorded:
+            effect = recorded["effectiveness"]
+            where = str(recorded.get("commit", ""))[:12]
+            print(
+                f"effectiveness at {where}: "
+                f"not below merge base {effect['coverage_not_below_merge_base']}; "
+                f"unchanged-module arcs kept {effect['identical_module_only_before_arcs_empty']} "
+                f"({effect['identical_modules']} identical modules)"
+            )
+    failures = gate_failures(current, recorded, fresh=not drifted)
+    for item in failures:
+        print(f"FAIL: {item}")
+    if failures:
+        return 1
+    if drifted:
+        return 0
+    print("gates passed; line counts and suite time are not gates")
+    return 0
 
 
 def check() -> int:
@@ -977,31 +1018,7 @@ def check() -> int:
     recorded = end_state()
     commit = str(recorded.get("commit") or "") if recorded else ""
     drifted = effectiveness_drift(commit) if commit else []
-    if drifted:
-        print_drift_notice(commit, drifted)
-    print_recorded_coverage(recorded, drifted)
-    if recorded and "effectiveness" in recorded:
-        effect = recorded["effectiveness"]
-        where = str(recorded.get("commit", ""))[:12]
-        lead = (
-            f"recorded effectiveness at {where}, not for this tree"
-            if drifted
-            else f"effectiveness at {where}"
-        )
-        print(
-            f"{lead}: "
-            f"coverage >= fail_under {effect['coverage_at_least_fail_under']}; "
-            f"not below merge base {effect['coverage_not_below_merge_base']}; "
-            f"unchanged-module arcs kept {effect['identical_module_only_before_arcs_empty']} "
-            f"({effect['identical_modules']} identical modules)"
-        )
-    failures = gate_failures(current, recorded)
-    for item in failures:
-        print(f"FAIL: {item}")
-    if failures:
-        return 1
-    print("gates passed; line counts and suite time are not gates")
-    return 0
+    return report_gates(current, recorded, drifted)
 
 
 def record_end_state() -> int:
