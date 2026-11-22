@@ -102,7 +102,7 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
-- `python scripts/lean_metrics.py --check` prints package, test and docs size, the C901 and long-line counts, and the command and alias counts against the M16.1.7 baseline in `constraints/lean-baseline.json`. It fails when the canonical command count is above the bound recorded by M16.4.4 or coverage is below `fail_under`. Line counts and suite time are printed and do not fail it. The baseline numbers stay; rc5 is a separate end-state section of that file. With no mode the script no longer rewrites the baseline.
+- `python scripts/lean_metrics.py --check` prints package, test and docs size, the C901 and long-line counts, and the command and alias counts against the M16.1.7 baseline in `constraints/lean-baseline.json`. It fails when the canonical command count is above the bound recorded by M16.4.4 or coverage is below `fail_under`. Line counts and suite time are printed and do not fail it. The informational estimate sums it prints are the ones stored in the rc5 end-state section of that file, so the check does not load the product roadmap and still completes after promotion removes it. The baseline numbers stay; rc5 is a separate end-state section. With no mode the script no longer rewrites the baseline.
 
 - Shipped Codex guidance leaves `goals` on. `harness-facts.yaml` classifies it as `use` (the 2026-11-02
   F15 `avoid` is superseded by the operator decision of 2026-11-20, "goals same as multi_agent"). The Codex

@@ -15,6 +15,10 @@ Usage:
                                                # and the ruff quality-family report
                                                # (scripts/ruff_quality_baseline.py).
                                                # Line counts and suite time never fail it.
+                                               # The estimate sums are the ones stored
+                                               # in the rc5 end-state section. The check
+                                               # does not load the product roadmap,
+                                               # which promotion removes.
     python scripts/lean_metrics.py --record-end-state
                                                # measure rc5 and write it as the
                                                # rc5_end_state section, leaving the
@@ -548,7 +552,10 @@ def line_estimates() -> dict[str, int]:
     """Sum of M16 leaves' informational line estimates, by package, tests and docs.
 
     A leaf that names a kind twice is counted once. Leaves that name no kind of that
-    sort add nothing. The sums are printed beside the measured line counts and never gate.
+    sort add nothing. Only ``--record-end-state`` calls this, while the product
+    roadmap is still in the checkout, and stores the sums. ``--check`` reads those
+    stored sums and does not load the roadmap, so it still finishes after promotion
+    removes it. The sums are printed beside the measured line counts and never gate.
     """
     from specy_road.roadmap_load import load_roadmap
     from specy_road.runtime_paths import project_root
@@ -573,6 +580,29 @@ def line_estimates() -> dict[str, int]:
                 sums[kind] += int(number)
                 leaves[kind] += 1
     return {**sums, **{f"{kind}_leaves": count for kind, count in leaves.items()}}
+
+
+_ESTIMATE_KEYS = (
+    "package",
+    "tests",
+    "docs",
+    "package_leaves",
+    "tests_leaves",
+    "docs_leaves",
+)
+
+
+def recorded_estimates(baseline: dict) -> dict[str, int] | None:
+    """Informational estimate sums stored in ``rc5_end_state``, or ``None`` when absent.
+
+    ``--check`` uses this and does not load the product roadmap. Promotion removes
+    that roadmap, and the sums are already in the baseline file that ships.
+    """
+    section = baseline.get("rc5_end_state")
+    estimates = section.get("estimates") if isinstance(section, dict) else None
+    if not isinstance(estimates, dict) or any(key not in estimates for key in _ESTIMATE_KEYS):
+        return None
+    return {key: int(estimates[key]) for key in _ESTIMATE_KEYS}
 
 
 def print_estimates(baseline: dict, current: dict, estimates: dict[str, int]) -> None:
@@ -868,7 +898,14 @@ def check() -> int:
     print_deltas(baseline, current)
     print_width_report()
     print_quality_report()
-    print_estimates(baseline, current, line_estimates())
+    estimates = recorded_estimates(baseline)
+    if estimates is None:
+        print(
+            "line estimates are not in the shipped rc5 end state "
+            "(not a gate; --record-end-state stores them)"
+        )
+    else:
+        print_estimates(baseline, current, estimates)
     print_command_bound(current)
     print_suite(current)
     recorded = end_state()
