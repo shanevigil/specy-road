@@ -79,7 +79,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Complete**
     - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Complete**
   - `M16.8` rc5 close, alias window, end-to-end pass and the 0.3.1 tag `rc5-close-alias-window-end-to-end-pass-and-the-0-3-1-tag` — milestone — **Not Started**
-    - `M16.8.1` rc5 close: lean metrics measured against the baseline `rc5-close-lean-metrics-measured-against-the-baseline` — task — **Not Started**
+    - `M16.8.1` rc5 close: lean metrics measured against the baseline `rc5-close-lean-metrics-measured-against-the-baseline` — task — **Complete**
     - `M16.8.4` Pre-release pass in the agentic sandbox: release runbook section 3 with the three apps, on a branch-head wheel, before the 0.3.1 release candidate `e2e-pass-and-fix-round` — task — **Not Started**
     - `M16.8.8` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
     - `M16.8.9` Gate: ready to tag 0.3.1 `ready-to-tag-0-3-1` — gate — **Not Started**
@@ -368,7 +368,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.8.1` on `feature/rm-rc5-close-lean-metrics-measured-against-the-baseline` since 2026-11-21
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -383,10 +382,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 1 | 0 | 7.00 | 100% | 1 | 0 |
-| `CHANGELOG.md` **flagged** | 26 | 0 | 2.58 | 65% | 19 | 1 |
+| `CHANGELOG.md` **flagged** | 26 | 0 | 2.65 | 65% | 18 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 19 | 0 | 3.16 | 63% | 381 | 1 |
-| `docs` **flagged** | 18 | 0 | 3.11 | 72% | 335 | 1 |
+| `constraints` **flagged** | 20 | 0 | 3.20 | 65% | 383 | 1 |
+| `docs` **flagged** | 17 | 0 | 3.18 | 71% | 332 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 3 | 0 | 5.67 | 100% | 6 | 0 |
@@ -395,11 +394,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
-| `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `scripts` **flagged** | 18 | 0 | 3.28 | 67% | 396 | 1 |
-| `specy_road` **flagged** | 36 | 0 | 2.47 | 58% | 81 | 1 |
-| `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 47 | 0 | 2.77 | 64% | 430 | 2 |
+| `scripts` **flagged** | 19 | 0 | 3.32 | 68% | 398 | 1 |
+| `specy_road` **flagged** | 35 | 0 | 2.49 | 57% | 78 | 1 |
+| `suggested_prompts` **flagged** | 6 | 0 | 3.67 | 100% | 3 | 0 |
+| `tests` **flagged** | 46 | 0 | 2.78 | 63% | 427 | 2 |
 | `gui` | 4 | 0 | 2.75 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
