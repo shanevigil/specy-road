@@ -87,7 +87,7 @@
       "parent_id": "M16.8",
       "planning_dir": "planning/M16.8.1_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "rc5 close: lean metrics measured against the baseline",
       "touch_zones": [
         "scripts/lean_metrics.py",

@@ -78,14 +78,3 @@ entries:
     started: '2026-11-20'
     owner: savigil
     implementation_review: pending
-  - codename: rc5-close-lean-metrics-measured-against-the-baseline
-    node_id: M16.8.1
-    branch: feature/rm-rc5-close-lean-metrics-measured-against-the-baseline
-    touch_zones:
-      - scripts/lean_metrics.py
-      - constraints/lean-baseline.json
-      - CHANGELOG.md
-    started: '2026-11-21'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-22T05:17:32+00:00'
