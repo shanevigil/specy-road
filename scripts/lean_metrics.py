@@ -764,23 +764,6 @@ def with_merge_base(sha: str, measure):
         shutil.rmtree(path, ignore_errors=True)
 
 
-def reusable_head_contexts(head: str) -> dict | None:
-    """The contexts run already on disk, when package and tests still match its commit."""
-    path = LEAN_WORK / "contexts.json"
-    data = LEAN_WORK / "contexts-data" / ".coverage"
-    if not path.is_file() or not data.is_file():
-        return None
-    header = path.read_text(encoding="utf-8")[:500]
-    match = re.search(r'"commit": "([0-9a-f]+)"', header)
-    if not match or '"pytest_exit": 0' not in header:
-        return None
-    recorded = match.group(1)
-    if changed_between(recorded, head, "specy_road", "tests"):
-        return None
-    print(f"reusing contexts at {recorded[:12]} (specy_road and tests unchanged)", flush=True)
-    return {"arcs": arc_union(path), "total": coverage_percent(data), "pytest_exit": 0}
-
-
 def integration_branch() -> str:
     from specy_road.git_workflow_config import load_git_workflow_config
     from specy_road.runtime_paths import project_root
@@ -806,16 +789,20 @@ def measure_effectiveness() -> dict:
     """
     base = merge_base_commit()
     head = git("rev-parse", "HEAD").strip()
-    print(f"effectiveness: contexts at {head[:12]} ...", flush=True)
-    head_m = reusable_head_contexts(head) or measured_tree(REPO)
-    print(f"effectiveness: contexts at merge base {base[:12]} ...", flush=True)
+    # Both commits are measured in their own shared clone. Measuring head in this
+    # worktree would see the other linked worktrees, and a session test then takes
+    # a branch the clone does not.
+    print(f"effectiveness: contexts at {head[:12]} in a shared clone ...", flush=True)
+    head_m = with_merge_base(head, measured_tree)
+    print(f"effectiveness: contexts at merge base {base[:12]} in a shared clone ...", flush=True)
     base_m = with_merge_base(base, measured_tree)
     identical = identical_package_files(base, head)
     problems = only_before(identical, base_m["arcs"], head_m["arcs"])
     floor = fail_under()
+    head_total, base_total = round(head_m["total"], 2), round(base_m["total"], 2)
     effect = {
-        "coverage_at_least_fail_under": head_m["total"] >= floor,
-        "coverage_not_below_merge_base": head_m["total"] + 1e-9 >= base_m["total"],
+        "coverage_at_least_fail_under": head_total >= floor,
+        "coverage_not_below_merge_base": head_total >= base_total,
         "identical_modules": len(identical),
         "identical_module_only_before_arcs_empty": not problems,
         "only_before_modules": problems,
@@ -837,7 +824,10 @@ def measure_effectiveness() -> dict:
             "total": round(head_m["total"], 2),
             "merge_base": base,
             "merge_base_total": round(base_m["total"], 2),
-            "method": "coverage json totals.percent_covered after lean_metrics --contexts",
+            "method": (
+                "coverage json totals.percent_covered after lean_metrics --contexts, "
+                "each commit in its own shared clone"
+            ),
         },
         "effectiveness": effect,
     }
