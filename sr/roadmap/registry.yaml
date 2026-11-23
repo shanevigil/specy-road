@@ -78,10 +78,3 @@ entries:
     started: '2026-11-20'
     owner: savigil
     implementation_review: pending
-  - codename: e2e-pass-and-fix-round
-    node_id: M16.8.4
-    branch: feature/rm-e2e-pass-and-fix-round
-    touch_zones: []
-    started: '2026-11-21'
-    owner: savigil
-    implementation_review: pending
