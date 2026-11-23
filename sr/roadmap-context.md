@@ -86,7 +86,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.8.10` Gate: 0.3.1 tagged `v0-3-1-tagged` — gate — **Not Started**
     - `M16.8.5` Gate: a 0.3.1 release candidate is published to TestPyPI `gate-a-0-3-1-release-candidate-is-published-to-testpypi` — gate — **Not Started**
     - `M16.8.6` Gate: the maintainer has tried the release candidate in their dependent projects `gate-the-maintainer-has-tried-the-release-candidate-in-their` — gate — **Not Started**
-    - `M16.8.11` Two tests pass in the CI environment: Node 20 and a dev-only install `two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only` — task — **Not Started**
+    - `M16.8.11` Two tests pass in the CI environment: Node 20 and a dev-only install `two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only` — task — **Complete**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **In Progress**
   - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Complete**
@@ -369,7 +369,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.8.11` on `feature/rm-two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only` since 2026-11-23
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -386,7 +385,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `.github` **flagged** | 1 | 0 | 7.00 | 100% | 1 | 0 |
 | `CHANGELOG.md` **flagged** | 26 | 0 | 2.65 | 65% | 18 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 20 | 0 | 3.20 | 65% | 383 | 1 |
+| `constraints` **flagged** | 19 | 0 | 3.32 | 68% | 382 | 1 |
 | `docs` **flagged** | 17 | 0 | 3.18 | 71% | 332 | 1 |
 | `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -396,11 +395,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
-| `scripts` **flagged** | 19 | 0 | 3.32 | 68% | 398 | 1 |
-| `specy_road` **flagged** | 35 | 0 | 2.49 | 57% | 78 | 1 |
+| `scripts` **flagged** | 18 | 0 | 3.44 | 72% | 397 | 1 |
+| `specy_road` **flagged** | 34 | 0 | 2.53 | 59% | 77 | 1 |
 | `suggested_prompts` **flagged** | 6 | 0 | 3.67 | 100% | 3 | 0 |
-| `tests` **flagged** | 46 | 0 | 2.78 | 63% | 427 | 2 |
-| `gui` | 4 | 0 | 2.75 | 50% | 0 | 0 |
+| `tests` **flagged** | 46 | 0 | 2.78 | 63% | 426 | 2 |
+| `gui` | 5 | 0 | 2.40 | 40% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

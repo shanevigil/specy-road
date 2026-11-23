@@ -38,10 +38,30 @@ def use_fake_llm(monkeypatch, reply) -> None:
 
     ``request`` is the keyword arguments the client was called with (``model``,
     ``messages`` and any extras), so a test can read what the toolkit sent.
+
+    ``complete()`` imports ``AzureOpenAI`` to tell an Azure client from any
+    other. Where ``openai`` cannot be imported, a stand-in module supplies that
+    name for this test only. The fake client is not an instance of it, so the
+    call takes the same non-Azure branch as where the real package is installed.
+    ``monkeypatch`` removes the stand-in when the test ends. A real ``openai``
+    is left in place.
     """
-    from types import SimpleNamespace
+    import importlib
+    import sys
+    from types import ModuleType, SimpleNamespace
 
     from specy_road import llm_client
+
+    try:
+        importlib.import_module("openai")
+    except ImportError:
+        stand_in = ModuleType("openai")
+
+        class AzureOpenAI:
+            """Type marker. The fake client is not an instance of this class."""
+
+        setattr(stand_in, "AzureOpenAI", AzureOpenAI)
+        monkeypatch.setitem(sys.modules, "openai", stand_in)
 
     def create(**request):
         message = SimpleNamespace(content=reply(request))

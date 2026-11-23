@@ -322,7 +322,7 @@
       "parent_id": "M16.8",
       "planning_dir": "planning/M16.8.11_two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only_5fea1f7e-848b-4cbf-87e6-c96b506a2f86.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Two tests pass in the CI environment: Node 20 and a dev-only install",
       "touch_zones": [
         "gui/pm-gantt/src/orchestrationSnapshot.test.ts",

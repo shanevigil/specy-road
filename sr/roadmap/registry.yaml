@@ -78,12 +78,3 @@ entries:
     started: '2026-11-20'
     owner: savigil
     implementation_review: pending
-  - codename: two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only
-    node_id: M16.8.11
-    branch: feature/rm-two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only
-    touch_zones:
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - tests/helpers.py
-    started: '2026-11-23'
-    owner: savigil
-    implementation_review: pending
