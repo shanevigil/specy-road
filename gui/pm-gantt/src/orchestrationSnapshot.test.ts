@@ -1071,6 +1071,7 @@ function installOutlineDocument(): OutlineEl {
   for (const [key, value] of [
     ["window", win],
     ["document", doc],
+    ["navigator", win.navigator],
     ["localStorage", localStorage],
     ["getComputedStyle", win.getComputedStyle],
     ["requestAnimationFrame", win.requestAnimationFrame],
@@ -1078,14 +1079,22 @@ function installOutlineDocument(): OutlineEl {
     ["ResizeObserver", win.ResizeObserver],
     ["IS_REACT_ACT_ENVIRONMENT", true],
   ] as const) {
+    // Node 21+ exposes navigator as a getter with no setter. Strict assignment
+    // throws; non-strict assignment is ignored. Either way, install our value.
     try {
       g[key] = value;
     } catch {
       Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
     }
+    if (g[key] !== value) {
+      Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+    }
   }
   if ((globalThis as { window?: unknown }).window !== win) {
     throw new Error("window was not installed");
+  }
+  if ((globalThis as { navigator?: unknown }).navigator !== win.navigator) {
+    throw new Error("navigator was not installed");
   }
   Object.assign(doc, {
     documentElement: html,
