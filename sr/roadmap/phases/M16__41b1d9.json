@@ -307,6 +307,28 @@
         "docs/context-regressions.yaml"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A1: `npm test` in `gui/pm-gantt` passes with `NODE_OPTIONS=--no-experimental-global-navigator` (the Node 20 shape; before this leaf 1 failed, 60 passed in `src/orchestrationSnapshot.test.ts`) and without it.",
+        "A2: `pytest` passes in an environment built from `requirements-ci.txt` on Python 3.12, where `openai` is not installed (before this leaf 15 failed), and in an environment with the `[gui]` extra installed.",
+        "A3: the branch changes no file outside its two touch zones: no product code, dependency, lock file or shipped GUI bundle."
+      ],
+      "codename": "two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.8.11",
+      "node_key": "5fea1f7e-848b-4cbf-87e6-c96b506a2f86",
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.11_two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only_5fea1f7e-848b-4cbf-87e6-c96b506a2f86.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "Two tests pass in the CI environment: Node 20 and a dev-only install",
+      "touch_zones": [
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "tests/helpers.py"
+      ],
+      "type": "task"
     }
   ]
 }

@@ -86,6 +86,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.8.10` Gate: 0.3.1 tagged `v0-3-1-tagged` — gate — **Not Started**
     - `M16.8.5` Gate: a 0.3.1 release candidate is published to TestPyPI `gate-a-0-3-1-release-candidate-is-published-to-testpypi` — gate — **Not Started**
     - `M16.8.6` Gate: the maintainer has tried the release candidate in their dependent projects `gate-the-maintainer-has-tried-the-release-candidate-in-their` — gate — **Not Started**
+    - `M16.8.11` Two tests pass in the CI environment: Node 20 and a dev-only install `two-tests-pass-in-the-ci-environment-node-20-and-a-dev-only` — task — **Not Started**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **In Progress**
   - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Complete**
