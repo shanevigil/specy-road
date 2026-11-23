@@ -80,7 +80,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.7.8` | Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses | task | Agentic-led | Complete |
 | `M16.8` | rc5 close, alias window, end-to-end pass and the 0.3.1 tag | milestone | — | Not Started |
 | `M16.8.1` | rc5 close: lean metrics measured against the baseline | task | Mixed | Complete |
-| `M16.8.4` | Pre-release pass in the agentic sandbox: release runbook section 3 with the three apps, on a branch-head wheel, before the 0.3.1 release candidate | task | Agentic-led | Not Started |
+| `M16.8.4` | Pre-release pass in the agentic sandbox: release runbook section 3 with the three apps, on a branch-head wheel, before the 0.3.1 release candidate | task | Agentic-led | Complete |
 | `M16.8.5` | Gate: a 0.3.1 release candidate is published to TestPyPI | gate | Human-led | Not Started |
 | `M16.8.6` | Gate: the maintainer has tried the release candidate in their dependent projects | gate | Human-led | Not Started |
 | `M16.8.8` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |

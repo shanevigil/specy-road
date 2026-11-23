@@ -122,7 +122,7 @@
       "parent_id": "M16.8",
       "planning_dir": "planning/M16.8.4_e2e-pass-and-fix-round_08ceae7d-08a4-4aa3-80ea-e0f74cd512e0.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pre-release pass in the agentic sandbox: release runbook section 3 with the three apps, on a branch-head wheel, before the 0.3.1 release candidate",
       "touch_zones": [],
       "type": "task"
