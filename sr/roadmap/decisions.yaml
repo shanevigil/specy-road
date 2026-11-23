@@ -272,3 +272,32 @@ entries:
       tag.\"]"'
     closed: '2026-11-23T08:39:22+00:00'
     decided_by: operator
+  - id: D11
+    node: M16.8.4
+    kind: decision
+    summary: accept-with-limits M16.8.4 at d6ee5ea1bad9 (operator decision)
+    why_now: the operator decided the review outcome in plain words
+    options:
+      - label: accept-with-limits
+        effect: the gate settles the blocks and shortfall the answer names, at the
+          commit it names
+      - label: keep reviewing
+        effect: the blocks and shortfall still count
+    recommendation: accept-with-limits
+    recommendation_reason: decided by the operator
+    default_if_unanswered: keep reviewing
+    asked: '2026-11-23'
+    status: closed
+    answer: 'Accepted by operator decision (accept-with-limits) for commit d6ee5ea1bad9d9e5e00e43dd14f83fa299b6756b,
+      recorded by savigil <5241009+shanevigil@users.noreply.github.com>. Settles:
+      approval shortfall: need 2, have 0. Operator''s words: "All recs [the operator
+      adopting the sentence drafted for them: \"Accept M16.8.4 with limits for v0.3.1-rc5
+      only. E5 and sandbox 5 and 6 stay skipped by my exception. E3 merge, E3 pr and
+      the Calculator developer flow stay open on I-11. R3.2 stays scoped only. Sandbox
+      1, 2, 3, 4, 7.2 and 9 stay partial or skipped. E1 and E4a are re-run on the
+      release-commit wheel before the tag. Everything left open waits for the 0.3.1
+      tag.\"] [recorded again by the coordinator at the registry-stamp commit that
+      mark-implementation-reviewed added on top of ea350f9b: the first record, D10,
+      stopped counting there; same decision, no new operator words]"'
+    closed: '2026-11-23T08:45:13+00:00'
+    decided_by: operator
