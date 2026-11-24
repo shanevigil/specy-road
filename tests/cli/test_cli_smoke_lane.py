@@ -206,9 +206,14 @@ def _inner_pytest(project: Path, files: dict[str, str], lane: list[str], *args: 
     (project / "cli_smoke_lane.txt").write_text("\n".join(lane) + "\n", encoding="utf-8")
     for name, text in files.items():
         (project / name).write_text(text, encoding="utf-8")
+    # Drop the caller's CI variables so pytest keeps the short summary truncated
+    # and a lane message is printed once.
+    env = script_subprocess_env()
+    env.pop("CI", None)
+    env.pop("GITHUB_ACTIONS", None)
     run = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-o", f"cache_dir={project / '.cache'}", *args],
-        cwd=project, env=script_subprocess_env(), capture_output=True, text=True, check=False,
+        cwd=project, env=env, capture_output=True, text=True, check=False,
     )
     return f"exit {run.returncode}\n{run.stdout}{run.stderr}"
 
