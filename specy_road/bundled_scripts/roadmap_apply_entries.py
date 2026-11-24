@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.roadmap_layout import natural_id_sort_key
 
 APPLY_OPS = (
     "add-node", "edit-node", "add-dependency",

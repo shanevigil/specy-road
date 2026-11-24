@@ -4,15 +4,15 @@ description: "Use when checking whether a leaf's READY hand-off and review recor
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
-specy-road handoff status            # every node under work/reviews/
-specy-road handoff status <NODE_ID>  # one node
-specy-road handoff status --json     # for a coordinator that polls
-specy-road handoff status <NODE_ID> --ref <branch or commit>   # no claim names the commit
+specy-road review status             # every node under work/reviews/
+specy-road review status <NODE_ID>   # one node
+specy-road review status --json      # for a coordinator that polls
+specy-road review status <NODE_ID> --ref <branch or commit>   # no claim names the commit
 ```
 
 States: `waiting` (no valid READY file), `in-review`, `executor_blocked` (READY declares `blocked_on` at the commit under review), `blocked` (a counted review blocks), `approved` (review policy met), `stale` (the branch moved past the READY commit), `escalated` (the review loop keeps blocking and no root-cause analysis covers it: run `specy-road prompt <NODE_ID> --role rca --model <id>`), `complete_no_claim` (Complete, claim released), `unclaimed` (no claim names a commit; pass `--ref`), `error`.
 
-With a `<NODE_ID>` the exit says which: `0` approved or `complete_no_claim`, `1` policy not met (including `escalated`), `2` cannot be determined (`unclaimed`, `error`). `specy-road review list <NODE_ID> [--ref …]` prints the filed records and the gate without writing anything.
+With a `<NODE_ID>` the exit says which: `0` approved or `complete_no_claim`, `1` policy not met (including `escalated`), `2` cannot be determined (`unclaimed`, `error`). With one node it also prints each filed record with its commit, and the gate line; it writes nothing.
 
 Each line under a node names a problem to fix: an invalid file, a review of an older commit, a reviewer outside the roster, or the approvals still missing.
 

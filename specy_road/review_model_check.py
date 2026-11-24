@@ -2,7 +2,9 @@
 
 A reviewer's record counts toward the gate under its roster id, so the models the harness says it ran (the first
 ``system/init`` event's ``model``, read as worker usage reads it: :func:`~specy_road.worker_adapter_parsers.init_model`,
-and each ``result`` event's: :func:`result_model`) are compared with the roster entry's model by
+each ``result`` event's: :func:`result_model`, and for Codex, whose ``--json`` stream names none, the model its rollout
+recorded for the first ``thread.started`` thread that has one: :func:`~specy_road.worker_adapter_codex.thread_model`)
+are compared with the roster entry's model by
 :func:`~specy_road.model_names.same_model`, which normalises case, separators and display names. :func:`check_run` gives ``match``, ``mismatch`` or ``unreported``;
 :func:`~specy_road.review_record_write.file_review` writes ``harness_model`` into the record and, on a mismatch,
 ``model_mismatch: true``, which :func:`model_mismatch_problem` keeps from counting in the gate. A harness that
@@ -12,13 +14,20 @@ reports no model is a warning only.
 from __future__ import annotations
 
 import json
+import os
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Literal
 
-from specy_road.model_names import normalise, same_model  # noqa: F401 — normalise re-exported
+from specy_road.orchestration.model_names import (
+    normalise,  # noqa: F401 — normalise re-exported
+    same_model,
+)
 from specy_road.orchestration_config import harness_model
 from specy_road.review_answer import stream_lines
-from specy_road.worker_adapter_parsers import init_model
+from specy_road.orchestration.workers.worker_adapter_codex import thread_model
+from specy_road.orchestration.workers.worker_adapter_parsers import init_model
+from specy_road.orchestration.workers.worker_adapters import _shell_words
 
 MISMATCH_REASON = "harness ran a different model"
 
@@ -40,14 +49,36 @@ def result_model(line: str) -> str | None:
     return next(iter(usage)) if isinstance(usage, dict) and len(usage) == 1 and str(next(iter(usage))).strip() else None
 
 
-def reported_models(lines: list[str] | str) -> list[str]:
+def cli_codex_homes(entry: dict[str, Any]) -> list[Path]:
+    """The ``CODEX_HOME`` values a roster entry's ``channels.cli`` and ``channels.cli_resume`` set in their own words,
+    so :func:`~specy_road.worker_adapter_codex.thread_model` finds the rollout a wrapper's Codex wrote there.
+
+    One bounded rule: each command is split by the one reading of a custom command
+    (:func:`~specy_road.worker_adapters._shell_words`), and every word ``CODEX_HOME=VALUE`` counts, whatever precedes
+    it (``CODEX_HOME=… codex``, ``env CODEX_HOME=…``, ``export CODEX_HOME=…;``). ``~`` and ``$VAR`` in the value are
+    expanded from specy-road's own environment; a value that is then still relative or still holds a ``$`` is
+    skipped. A home set where the command's text does not show it (inside a script it runs, or built at run time) is
+    not found, and that run reports no model."""
+    channels = entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
+    values = [w.split("=", 1)[1] for key in ("cli", "cli_resume") if isinstance(channels.get(key), str)
+              for w in _shell_words(channels[key]) if w.startswith("CODEX_HOME=")]
+    homes = [Path(os.path.expanduser(os.path.expandvars(v))) for v in values]
+    return [h for h in homes if h.is_absolute() and "$" not in str(h)]
+
+
+def reported_models(lines: list[str] | str, codex_homes: Iterable[Path] = ()) -> list[str]:
     """Every model the run reported, in order and without repeats: the first ``system/init`` event's (as worker usage
-    reads it) and each ``result`` event's (:func:`result_model`). Codex and plain-text harnesses report none."""
+    reads it), each ``result`` event's (:func:`result_model`) and the rollout model of the first Codex
+    ``thread.started`` thread that has one (:func:`~specy_road.worker_adapter_codex.thread_model`, also searching
+    ``codex_homes``). Plain-text harnesses report none."""
     out: list[str] = []
-    init_seen = False
+    init_seen = thread_seen = False
     for line in stream_lines(lines) if isinstance(lines, str) else lines:   # \n only, as JSON Lines
         model = None if init_seen else init_model(line)
         init_seen = init_seen or model is not None
+        if not model and not thread_seen:
+            model = thread_model(line, codex_homes)
+            thread_seen = model is not None
         model = model or result_model(line)
         if model and model not in out:
             out.append(model)
@@ -58,7 +89,7 @@ def check_run(lines: list[str] | str, entry: dict[str, Any], profile: Any = None
     """``(harness_model, state)`` for a run's output: ``mismatch`` with the first reported model that is not the
     roster entry's when any is (so a line the model printed can add a mismatch but never hide one), else ``match``
     with the first, else ``(None, "unreported")``."""
-    models = reported_models(lines)
+    models = reported_models(lines, cli_codex_homes(entry))
     bad = next((m for m in models if check(m, entry, profile) == "mismatch"), None)
     if bad:
         return bad, "mismatch"

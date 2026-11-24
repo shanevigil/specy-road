@@ -1,0 +1,42 @@
+$ specy-road move-node --help
+exit: 0
+--- stdout ---
+usage: specy-road move-node [-h] --to-parent PARENT_NODE_ID [--renumber-outline] [--id NEW_ID]
+                            [--fill-gaps] [--rewrite-refs] [--index N] [--repo-root DIR]
+                            NODE_ID
+
+Re-parent a node and its subtree. The node takes the next free id under its new parent (or --id,
+or the lowest gap with --fill-gaps) and its descendants follow it; no other id changes
+(--renumber-outline renumbers the whole roadmap instead). In the same transaction it renames the
+renumbered nodes' planning sheets and, in those nodes and their registry claims, rewrites node_id
+and touch-zone path segments equal to an old id; nothing outside the moved subtree is rewritten.
+With --renumber-outline every node and claim is in scope.
+
+positional arguments:
+  NODE_ID               The node to move (e.g. M1.2).
+
+options:
+  -h, --help            show this help message and exit
+  --to-parent PARENT_NODE_ID
+                        New parent's display id, or null/~ for the roadmap root. Unlike edit-node
+                        --set parent_id=, this renumbers.
+  --renumber-outline    Renumber every display id in the roadmap from the tree shape, closing the
+                        gaps the move leaves. Siblings and other milestones may change id, sheet
+                        name and claims.
+  --id NEW_ID           The moved node's new id: PARENT_NODE_ID plus one numeric segment (Mk at
+                        the root), not used by any node outside the moved subtree. Not with
+                        --fill-gaps or --renumber-outline.
+  --fill-gaps           Take the lowest unused child id under the new parent (from 1; at the root
+                        from 0 when M0 exists, else 1) instead of one past the highest. Not with
+                        --id or --renumber-outline.
+  --rewrite-refs        Also rewrite the changed ids where prose cites them: every live node's
+                        planning sheet, title and acceptance, as `rename-refs` does with this
+                        move's old -> new map, in the same transaction. Without it no prose
+                        changes.
+  --index N             Position among the new siblings, 0-based (default: last). Sets the outline
+                        order only; without --renumber-outline the id is still the next free one
+                        (or --id / --fill-gaps).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

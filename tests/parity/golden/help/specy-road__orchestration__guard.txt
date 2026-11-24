@@ -1,0 +1,21 @@
+$ specy-road orchestration guard --help
+exit: 0
+--- stdout ---
+usage: specy-road orchestration guard [-h] --format {claude-code,codex,cursor,generic}
+                                      [--command CMD] [--role {executor,reviewer}]
+                                      [--print-config] [--config-role {executor,reviewer}]
+                                      [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --format {claude-code,codex,cursor,generic}
+  --command CMD         Judge this command (default: harness stdin payload)
+  --role {executor,reviewer}
+                        Override $SPECY_ROAD_ORCHESTRATION_ROLE
+  --print-config        Print hook JSON for --config-role on stdout; caveats on stderr
+  --config-role {executor,reviewer}
+                        Which role snippet --print-config emits (default: executor)
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

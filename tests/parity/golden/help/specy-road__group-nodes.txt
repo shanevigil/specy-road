@@ -1,0 +1,30 @@
+$ specy-road group-nodes --help
+exit: 0
+--- stdout ---
+usage: specy-road group-nodes [-h] --into-new NEW_ID --title TITLE
+                              [--type {vision,phase,milestone,task}] [--rewrite-refs]
+                              [--repo-root DIR]
+                              NODE_ID [NODE_ID ...]
+
+Create a parent and move the listed siblings under it in one transaction, validated once. The
+parent takes the earliest listed sibling's position; its children become NEW_ID.1..N in argument
+order and their descendants keep their suffixes.
+
+positional arguments:
+  NODE_ID               Distinct siblings to group.
+
+options:
+  -h, --help            show this help message and exit
+  --into-new NEW_ID     The new parent's id: a direct child id of the siblings' parent, free or
+                        held by one of the listed nodes.
+  --title TITLE         The new parent's title.
+  --type {vision,phase,milestone,task}
+                        The new parent's type (default: milestone).
+  --rewrite-refs        Also rewrite the changed ids where prose cites them: every live node's
+                        planning sheet, title and acceptance, as `rename-refs` does with this
+                        move's old -> new map, in the same transaction. Without it no prose
+                        changes.
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

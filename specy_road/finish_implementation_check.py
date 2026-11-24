@@ -27,65 +27,22 @@ Every ambiguity resolves toward **allowing** the finish:
 
 from __future__ import annotations
 
-import fnmatch
 import sys
 from pathlib import Path
 
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import require_implementation_before_finish
+
+# Zone matching and the base ref are defined in nested_repos, which needs them to
+# decide coverage and worktree bases; they are re-exported here for this gate's callers.
+from specy_road.nested_repos import (  # noqa: F401
+    _clean,
+    base_ref,
+    in_zones,
+    nested_zone_paths,
+    zone_matches,
+)
 from specy_road.runtime_paths import project_prefix, rebase_to_project
-
-_GLOB_CHARS = "*?["
-
-
-def _clean(zone: object) -> str | None:
-    if not isinstance(zone, str):
-        return None
-    cleaned = zone.strip().strip("/")
-    return cleaned or None
-
-
-def zone_matches(zone: str, path: str) -> bool:
-    """Whether a changed repo-relative ``path`` falls inside ``zone``.
-
-    A zone without glob characters is a file or a directory prefix; with them it
-    is matched by ``fnmatch``, which does not treat ``/`` specially. That makes
-    ``src/*`` match ``src/api/routes.py`` — wrong for a shell, right here, where
-    the cost of matching too much is far lower than the cost of matching too
-    little.
-    """
-    if any(c in zone for c in _GLOB_CHARS):
-        return fnmatch.fnmatch(path, zone) or fnmatch.fnmatch(path, f"{zone}/*")
-    return path == zone or path.startswith(f"{zone}/")
-
-
-def in_zones(zones, path: str, prefix: str) -> bool:
-    """Whether a git-root-relative ``path`` falls inside any of ``zones``.
-
-    In a nested project a zone may name a project file from either root —
-    ``sr/schemas`` from the git root or ``schemas`` from the project root — so a
-    path under the project is tried in both forms. Code outside the project has
-    only its git-root name. ``prefix`` is :func:`project_prefix` of the project.
-    """
-    forms = {path, rebase_to_project(path, prefix) or path}
-    return any(zone_matches(z, f) for z in zones for f in forms)
-
-
-def base_ref(repo_root: Path, remote: str, integration_branch: str) -> str | None:
-    """The ref to diff against: the remote-tracking branch, else the local one.
-
-    Remote first, because the local integration branch can be arbitrarily stale
-    in a clone that has been picking work up for a while, and a stale base
-    inflates the diff rather than shrinking it — the safe direction, but noisier.
-    """
-    for ref in (
-        f"refs/remotes/{remote}/{integration_branch}",
-        f"refs/heads/{integration_branch}",
-    ):
-        if git_text(["rev-parse", "--verify", "--quiet", ref], repo_root):
-            return ref
-    return None
 
 
 def changed_paths(repo_root: Path, ref: str) -> list[str] | None:
@@ -117,7 +74,6 @@ def implementation_paths(
         return None
     # The same reading review-packet applies; matches are reported project-relative.
     prefix = project_prefix(repo_root)
-    from specy_road.nested_repos import nested_zone_paths   # noqa: PLC0415 — nested_repos imports this module
     # A leaf whose work lives in a nested repository (nested_repos) implemented it there.
     return [rebase_to_project(p, prefix) or p for p in paths if in_zones(cleaned, p, prefix)] + \
         nested_zone_paths(repo_root, cleaned)

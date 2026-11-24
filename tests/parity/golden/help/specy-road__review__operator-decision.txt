@@ -1,0 +1,28 @@
+$ specy-road review operator-decision --help
+exit: 0
+--- stdout ---
+usage: specy-road review operator-decision [-h] --decision {approve,accept-with-limits}
+                                           [--quote QUOTE] --session SESSION [--rule ID]
+                                           [--rca MODEL=PATH] [--alignment MODEL=PATH]
+                                           [--limit TEXT] [--repo-root DIR]
+                                           node_id
+
+positional arguments:
+  node_id
+
+options:
+  -h, --help            show this help message and exit
+  --decision {approve,accept-with-limits}
+  --quote QUOTE         The operator's words, as they said them (operator form)
+  --session SESSION     The session the operator decided in; kept in the marker
+  --rule ID             Coordinator form: an open standing-rule entry in roadmap/decisions.yaml;
+                        only --decision accept-with-limits
+  --rca MODEL=PATH      Coordinator form: a root-cause analysis; give two, of two roster families
+  --alignment MODEL=PATH
+                        Coordinator form: an alignment review; give two, of two roster families
+  --limit TEXT          Coordinator form: an accepted limit; each counted finding is named in
+                        exactly one
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

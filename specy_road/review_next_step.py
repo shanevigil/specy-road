@@ -1,7 +1,7 @@
 """The fix-round budget's next step, as an explicit state machine.
 
 ``policy.max_fix_rounds`` (unset: no budget) caps the blocking review rounds one leaf may spend. Once spent
-while any counted review blocks, ``handoff status`` reports ``fix_round_budget_spent`` and the step this
+while any counted review blocks, ``review status`` reports ``fix_round_budget_spent`` and the step this
 module picks. :func:`facts` reads what the step depends on; :data:`STATES` is an ordered table of rows, the
 first whose ``when`` holds is the state; its ``step`` yields exactly one :class:`Step`:
 
@@ -10,7 +10,7 @@ first whose ``when`` holds is the state; its ``step`` yields exactly one :class:
 * ``none`` — no budget step (budget not spent, or nothing blocks).
 
 Later leaves add rows here (``review rca`` launcher, convergence-aware escalation): insert a :class:`State`
-before the row it refines. Design: ``docs/design-notes/review-loop-rca.md``.
+before the row it refines.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-from specy_road.orchestrate_plan import guidance_problem, is_available
-from specy_road.review_deferral import rca_deferral
+from specy_road.orchestration.orchestrate_plan import guidance_problem, is_available
+from specy_road.review_defer_rules import rca_deferral
 from specy_road.review_files import HUMAN, PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ STATES: list[State] = [
     State("spent_rca_executor", lambda f: f.action in EXECUTOR_ACTIONS and f.executor is not None,
           lambda f: _executor(f, _rca_why(f))),
     State("spent_rca_packet", lambda f: f.action == "change_or_reprompt_reviewer" and f.reviewer and not f.packet,
-          lambda f: Step("command", f"specy-road review-packet {f.node_id}",
+          lambda f: Step("command", f"specy-road review packet {f.node_id}",
                          f"{_rca_why(f)}; the reviewer prompt needs the packet first")),
     State("spent_rca_reviewer", lambda f: f.action == "change_or_reprompt_reviewer" and f.reviewer is not None,
           lambda f: Step("command", f"specy-road prompt {f.node_id} --role reviewer --model "
@@ -141,7 +141,7 @@ def _available(repo_root: Path, config: dict[str, Any], role: str, exclude: set[
 
 def facts(repo_root: Path, config: dict[str, Any], loop: LoopState, node_id: str, blocked: bool) -> Facts:
     """What the step depends on; the costlier reads happen only once the budget is set."""
-    from specy_road.bundled_scripts.review_defer import applicable_record   # it imports review_deferral
+    from specy_road.review_defer_cli import applicable_record   # it imports review_defer_rules
     from specy_road.review_rca import rca_parties
 
     budget = (config.get("policy") or {}).get("max_fix_rounds")

@@ -23,9 +23,10 @@ import json
 import sys
 from datetime import date
 
-from specy_road.decisions import format_preference
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
+from specy_road.cli_args import add_json_arg
+from specy_road.orchestration import format_preference
+from specy_road.roadmap_load import load_roadmap
+from specy_road.orchestration import OrchestrationPlan, build_orchestration_plan
 from specy_road.orchestration_pinned import WORKTREE_REF
 from specy_road.planning_scaffold_check import needs_approach_line
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -120,7 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--spread", action="store_true",
                       help="Assign executors round-robin among the capable, available entries by leaf order, "
                            "instead of always the cheapest")
-    plan.add_argument("--json", action="store_true")
+    add_json_arg(plan)
     plan.add_argument("--roster-from-worktree", action="store_true",
                       help="Dry run: plan with the working tree's roadmap/orchestration.yaml (uncommitted); "
                            "nothing may launch from this plan, and delegation never reads it")

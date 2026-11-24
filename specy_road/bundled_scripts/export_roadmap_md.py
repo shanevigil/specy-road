@@ -11,9 +11,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
-from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road import safe_write
+from specy_road.roadmap_chunk_utils import discover_manifest_path
+from specy_road.roadmap_layout import natural_id_sort_key
+from specy_road.roadmap_load import load_roadmap
 from specy_road.generated_files import gitignore_resolution_hint
 
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
@@ -71,72 +72,6 @@ def render_index(nodes: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _render_details(n: dict, lines: list[str]) -> None:
-    """Append goal, decision, and acceptance sections for a node."""
-    goal = n.get("goal")
-    if goal:
-        lines.append(f"**Goal:** {goal}")
-        lines.append("")
-    decision = n.get("decision")
-    if decision:
-        if decision.get("status") == "decided":
-            date = decision.get("decided_date", "")
-            adr = decision.get("adr_ref", "")
-            ref = f" — {adr}" if adr else ""
-            lines.append(f"> Decided ({date}){ref}")
-        else:
-            lines.append("> Decision pending")
-        lines.append("")
-    acceptance = n.get("acceptance")
-    if acceptance:
-        lines.append("**Acceptance criteria:**")
-        for item in acceptance:
-            lines.append(f"- {item}")
-        lines.append("")
-    planning_dir = n.get("planning_dir")
-    if planning_dir:
-        lines.append(f"**Planning feature sheet:** `{planning_dir}`")
-        lines.append("")
-
-
-def render_phase_doc(phase_id: str, subtree: list[dict]) -> str:
-    """Render a phase subtree as a human-readable doc (used by tests / optional tooling)."""
-    lines = [
-        f"# Phase `{phase_id}`",
-        "",
-        "| ID | Title | Type | Gate | Status |",
-        "|----|-------|------|------|--------|",
-    ]
-    for n in subtree:
-        tid = n["id"].replace("|", "\\|")
-        title = str(n.get("title", "")).replace("|", "\\|")
-        typ = n.get("type", "")
-        gate = gate_display(n).replace("|", "\\|")
-        st = n.get("status", "")
-        lines.append(f"| `{tid}` | {title} | {typ} | {gate} | {st} |")
-    notes = [n for n in subtree if n.get("notes")]
-    if notes:
-        lines.extend(["", "## Notes", ""])
-        for n in notes:
-            lines.append(f"- **{n['id']}:** {n['notes']}")
-        lines.append("")
-    detailed = [
-        n
-        for n in subtree
-        if n.get("goal")
-        or n.get("acceptance")
-        or n.get("decision")
-        or n.get("planning_dir")
-    ]
-    if detailed:
-        lines.extend(["## Details", ""])
-        for n in detailed:
-            lines.append(f"### `{n['id']}` — {n.get('title', '')}")
-            lines.append("")
-            _render_details(n, lines)
-    return "\n".join(lines)
-
-
 def export_markdown(nodes: list[dict]) -> str:
     """Return ``roadmap.md`` body (merged graph index only)."""
     return render_index(nodes)
@@ -148,12 +83,11 @@ def reexport_roadmap_md(root: Path) -> None:
     The archive CLI and the PM GUI both did this inline so that a later
     ``export --check`` would not report drift they had caused; the module that
     owns the file -- and the --check comparison -- owns the regeneration too.
+    Written by the safe-write rule: a symlink at it raises ``SafeWriteError``.
     """
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
-    (root / "roadmap.md").write_text(
-        export_markdown(load_roadmap(root)["nodes"]), encoding="utf-8"
-    )
+    safe_write.write(root, root / "roadmap.md", export_markdown(load_roadmap(root)["nodes"]))
 
 
 def _print_gitignore_hint(root: Path) -> None:
@@ -178,7 +112,11 @@ def _write_export(
         if out_index.is_file():
             existing = out_index.read_text(encoding="utf-8")
             if existing != index:
-                print(f"drift: {out_index}", file=sys.stderr)
+                print(
+                    f"drift: {out_index} no longer matches the roadmap. "
+                    "Run: specy-road export",
+                    file=sys.stderr,
+                )
                 _print_gitignore_hint(root)
                 raise SystemExit(1)
         else:
@@ -187,11 +125,13 @@ def _write_export(
             raise SystemExit(1)
         print("OK: roadmap.md matches merged roadmap graph.")
         return
-    out_index.write_text(index, encoding="utf-8")
+    with safe_write.exit_on_refusal():
+        safe_write.write(root, out_index, index)
     print(f"Wrote {out_index}")
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road export`` parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--check",
@@ -199,7 +139,11 @@ def main() -> None:
         help="Exit 1 if generated files differ from disk (CI drift check)",
     )
     add_repo_root_arg(parser)
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:
         discover_manifest_path(root)

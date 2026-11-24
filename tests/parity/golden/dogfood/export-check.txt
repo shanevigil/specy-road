@@ -1,0 +1,5 @@
+$ specy-road export --check --repo-root <ROOT>
+exit: 0
+--- stdout ---
+OK: roadmap.md matches merged roadmap graph.
+--- stderr ---

@@ -6,14 +6,14 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_available import blocked_pick_notice
-from specy_road.bundled_scripts.generate_brief import index as make_index
+from specy_road.brief_generation import index as make_index
 from specy_road.git_workflow_config import (
     require_implementation_review_before_finish,
 )
 from specy_road.git_subprocess import head_sha
 from specy_road.impact import impact_for_zones, section_lines
 from specy_road.workflow_prefs import implementation_summary_rule, summary_handling
-from specy_road.bundled_scripts.planning_artifacts import (
+from specy_road.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
     planning_artifact_paths,
@@ -46,7 +46,7 @@ def print_pickup_header(node: dict, branch: str, repo_root: Path | None = None) 
     print(f"implementation branch: {branch}\n")
     zones = [z for z in (node.get("touch_zones") or []) if isinstance(z, str)]
     if repo_root is not None and zones:
-        from specy_road.session_presence import conflicts, warn_lines
+        from specy_road.orchestration.guard.session_presence import conflicts, warn_lines
 
         for line in warn_lines(conflicts(repo_root, zones), what=f"{node['id']}'s touch zones"):
             print(line, file=sys.stderr)
@@ -242,12 +242,13 @@ def _leaf_execution_contract_lines(
     ]
 
 
-def _finish_instruction_lines(
+def finish_instruction_lines(
     node_id: str,
     repo_root: Path,
     *,
     on_complete: str,
 ) -> list[str]:
+    """The numbered finish instructions the pickup prompt gives the agent."""
     base = [
         (
             "1. Read governance docs and planning sheets above, "
@@ -286,7 +287,7 @@ def _finish_instruction_lines(
                 "deleting, skipping or weakening an existing test, or by raising a baseline "
                 "or cap, stop and write READY from `work/handoff-ready.template.md` with "
                 "`blocked_on` naming the criterion instead of making that change. Reviewers read "
-                f"`specy-road review-packet {node_id}` and file verdicts with "
+                f"`specy-road review packet {node_id}` and file verdicts with "
                 "`specy-road review record` (from `work/review-record.template.md`); "
                 "then the developer runs "
                 "`specy-road mark-implementation-reviewed` and "
@@ -326,7 +327,7 @@ def write_agent_prompt(
     lines.extend(_planned_test_changes_lines(node))
     lines.extend(_tests_at_risk_lines(node, repo_root))
     lines += ["", "## Instructions", ""]
-    lines += _finish_instruction_lines(
+    lines += finish_instruction_lines(
         node_id,
         repo_root,
         on_complete=on_complete,

@@ -24,10 +24,8 @@ dist/
 .idea/
 .vscode/
 
-# AI / agents — ignore IDE state; version policy under .cursor/rules/
-.cursor/*
-!.cursor/rules/
-!.cursor/rules/**
+# AI / agents — IDE state, including this repository's own Cursor rules
+.cursor/
 .claude/
 CLAUDE.local.md
 CLAUDE.*.local.md
@@ -42,6 +40,11 @@ agent-transcripts/
 sample-apps/
 /playground-dev/
 
+# Development-process notes and tools: kept on disk, never committed
+/docs/design-notes/
+/scripts/census/
+/scripts/review_effort_study.py
+
 # Derived indexes for `specy-road history` and `specy-road search`. Rebuilt
 # from git and the working tree on demand, so never committed;
 # .specyrd/manifest.json stays tracked.
@@ -54,23 +57,19 @@ sample-apps/
 
 # >>> specy-road managed block — do not edit inside <<<
 # Written by specy-road at run time, never committed: derived caches for
-# `history`, `search` and `brainstorm`; pickup and finish session files (a
-# PR body re-inlines the brief and summary); review records (a commit would
-# move the branch past the reviewed commit); session, worker and worktree
-# state; brainstorm prompts; per-checkout orchestration availability overlay.
+# `history`, `search` and `brainstorm`; everything under work/ (briefs,
+# summaries, session files, review records, chore records, session, worker
+# and worktree state) except its README.md, .gitkeep and *.template.md
+# scaffold; per-checkout orchestration availability overlay; per-clone
+# decisions overlay. Re-include other work/ paths below the block.
 # Also never committed: .specyrd/AGENTS.local.md, your personal addendum to
-# specy-road's agent rules. `.specyrd/manifest.json` stays tracked.
+# specy-road's agent rules. `.specyrd/manifest.json`, when present, stays tracked.
 sr/.specyrd/cache/
-sr/work/.on-complete-*.yaml
-sr/work/prompt-*.md
-sr/work/pr-body-*.md
-sr/work/.milestone-session.yaml
-sr/work/reviews/
-sr/work/.sessions/
-sr/work/.workers/
-sr/work/.worktrees/
-sr/work/brainstorm-*-prompt.md
-sr/work/brainstorm-closed/*-prompt.md
+sr/work/*
+!sr/work/README.md
+!sr/work/.gitkeep
+!sr/work/*.template.md
 sr/roadmap/orchestration.local.yaml
+sr/roadmap/decisions.local.yaml
 sr/.specyrd/AGENTS.local.md
 # >>> end specy-road managed block <<<

@@ -20,10 +20,10 @@ entry points at its profile with `profile:`, and names
 the `harness` (`claude-code`, `codex`, `cursor`, `generic`) that
 `specy-road worker delegate` launches it on — a Claude model under Cursor's
 agent is a `cursor` worker ([orchestration-workers.md](orchestration-workers.md)). A repo scaffolded
-by an older version gets them with `specy-road refresh-profiles`, which by
+by an older version gets them with `specy-road upgrade` (or `specy-road upgrade --only profiles`), which by
 default adds the missing profiles a roster entry in `roadmap/orchestration.yaml`
 names (`--profiles all` adds every missing shipped profile) and never
-overwrites your edited copies (`--only` matches a front-matter `api_id` or file
+overwrites your edited copies (`--profile` matches a front-matter `api_id` or file
 stem, and adds every matching missing profile).
 The facts come
 from model-run research no human has verified, so read the README's provenance
@@ -58,7 +58,7 @@ non-string evidence) makes the profile invalid. `models show` prints the date, h
 `composer-2.5-fast` too), from the 2026-11-05/06 replay through Cursor; the finding is about that model,
 not the Cursor harness, and `composer-2` is not flagged. While `policy.signed_reviews` is on, an entry
 that launches a flagged model is excluded from the executor and reviewer roles unless it opts in:
-[orchestration-roster.md](orchestration-roster.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
+[orchestration-workers.md](orchestration-workers.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
 
 A profile's `access.launch_mode` pins how much of its harness a Claude Code
 worker gets: `full` (the default when absent) or `bare`. Any other value makes
@@ -168,7 +168,7 @@ log's name.
   you can roster them.
 - `specy-road models roster --executor <profile-id> --reviewer <profile-id> [--write]`
   — roster entries filled from the shipped profiles, in the form `validate`
-  accepts; see [orchestration-roster.md](orchestration-roster.md).
+  accepts; see [orchestration-workers.md](orchestration-workers.md#the-roster-building-and-trying-it).
 - `specy-road models show <id> [--section <name>]` — one profile's machine
   fields and a body section (default: Prompting rules).
 - `specy-road models stale [--max-age-days N]` — profiles researched too long
@@ -232,7 +232,7 @@ fields say so:
 
 Under `policy.reviewers_distinct_families`, an approval from a `dynamic` entry that is not `pinned` does not
 count; a block from it still does, and with distinct families off its approval counts as any other.
-`handoff status` and `review list` name each approval this keeps out (`does not count — '<model>' runs on
+`review status` names each approval this keeps out (`does not count — '<model>' runs on
 a harness that routes models dynamically …`). A harness's internal critic, however it reports, is
 supporting evidence for a reviewer, never a gate approval: only a review record filed by a rostered
 reviewer counts.
@@ -245,7 +245,7 @@ and differ (ignoring case, and treating `-`, `_` and spaces alike, so Cursor's `
 <observed>`, which `worker sync` prints. An alias the harness resolves to another id reads as a mismatch
 too.
 
-## Harness facts: what `refresh-profiles` renders
+## Harness facts: what `upgrade --only profiles` renders
 
 `model-profiles/harness-facts.yaml` holds one record per harness a roster can
 name (`claude-code`, `codex`, `cursor`, `generic`): version, the adapter's headless
@@ -286,9 +286,13 @@ drift:
 does not list: Codex would take the key and ignore it.
 
 ```bash
-specy-road refresh-profiles --check    # report drift (exit 1); a README older than the block is "behind" (exit 0)
-specy-road refresh-profiles --render   # rewrite the rendered regions; --dry-run lists them
+specy-road upgrade --only profiles --check    # report drift (exit 1); a README older than the block is "behind" (exit 0)
+specy-road upgrade --only profiles --render   # rewrite the rendered regions; --dry-run lists them
 ```
+
+The README block is found by the start of its first marker, `<!-- >>> harness facts:`, so a block
+whose marker names the older `refresh-profiles --render` is still that block: `--check` reports it
+as drift once, and `--render` rewrites the marker and the block.
 
 `--render` rewrites only the shipped layout: a block-style `access:` whose
 children are one-line keys indented two spaces. It puts a removed `access.cli`
@@ -299,8 +303,8 @@ which counts as drift. Examples are a folded or literal `cli`, a flow
 `access: { … }`, or another indentation. `--render` names each such profile and
 exits 1; fix it by hand or take the toolkit's copy with `--force`.
 
-A plain `refresh-profiles` still copies only missing files (by default the
-ones a roster entry names; `--profiles all` for every shipped one, `--only` for
+A plain `upgrade --only profiles` still copies only missing files (by default the
+ones a roster entry names; `--profiles all` for every shipped one, `--profile` for
 one), and also prints
 any drift without failing. To re-render the shipped copies after editing the
 fixture, run `--render --repo-root specy_road/templates/project` from a
@@ -310,9 +314,9 @@ toolkit checkout.
 output before accepting it:
 
 ```bash
-specy-road refresh-profiles --capture codex            # runs the record's capture_commands
-specy-road refresh-profiles --capture codex --from DIR # or reads DIR/*.txt (version.txt required)
-specy-road refresh-profiles --capture codex --accept   # store a passing capture as the accepted one (--dry-run: report only)
+specy-road upgrade --only profiles --capture codex            # runs the record's capture_commands
+specy-road upgrade --only profiles --capture codex --from DIR # or reads DIR/*.txt (version.txt required)
+specy-road upgrade --only profiles --capture codex --accept   # store a passing capture as the accepted one (--dry-run: report only)
 ```
 
 The accepted capture lives in `model-profiles/harness-captures/<harness>/`. A
@@ -374,10 +378,10 @@ order:
   two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
   "Local availability overlay"). A substitution says who stands in meanwhile.
   The same file can add entries for this clone under `roster_add`, labelled
-  `[local]` ([orchestration-roster.md](orchestration-roster.md#local-roster-entries-roster_add)).
+  `[local]` ([orchestration-workers.md](orchestration-workers.md#local-roster-entries-roster_add)).
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
   profile) the cheapest list price wins; `--spread` instead takes them
-  round-robin by leaf order ([orchestration-roster.md](orchestration-roster.md)).
+  round-robin by leaf order ([orchestration-workers.md](orchestration-workers.md#the-roster-building-and-trying-it)).
   Reviewers rank by reviewer score, then cost; the coordinator by coordinator
   score, and with no rostered coordinator the plan prints `coordinator: this session`.
 - **Independence.** The executor's model is never offered as its own
@@ -387,7 +391,7 @@ order:
 
 `--roster-from-worktree` plans with the working tree's roster as a dry run that
 nothing may launch from, and `models list` names the ref it read and any
-uncommitted roster changes ([orchestration-roster.md](orchestration-roster.md)).
+uncommitted roster changes ([orchestration-workers.md](orchestration-workers.md#the-roster-building-and-trying-it)).
 
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
 coordinator script stops before dispatching. A roster entry whose profile is
@@ -396,4 +400,4 @@ invalid is reported and assigned no role, since `prompt` would refuse it; a
 <form>`, and the `may_process` hint that only follows from that drop is left out. Set a
 leaf's `sensitivity` and `executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
 or on `add-node`; both default to `public` and `any`. Repos scaffolded before
-0.3.0 run `specy-road refresh-schemas` once so `validate` accepts the fields.
+0.3.0 run `specy-road upgrade --only schemas` once so `validate` accepts the fields.

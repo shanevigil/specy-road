@@ -1,0 +1,15 @@
+$ specy-road lessons add --help
+exit: 0
+--- stdout ---
+usage: specy-road lessons add [-h] --rule RULE [--example EXAMPLE] [--from NODE_ID]
+                              [--repo-root DIR]
+
+options:
+  -h, --help         show this help message and exit
+  --rule RULE        The defect class as a one-line rule for reviewers
+  --example EXAMPLE  One line showing the defect, such as where it escaped
+  --from NODE_ID     The leaf the defect escaped from
+  --repo-root DIR    Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                     .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                     root, else the current directory).
+--- stderr ---

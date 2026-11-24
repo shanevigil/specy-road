@@ -1,0 +1,15 @@
+{
+  "slug": "tidy-docs",
+  "task": "Fix the broken links in docs/",
+  "touch_zones": [
+    "docs/"
+  ],
+  "review": true,
+  "model": "cheap-1",
+  "harness": null,
+  "worktree": "{worktree}",
+  "branch": "main",
+  "base": "{base}",
+  "started_at": "2026-11-10T09:00:00+00:00",
+  "closed_at": null
+}

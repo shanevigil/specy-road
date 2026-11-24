@@ -40,13 +40,13 @@ Make the edit in one of two places:
   the list from, so the gate counts the change as declared. An executor's worktree
   can't waive its own finding.
 - **On the leaf branch.** The edit is committed with the change and reviewed with the
-  diff: `review-packet` lists the roadmap chunk under changed paths, and reviewers see
+  diff: `review packet` lists the roadmap chunk under changed paths, and reviewers see
   who authorized what. The required check below reads this list too. With
   `policy.integrity_gate` on, the gate still needs the line on the integration branch.
 
 ## Unplanned removals are a required reviewer check
 
-`review-packet` checks every `removed-test`, `removed-test-file`, `new-skip` and
+`review packet` checks every `removed-test`, `removed-test-file`, `new-skip` and
 `assert-loss` finding against `planned_test_changes`, taken from both the integration
 branch and the commit under review. Any finding that neither lists goes under
 **Required check: unplanned test removal**, whatever `policy.integrity_gate` says. The

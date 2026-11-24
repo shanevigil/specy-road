@@ -1,0 +1,14 @@
+$ specy-road prompt M1.1 --model opus --role executor --channel cli
+exit: 0
+--- stdout ---
+--- stderr ---
+Wrote <P>/work/prompt-M1.1-executor-opus.md
+note: the profile sets effort medium for this role, but the command takes no effort (no {effort}): CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
+would run: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>" (prompt: <P>/work/prompt-M1.1-executor-opus.md); add --run to launch it
+
+$ specy-road prompt M1.1 --model opus --role reviewer --channel cli
+exit: 1
+--- stdout ---
+--- stderr ---
+Wrote <P>/work/prompt-M1.1-reviewer-opus.md
+error: a generic reviewer needs a roster channels.cli; the profile's access.cli is never run for a reviewer. Nothing was launched

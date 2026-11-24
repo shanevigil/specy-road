@@ -33,12 +33,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from specy_road import safe_write
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
-from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
+from specy_road.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.finish_land_roadmap_graph import (
     GraphResolveError,
     branch_roadmap_edits,
+    leaf_landed_complete,
     own_roadmap_edit_refusal,
     resolve_graph,
     split_conflicts,
@@ -65,8 +68,10 @@ DETERMINISTIC_PATHS: tuple[str, ...] = (REGISTRY_REL.as_posix(), *GENERATED_COMM
 _REF_READ_TIMEOUT = 4.0
 
 
-class DeterministicResolveError(RuntimeError):
+class DeterministicResolveError(SpecyError, RuntimeError):
     """Resolution could not complete; the caller must abort the merge."""
+
+    __init__ = inherited_init
 
 
 def codename_from_branch(branch: str) -> str | None:
@@ -164,12 +169,12 @@ def _regenerate_generated_files(repo: Path) -> list[str]:
     """
     if not _has_roadmap_graph(repo):
         return []
-    links_out = refused_generated_files(repo)   # both checked before either is written
-    if links_out:
-        raise DeterministicResolveError("; ".join(links_out.values()))
+    linked = refused_generated_files(repo)   # any symlink, in-repo too; both checked before either is written
+    if linked:
+        raise DeterministicResolveError("; ".join(linked.values()))
     try:
         reexport_roadmap_md(repo)
-        (repo / DEFAULT_OUTPUT).write_text(render_digest(repo), encoding="utf-8")
+        safe_write.write(repo, repo / DEFAULT_OUTPUT, render_digest(repo))
     except (Exception, SystemExit) as exc:
         raise DeterministicResolveError(
             f"could not regenerate {', '.join(GENERATED_COMMITTED)} from the "
@@ -245,9 +250,9 @@ def _reconcile_digest(repo: Path) -> bool:
         return False
     target = repo / DEFAULT_OUTPUT
     fresh = render_digest(repo)
-    if target.is_file() and target.read_text(encoding="utf-8") == fresh:
+    if safe_write.check(repo, target).is_file() and target.read_text(encoding="utf-8") == fresh:
         return False
-    target.write_text(fresh, encoding="utf-8")
+    safe_write.write(repo, target, fresh)
     if DEFAULT_OUTPUT in set(unstageable_generated_files(repo)):
         return False
     git_code(["add", "--", DEFAULT_OUTPUT], repo)
@@ -273,7 +278,7 @@ def reconcile_or_rollback(repo: Path, pre_sha: str) -> str | None:
 
 def _commit_message(
     feature_branch: str, integration_branch: str, codename: str | None,
-    graph: Sequence[str] = (),
+    graph: Sequence[str] = (), applied: bool = False,
 ) -> list[str]:
     """Subject and body for the resolved merge commit."""
     subject = f"Merge branch '{feature_branch}' into {integration_branch}"
@@ -284,17 +289,27 @@ def _commit_message(
         "These three files are keyed or generated, not mergeable: a line-based "
         "3-way merge can retain a row both lanes removed."
     )
-    return ["-m", subject, "-m", body, *_graph_note(feature_branch, integration_branch, graph)]
+    return ["-m", subject, "-m", body, *_graph_note(
+        feature_branch, integration_branch, graph, applied,
+    )]
 
 
-def _graph_note(feature_branch: str, integration_branch: str, graph: Sequence[str]) -> list[str]:
-    """A commit-message paragraph naming the graph files resolved; ``[]`` when none were."""
+def _graph_note(
+    feature_branch: str, integration_branch: str, graph: Sequence[str], applied: bool,
+) -> list[str]:
+    """A commit-message paragraph naming the graph files resolved; ``[]`` when none were.
+
+    The Complete-status sentence is present only when ``applied`` is true.
+    """
     if not graph:
         return []
-    return ["-m", (
+    note = (
         f"{', '.join(graph)} resolved to {integration_branch}: {feature_branch} "
-        "only inherited its changes there, and finish's Complete status was applied again."
-    )]
+        "only inherited its changes there"
+    )
+    if applied:
+        note += ", and finish's Complete status was applied again"
+    return ["-m", note + "."]
 
 
 def resolvable_conflict(
@@ -374,8 +389,11 @@ def merge_feature_deterministically(
                 f"staging {', '.join(staged)} failed: {out}",
             )
 
+    applied = leaf_landed_complete(repo, codename, bookkeeping) if graph else False
     code, out = git_code(
-        ["commit", *_commit_message(feature_branch, integration_branch, codename, graph)],
+        ["commit", *_commit_message(
+            feature_branch, integration_branch, codename, graph, applied,
+        )],
         repo,
     )
     if code != 0:

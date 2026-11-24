@@ -1,0 +1,2362 @@
+{
+ "specy-road": {
+  "path": [],
+  "subcommands": [],
+  "options": [],
+  "passthrough": false
+ },
+ "specy-road abort-task-pickup": {
+  "path": [
+   "abort-task-pickup"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--force",
+   "--help",
+   "--remote",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road add-dependency": {
+  "path": [
+   "add-dependency"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road add-node": {
+  "path": [
+   "add-node"
+  ],
+  "subcommands": [],
+  "options": [
+   "--acceptance",
+   "--chunk",
+   "--codename",
+   "--dependency",
+   "--execution-milestone",
+   "--executor-eligibility",
+   "--help",
+   "--id",
+   "--parallel-tracks",
+   "--parent-id",
+   "--planned-test-change",
+   "--sensitivity",
+   "--sibling-order",
+   "--status",
+   "--title",
+   "--touch-zone",
+   "--type",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road apply": {
+  "path": [
+   "apply"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road archive": {
+  "path": [
+   "archive"
+  ],
+  "subcommands": [],
+  "options": [
+   "--auto",
+   "--deep",
+   "--dry-run",
+   "--force",
+   "--help",
+   "--older-than-days",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road archive-node": {
+  "path": [
+   "archive-node"
+  ],
+  "subcommands": [],
+  "options": [
+   "--hard-remove",
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road author-approach": {
+  "path": [
+   "author-approach"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--output",
+   "--repo-root",
+   "-h",
+   "-o"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm": {
+  "path": [
+   "brainstorm"
+  ],
+  "subcommands": [
+   "accept",
+   "add-evidence",
+   "add-idea",
+   "close",
+   "cluster",
+   "decide",
+   "evidence",
+   "frame",
+   "list",
+   "merge",
+   "next-round",
+   "park",
+   "promote",
+   "realize",
+   "recommend",
+   "reject",
+   "revise",
+   "sessions",
+   "start",
+   "verify"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm accept": {
+  "path": [
+   "brainstorm",
+   "accept"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--reason",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm add-evidence": {
+  "path": [
+   "brainstorm",
+   "add-evidence"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--no-result",
+   "--path",
+   "--query",
+   "--quote",
+   "--repo-root",
+   "--retrieved-at",
+   "--slug",
+   "--source-type",
+   "--stance",
+   "--supports",
+   "--tool",
+   "--url",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm add-idea": {
+  "path": [
+   "brainstorm",
+   "add-idea"
+  ],
+  "subcommands": [],
+  "options": [
+   "--assumption",
+   "--effort",
+   "--evidence",
+   "--from-file",
+   "--from-gap",
+   "--help",
+   "--hypothesis",
+   "--kind",
+   "--origin",
+   "--quote",
+   "--rationale",
+   "--repo-root",
+   "--slug",
+   "--title",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm close": {
+  "path": [
+   "brainstorm",
+   "close"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm cluster": {
+  "path": [
+   "brainstorm",
+   "cluster"
+  ],
+  "subcommands": [],
+  "options": [
+   "--best",
+   "--critic",
+   "--help",
+   "--name",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm decide": {
+  "path": [
+   "brainstorm",
+   "decide"
+  ],
+  "subcommands": [],
+  "options": [
+   "--decision",
+   "--help",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm evidence": {
+  "path": [
+   "brainstorm",
+   "evidence"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm frame": {
+  "path": [
+   "brainstorm",
+   "frame"
+  ],
+  "subcommands": [],
+  "options": [
+   "--allocation",
+   "--amend",
+   "--answer",
+   "--confirm",
+   "--help",
+   "--provisional",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm list": {
+  "path": [
+   "brainstorm",
+   "list"
+  ],
+  "subcommands": [],
+  "options": [
+   "--by",
+   "--help",
+   "--json",
+   "--repo-root",
+   "--show-verdicts",
+   "--slug",
+   "--status",
+   "--summary",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm merge": {
+  "path": [
+   "brainstorm",
+   "merge"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--into",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm next-round": {
+  "path": [
+   "brainstorm",
+   "next-round"
+  ],
+  "subcommands": [],
+  "options": [
+   "--count",
+   "--help",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm park": {
+  "path": [
+   "brainstorm",
+   "park"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--reason",
+   "--repo-root",
+   "--revisit-when",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm promote": {
+  "path": [
+   "brainstorm",
+   "promote"
+  ],
+  "subcommands": [],
+  "options": [
+   "--by-cluster",
+   "--dry-run",
+   "--help",
+   "--min-recommendation",
+   "--plan",
+   "--repo-root",
+   "--set",
+   "--slug",
+   "--type",
+   "--under",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm realize": {
+  "path": [
+   "brainstorm",
+   "realize"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--node",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm recommend": {
+  "path": [
+   "brainstorm",
+   "recommend"
+  ],
+  "subcommands": [],
+  "options": [
+   "--check",
+   "--help",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm reject": {
+  "path": [
+   "brainstorm",
+   "reject"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--reason",
+   "--repo-root",
+   "--slug",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm revise": {
+  "path": [
+   "brainstorm",
+   "revise"
+  ],
+  "subcommands": [],
+  "options": [
+   "--append-why",
+   "--cluster",
+   "--codename",
+   "--critic",
+   "--effort",
+   "--from-file",
+   "--help",
+   "--kind",
+   "--overlap",
+   "--rationale",
+   "--recommendation",
+   "--repo-root",
+   "--slug",
+   "--target-parent",
+   "--title",
+   "--why",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm sessions": {
+  "path": [
+   "brainstorm",
+   "sessions"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm start": {
+  "path": [
+   "brainstorm",
+   "start"
+  ],
+  "subcommands": [],
+  "options": [
+   "--count",
+   "--help",
+   "--panel",
+   "--profile",
+   "--repo-root",
+   "--rounds",
+   "--slug",
+   "--topic",
+   "--under",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brainstorm verify": {
+  "path": [
+   "brainstorm",
+   "verify"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "--slug",
+   "--yes",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road branches": {
+  "path": [
+   "branches"
+  ],
+  "subcommands": [
+   "prune"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road branches prune": {
+  "path": [
+   "branches",
+   "prune"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--delete",
+   "--help",
+   "--remote",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road brief": {
+  "path": [
+   "brief"
+  ],
+  "subcommands": [],
+  "options": [
+   "--all-contracts",
+   "--help",
+   "--no-history",
+   "--output",
+   "--repo-root",
+   "-h",
+   "-o"
+  ],
+  "passthrough": false
+ },
+ "specy-road chore": {
+  "path": [
+   "chore"
+  ],
+  "subcommands": [
+   "close",
+   "garden",
+   "start"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road chore close": {
+  "path": [
+   "chore",
+   "close"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "--summary",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road chore garden": {
+  "path": [
+   "chore",
+   "garden"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--open-chores",
+   "--repo-root",
+   "--under",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road chore start": {
+  "path": [
+   "chore",
+   "start"
+  ],
+  "subcommands": [],
+  "options": [
+   "--harness",
+   "--help",
+   "--json",
+   "--model",
+   "--repo-root",
+   "--review",
+   "--task",
+   "--worktree",
+   "--zone",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road decisions": {
+  "path": [
+   "decisions"
+  ],
+  "subcommands": [
+   "add",
+   "close",
+   "list"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road decisions add": {
+  "path": [
+   "decisions",
+   "add"
+  ],
+  "subcommands": [],
+  "options": [
+   "--applies-to",
+   "--asked",
+   "--default",
+   "--expires",
+   "--help",
+   "--id",
+   "--kind",
+   "--local",
+   "--model",
+   "--needed-by",
+   "--option",
+   "--recommendation",
+   "--recommendation-reason",
+   "--repo-root",
+   "--role",
+   "--summary",
+   "--supersedes",
+   "--why",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road decisions close": {
+  "path": [
+   "decisions",
+   "close"
+  ],
+  "subcommands": [],
+  "options": [
+   "--answer",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road decisions list": {
+  "path": [
+   "decisions",
+   "list"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road deepen-archive": {
+  "path": [
+   "deepen-archive"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road digest": {
+  "path": [
+   "digest"
+  ],
+  "subcommands": [],
+  "options": [
+   "--check",
+   "--help",
+   "--output",
+   "--repo-root",
+   "-h",
+   "-o"
+  ],
+  "passthrough": false
+ },
+ "specy-road do-next-available-task": {
+  "path": [
+   "do-next-available-task"
+  ],
+  "subcommands": [],
+  "options": [
+   "--allow-scaffold-planning",
+   "--allow-second-claim",
+   "--allow-unauthored",
+   "--base",
+   "--baseline-cmd",
+   "--baseline-warn",
+   "--help",
+   "--interactive",
+   "--local",
+   "--milestone-subtree",
+   "--no-ci-skip-in-message",
+   "--no-prefer-agentic",
+   "--on-complete",
+   "--owner",
+   "--prefer-agentic",
+   "--remote",
+   "--repo-root",
+   "--under",
+   "--worktree",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road doctor": {
+  "path": [
+   "doctor"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--fix",
+   "--help",
+   "--remote",
+   "--repo-root",
+   "--yes",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road edit-node": {
+  "path": [
+   "edit-node"
+  ],
+  "subcommands": [],
+  "options": [
+   "--add",
+   "--help",
+   "--remove",
+   "--set",
+   "--sync-codename",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road export": {
+  "path": [
+   "export"
+  ],
+  "subcommands": [],
+  "options": [
+   "--check",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road file-limits": {
+  "path": [
+   "file-limits"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--no-respect-gitignore",
+   "--repo-root",
+   "--strict-hard-alerts",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road finish-this-task": {
+  "path": [
+   "finish-this-task"
+  ],
+  "subcommands": [],
+  "options": [
+   "--allow-empty-implementation",
+   "--allow-scaffold-planning",
+   "--delete-branch",
+   "--help",
+   "--land-check-cmd",
+   "--no-cleanup-work",
+   "--no-milestone-rollup",
+   "--on-complete",
+   "--override-on-complete",
+   "--push",
+   "--remote",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road grind-session": {
+  "path": [
+   "grind-session"
+  ],
+  "subcommands": [],
+  "options": [
+   "--allow-unauthored",
+   "--base",
+   "--baseline-cmd",
+   "--baseline-warn",
+   "--delete-merged-branches",
+   "--dry-run",
+   "--fields",
+   "--help",
+   "--implement-cmd",
+   "--implement-mode",
+   "--json",
+   "--limit-wait-grace-seconds",
+   "--max-cycles",
+   "--max-empty-retries",
+   "--max-leaves",
+   "--max-limit-wait-hours",
+   "--max-limit-waits",
+   "--milestone-subtree",
+   "--no-ci-skip-in-message",
+   "--no-prefer-agentic",
+   "--on-complete",
+   "--plan",
+   "--pre-finish-cmd",
+   "--prefer-agentic",
+   "--push",
+   "--ready-signal",
+   "--remote",
+   "--repo-root",
+   "--resume-in-flight",
+   "--signal-timeout",
+   "--step",
+   "--under",
+   "--until",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road group-nodes": {
+  "path": [
+   "group-nodes"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--into-new",
+   "--repo-root",
+   "--rewrite-refs",
+   "--title",
+   "--type",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road gui": {
+  "path": [
+   "gui"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--host",
+   "--port",
+   "--read-only",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road handoff": {
+  "path": [
+   "handoff"
+  ],
+  "subcommands": [
+   "status"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road handoff status": {
+  "path": [
+   "handoff",
+   "status"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--ref",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road history": {
+  "path": [
+   "history"
+  ],
+  "subcommands": [],
+  "options": [
+   "--archived",
+   "--help",
+   "--json",
+   "--limit",
+   "--rebuild",
+   "--repo-root",
+   "--reverse",
+   "--since",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road impact": {
+  "path": [
+   "impact"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--ref",
+   "--repo-root",
+   "--zones",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road indent": {
+  "path": [
+   "indent"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "--rewrite-refs",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road init": {
+  "path": [
+   "init"
+  ],
+  "subcommands": [
+   "gui",
+   "project"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road init gui": {
+  "path": [
+   "init",
+   "gui"
+  ],
+  "subcommands": [],
+  "options": [
+   "--build-gui",
+   "--dry-run",
+   "--help",
+   "--install-gui",
+   "--reinstall-gui",
+   "--skip-npm-build",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road init project": {
+  "path": [
+   "init",
+   "project"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--force",
+   "--help",
+   "--profiles",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road integrity": {
+  "path": [
+   "integrity"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--ref",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road lessons": {
+  "path": [
+   "lessons"
+  ],
+  "subcommands": [
+   "add",
+   "list"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road lessons add": {
+  "path": [
+   "lessons",
+   "add"
+  ],
+  "subcommands": [],
+  "options": [
+   "--example",
+   "--from",
+   "--help",
+   "--repo-root",
+   "--rule",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road lessons list": {
+  "path": [
+   "lessons",
+   "list"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road list-archives": {
+  "path": [
+   "list-archives"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road list-dependencies": {
+  "path": [
+   "list-dependencies"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road list-gates": {
+  "path": [
+   "list-gates"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "--under",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road list-nodes": {
+  "path": [
+   "list-nodes"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--status",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road mark-implementation-reviewed": {
+  "path": [
+   "mark-implementation-reviewed"
+  ],
+  "subcommands": [],
+  "options": [
+   "--allow-missing-summary",
+   "--help",
+   "--repo-root",
+   "--sign-key",
+   "--yes",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road models": {
+  "path": [
+   "models"
+  ],
+  "subcommands": [
+   "list",
+   "roster",
+   "show",
+   "stale"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road models list": {
+  "path": [
+   "models",
+   "list"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road models roster": {
+  "path": [
+   "models",
+   "roster"
+  ],
+  "subcommands": [],
+  "options": [
+   "--coordinator",
+   "--executor",
+   "--help",
+   "--repo-root",
+   "--reviewer",
+   "--write",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road models show": {
+  "path": [
+   "models",
+   "show"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "--section",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road models stale": {
+  "path": [
+   "models",
+   "stale"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--max-age-days",
+   "--repo-root",
+   "--today",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road move-node": {
+  "path": [
+   "move-node"
+  ],
+  "subcommands": [],
+  "options": [
+   "--fill-gaps",
+   "--help",
+   "--id",
+   "--index",
+   "--renumber-outline",
+   "--repo-root",
+   "--rewrite-refs",
+   "--to-parent",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road open-milestone-pr": {
+  "path": [
+   "open-milestone-pr"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road orchestrate": {
+  "path": [
+   "orchestrate"
+  ],
+  "subcommands": [
+   "plan"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road orchestrate plan": {
+  "path": [
+   "orchestrate",
+   "plan"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "--roster-from-worktree",
+   "--spread",
+   "--today",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road orchestration": {
+  "path": [
+   "orchestration"
+  ],
+  "subcommands": [
+   "guard"
+  ],
+  "options": [],
+  "passthrough": false
+ },
+ "specy-road orchestration guard": {
+  "path": [
+   "orchestration",
+   "guard"
+  ],
+  "subcommands": [],
+  "options": [
+   "--command",
+   "--config-role",
+   "--format",
+   "--help",
+   "--print-config",
+   "--repo-root",
+   "--role",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road outdent": {
+  "path": [
+   "outdent"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "--rewrite-refs",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road prompt": {
+  "path": [
+   "prompt"
+  ],
+  "subcommands": [],
+  "options": [
+   "--channel",
+   "--context-feedback",
+   "--force",
+   "--help",
+   "--model",
+   "--output",
+   "--reason",
+   "--ref",
+   "--repo-root",
+   "--role",
+   "--run",
+   "--sign-key",
+   "--worktree",
+   "-h",
+   "-o"
+  ],
+  "passthrough": false
+ },
+ "specy-road ready": {
+  "path": [
+   "ready"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--model",
+   "--note",
+   "--red-green",
+   "--repo-root",
+   "--run",
+   "--run-argv",
+   "--verify",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road rebalance-chunks": {
+  "path": [
+   "rebalance-chunks"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--help",
+   "--normalize",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road reconcile-branch": {
+  "path": [
+   "reconcile-branch"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--help",
+   "--remote",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road reconcile-milestone-status": {
+  "path": [
+   "reconcile-milestone-status"
+  ],
+  "subcommands": [],
+  "options": [
+   "--apply",
+   "--fallback-head-delivery",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road refresh-profiles": {
+  "path": [
+   "refresh-profiles"
+  ],
+  "subcommands": [],
+  "options": [
+   "--accept",
+   "--capture",
+   "--check",
+   "--dry-run",
+   "--force",
+   "--from",
+   "--help",
+   "--only",
+   "--profiles",
+   "--render",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road refresh-schemas": {
+  "path": [
+   "refresh-schemas"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road refresh-stubs": {
+  "path": [
+   "refresh-stubs"
+  ],
+  "subcommands": [],
+  "options": [
+   "--diff",
+   "--dry-run",
+   "--help",
+   "--prune",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road registry-prune": {
+  "path": [
+   "registry-prune"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--help",
+   "--remote",
+   "--remove",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road remove-dependency": {
+  "path": [
+   "remove-dependency"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road remove-node": {
+  "path": [
+   "remove-node"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road rename-refs": {
+  "path": [
+   "rename-refs"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road restore-archive": {
+  "path": [
+   "restore-archive"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review": {
+  "path": [
+   "review"
+  ],
+  "subcommands": [
+   "accept-policy",
+   "check-pre-existing",
+   "defer",
+   "delegate",
+   "list",
+   "record",
+   "red-green",
+   "usage"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review accept-policy": {
+  "path": [
+   "review",
+   "accept-policy"
+  ],
+  "subcommands": [],
+  "options": [
+   "--all-open",
+   "--help",
+   "--ref",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review check-pre-existing": {
+  "path": [
+   "review",
+   "check-pre-existing"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--ref",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review defer": {
+  "path": [
+   "review",
+   "defer"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--rca",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review delegate": {
+  "path": [
+   "review",
+   "delegate"
+  ],
+  "subcommands": [],
+  "options": [
+   "--backoff",
+   "--help",
+   "--json",
+   "--model",
+   "--ref",
+   "--repo-root",
+   "--resume",
+   "--retries",
+   "--sign-key",
+   "--worktree",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review list": {
+  "path": [
+   "review",
+   "list"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--ref",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review record": {
+  "path": [
+   "review",
+   "record"
+  ],
+  "subcommands": [],
+  "options": [
+   "--file",
+   "--help",
+   "--human-filed",
+   "--launch-mode",
+   "--model",
+   "--ref",
+   "--repo-root",
+   "--sign-key",
+   "--verdict",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review red-green": {
+  "path": [
+   "review",
+   "red-green"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--ref",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review usage": {
+  "path": [
+   "review",
+   "usage"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road review-node": {
+  "path": [
+   "review-node"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--output",
+   "--repo-root",
+   "-h",
+   "-o"
+  ],
+  "passthrough": false
+ },
+ "specy-road review-packet": {
+  "path": [
+   "review-packet"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--full",
+   "--help",
+   "--max-diff-bytes",
+   "--max-diff-lines",
+   "--output",
+   "--ref",
+   "--repo-root",
+   "--verify-cmd",
+   "-h",
+   "-o"
+  ],
+  "passthrough": false
+ },
+ "specy-road scaffold-constitution": {
+  "path": [
+   "scaffold-constitution"
+  ],
+  "subcommands": [],
+  "options": [
+   "--force",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road scaffold-planning": {
+  "path": [
+   "scaffold-planning"
+  ],
+  "subcommands": [],
+  "options": [
+   "--force",
+   "--help",
+   "--planning-dir",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road search": {
+  "path": [
+   "search"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--kind",
+   "--limit",
+   "--node",
+   "--rebuild",
+   "--repo-root",
+   "--scope",
+   "--stats",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road session": {
+  "path": [
+   "session"
+  ],
+  "subcommands": [
+   "check",
+   "end",
+   "guard",
+   "list",
+   "start",
+   "touch"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road session check": {
+  "path": [
+   "session",
+   "check"
+  ],
+  "subcommands": [],
+  "options": [
+   "--agent",
+   "--help",
+   "--path",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road session end": {
+  "path": [
+   "session",
+   "end"
+  ],
+  "subcommands": [],
+  "options": [
+   "--agent",
+   "--force",
+   "--help",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road session guard": {
+  "path": [
+   "session",
+   "guard"
+  ],
+  "subcommands": [],
+  "options": [
+   "--agent",
+   "--always",
+   "--command",
+   "--format",
+   "--help",
+   "--print-config",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road session list": {
+  "path": [
+   "session",
+   "list"
+  ],
+  "subcommands": [],
+  "options": [
+   "--all",
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road session start": {
+  "path": [
+   "session",
+   "start"
+  ],
+  "subcommands": [],
+  "options": [
+   "--agent",
+   "--help",
+   "--note",
+   "--path",
+   "--repo-root",
+   "--ttl-hours",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road session touch": {
+  "path": [
+   "session",
+   "touch"
+  ],
+  "subcommands": [],
+  "options": [
+   "--agent",
+   "--help",
+   "--note",
+   "--path",
+   "--repo-root",
+   "--ttl-hours",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road set-dependencies": {
+  "path": [
+   "set-dependencies"
+  ],
+  "subcommands": [],
+  "options": [
+   "--clear",
+   "--deps",
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road set-gate-status": {
+  "path": [
+   "set-gate-status"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--status",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road show-archive": {
+  "path": [
+   "show-archive"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road show-node": {
+  "path": [
+   "show-node"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road start-milestone-session": {
+  "path": [
+   "start-milestone-session"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--help",
+   "--remote",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road sync": {
+  "path": [
+   "sync"
+  ],
+  "subcommands": [],
+  "options": [
+   "--base",
+   "--help",
+   "--remote",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road update": {
+  "path": [
+   "update"
+  ],
+  "subcommands": [],
+  "options": [
+   "--allow-dirty",
+   "--branch",
+   "--dry-run",
+   "--help",
+   "--install-gui-stack",
+   "--path",
+   "--remote",
+   "--reset-to-origin",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road upgrade": {
+  "path": [
+   "upgrade"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dry-run",
+   "--help",
+   "--prune",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road validate": {
+  "path": [
+   "validate"
+  ],
+  "subcommands": [],
+  "options": [
+   "--all",
+   "--context",
+   "--generate-orchestration",
+   "--help",
+   "--no-overlap-warn",
+   "--no-phase-status-warn",
+   "--repo-root",
+   "--strict",
+   "--strict-authoring",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road version": {
+  "path": [
+   "version"
+  ],
+  "subcommands": [],
+  "options": [],
+  "passthrough": false
+ },
+ "specy-road why-blocked": {
+  "path": [
+   "why-blocked"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker": {
+  "path": [
+   "worker"
+  ],
+  "subcommands": [
+   "adopt",
+   "delegate",
+   "events",
+   "handoff",
+   "hook",
+   "interrupt",
+   "list",
+   "message",
+   "open",
+   "reclaim",
+   "reconcile",
+   "resume",
+   "status",
+   "sync",
+   "terminate",
+   "timeline",
+   "usage"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker adopt": {
+  "path": [
+   "worker",
+   "adopt"
+  ],
+  "subcommands": [],
+  "options": [
+   "--harness",
+   "--help",
+   "--json",
+   "--model",
+   "--node",
+   "--op-id",
+   "--repo-root",
+   "--session",
+   "--worktree",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker delegate": {
+  "path": [
+   "worker",
+   "delegate"
+  ],
+  "subcommands": [],
+  "options": [
+   "--harness",
+   "--help",
+   "--json",
+   "--model",
+   "--offline",
+   "--op-id",
+   "--repo-root",
+   "--rework",
+   "--worktree",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker events": {
+  "path": [
+   "worker",
+   "events"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "--since",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker handoff": {
+  "path": [
+   "worker",
+   "handoff"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--op-id",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker hook": {
+  "path": [
+   "worker",
+   "hook"
+  ],
+  "subcommands": [],
+  "options": [
+   "--format",
+   "--help",
+   "--print-config",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker interrupt": {
+  "path": [
+   "worker",
+   "interrupt"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker list": {
+  "path": [
+   "worker",
+   "list"
+  ],
+  "subcommands": [],
+  "options": [
+   "--all",
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker message": {
+  "path": [
+   "worker",
+   "message"
+  ],
+  "subcommands": [],
+  "options": [
+   "--file",
+   "--fix-round",
+   "--help",
+   "--json",
+   "--no-queue",
+   "--offline",
+   "--op-id",
+   "--repo-root",
+   "--text",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker open": {
+  "path": [
+   "worker",
+   "open"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker reclaim": {
+  "path": [
+   "worker",
+   "reclaim"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--note",
+   "--op-id",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker reconcile": {
+  "path": [
+   "worker",
+   "reconcile"
+  ],
+  "subcommands": [],
+  "options": [
+   "--dismiss",
+   "--help",
+   "--json",
+   "--op-id",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker resume": {
+  "path": [
+   "worker",
+   "resume"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--offline",
+   "--op-id",
+   "--ready-only",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker status": {
+  "path": [
+   "worker",
+   "status"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker sync": {
+  "path": [
+   "worker",
+   "sync"
+  ],
+  "subcommands": [],
+  "options": [
+   "--ack",
+   "--help",
+   "--json",
+   "--repo-root",
+   "--timeout",
+   "--until",
+   "--verbose",
+   "--wait",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker terminate": {
+  "path": [
+   "worker",
+   "terminate"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--op-id",
+   "--orphaned",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker timeline": {
+  "path": [
+   "worker",
+   "timeline"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worker usage": {
+  "path": [
+   "worker",
+   "usage"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--json",
+   "--repo-root",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worktree": {
+  "path": [
+   "worktree"
+  ],
+  "subcommands": [
+   "prune"
+  ],
+  "options": [
+   "--help",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specy-road worktree prune": {
+  "path": [
+   "worktree",
+   "prune"
+  ],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--repo-root",
+   "--yes",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specyrd": {
+  "path": [],
+  "subcommands": [],
+  "options": [
+   "--help",
+   "--version",
+   "-V",
+   "-h"
+  ],
+  "passthrough": false
+ },
+ "specyrd init": {
+  "path": [
+   "init"
+  ],
+  "subcommands": [],
+  "options": [
+   "--ai",
+   "--ai-commands-dir",
+   "--dry-run",
+   "--extras",
+   "--force",
+   "--help",
+   "--here",
+   "--ide",
+   "--install-orchestration-hooks",
+   "--install-pre-push-hook",
+   "--no-prompt",
+   "--role",
+   "-h"
+  ],
+  "passthrough": false
+ }
+}

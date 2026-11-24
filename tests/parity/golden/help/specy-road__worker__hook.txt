@@ -1,0 +1,14 @@
+$ specy-road worker hook --help
+exit: 0
+--- stdout ---
+usage: specy-road worker hook [-h] --format {claude-code,codex,cursor} [--print-config]
+                              [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --format {claude-code,codex,cursor}
+  --print-config        Print the snippet that wires this hook into --format's harness
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

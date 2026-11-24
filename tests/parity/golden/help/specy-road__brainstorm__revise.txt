@@ -1,0 +1,44 @@
+$ specy-road brainstorm revise --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm revise [-h] [--title TEXT] [--rationale TEXT]
+                                    [--kind {feature,capability,risk,research,experiment,refactor,platform,policy}]
+                                    [--effort SIZE] [--codename SLUG]
+                                    [--recommendation {strong,consider,park}] [--why TEXT]
+                                    [--append-why TEXT] [--cluster CID] [--target-parent NODE_ID]
+                                    [--overlap NODE_ID:RELATION] [--critic ROLE: TEXT]
+                                    [--from-file PATH] [--slug SLUG] [--repo-root DIR]
+                                    [IDEA_ID]
+
+positional arguments:
+  IDEA_ID               Required unless --from-file.
+
+options:
+  -h, --help            show this help message and exit
+  --title TEXT
+  --rationale TEXT
+  --kind {feature,capability,risk,research,experiment,refactor,platform,policy}
+  --effort SIZE
+  --codename SLUG       Kebab-case branch slug for promote (overrides title-derived codename).
+  --recommendation {strong,consider,park}
+                        The agent's verdict. Passing only this leaves the idea's triage status
+                        alone, so accept/reject stays the PM's call.
+  --why TEXT            Set verdict_why (the stored verdict reasoning; cite a clause, source, or
+                        overlap). Unlike --rationale it does not edit the idea or mark it revised.
+  --append-why TEXT     Append to verdict_why instead of replacing it.
+  --cluster CID         Cluster id from the converge pass.
+  --target-parent NODE_ID
+                        Display id promote lands this idea under instead of the anchor ('' clears
+                        it).
+  --overlap NODE_ID:RELATION
+                        Existing node this overlaps and how (repeatable).
+  --critic ROLE: TEXT   A critic's strongest objection, e.g. 'feasibility: ...' (repeatable).
+  --from-file PATH      Apply every record in a YAML list (or a mapping with a `verdicts:` list),
+                        or JSONL (one object per line; `-` reads stdin), as one write: all or
+                        none. Keys are this command's flag names without the dashes; repeatable
+                        flags take a list.
+  --slug SLUG           Session name (default: the only open session; required when several are).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

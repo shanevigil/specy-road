@@ -1,0 +1,19 @@
+$ specy-road integrity --help
+exit: 0
+--- stdout ---
+usage: specy-road integrity [-h] [--ref REF] [--json] [--repo-root DIR] node_id
+
+Report removed tests, new skips, lost asserts and pytest config edits between a leaf and its merge
+base (git objects only; no checkout).
+
+positional arguments:
+  node_id          Roadmap node id, e.g. M9.5
+
+options:
+  -h, --help       show this help message and exit
+  --ref REF        Branch or commit (default: the node's registered branch)
+  --json           Print {"findings": [...]} instead of lines
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

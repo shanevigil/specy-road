@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 
 _Context = tuple[str, dict[str, Any], dict[str, Any], list[dict[str, Any]]]

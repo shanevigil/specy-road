@@ -45,31 +45,39 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
+from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
+from specy_road.errors import SpecyError, inherited_init
+from specy_road import safe_write
+from specy_road.clock import utc_now_iso
+from specy_road.orchestration.records.chore_records import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.git_subprocess import git_text
-from specy_road.orchestrate_assign import guidance_bypass_refusal, guidance_bypass_warning
+from specy_road.git_subprocess import git_root
+from specy_road.orchestration.orchestrate_assign import (
+    guidance_bypass_refusal, guidance_bypass_warning,
+)
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_delegate_harness import HarnessSetupError, _Harness
 from specy_road.review_delegate_packet import ensure_packet
-from specy_road.review_eligible import writers
-from specy_road.review_files import reviews_dir
+from specy_road.review_gate import writers
+from specy_road.review_files import reviews_dir, reviews_listing
 from specy_road.review_answer import stream_lines
 from specy_road.review_model_check import check_note, check_run, rostered
+from specy_road.review_answer import Rerun
 from specy_road.review_record_write import (Outcome, ReviewRunBusy, answer_scratch, attempt_text,
-                                            close_review_run, delegate_turn, file_review, final_answer, repair_prompt,
-                                            review_run_lock, snapshot, write_schema)
+                                            close_review_run, delegate_turn, file_review, final_answer, refusal_summary,
+                                            repair_prompt, review_run_lock, snapshot, write_schema)
+from specy_road.review_write_check import ancestor_symlink, path_ancestor_link
 from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
 from specy_road.reviewer_run_failure import capacity_error, valid_record  # noqa: F401 — re-exported
 from specy_road.reviewer_run_failure import gate_policy_summary as _gate_policy_summary
-from specy_road.reviewer_run_failure import (_now, _read_json, close_run, run_path as _run_path, save_run,
+from specy_road.reviewer_run_failure import (_read_json, close_run, run_path as _run_path, save_run,
                                              turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.worker_adapters import Unsupported
-from specy_road.worker_lock import WorkerError
-from specy_road.worker_sessions import check_session_id
+from specy_road.orchestration.workers.worker_adapters import Unsupported
+from specy_road.orchestration.workers.worker_lock import WorkerError
+from specy_road.orchestration.workers.worker_sessions import check_session_id
 
 RUN_PREFIX = "RUN-"
 DEFAULT_RETRIES = 3
@@ -82,8 +90,10 @@ RESUME_PROMPT = ("Continue the review from where you stopped. Your final message
                  "before or after it: specy-road files the record from it.\n")
 
 
-class DelegateError(Exception):
+class DelegateError(SpecyError):
     """A refusal, with the sentence the CLI prints."""
+
+    __init__ = inherited_init
 
 
 def run_path(repo_root: Path, node_id: str, model: str) -> Path:
@@ -125,8 +135,16 @@ def _no_model_refusal(model: str, harness: str) -> str:
             "set harness_model on the roster entry, or routing: dynamic to accept the harness's choice")
 
 
-def _model_check(repo_root: Path, model: str, log: Path, attempt: dict[str, Any]) -> tuple[str | None, tuple[str | None, str]]:
-    text_out = attempt_text(log, attempt)
+def _span_text(owned: Path, log: Path, attempt: dict[str, Any]) -> str:
+    """The attempt's log span. A symlink at any ancestor from the saved root yields ``""``: the log is not opened."""
+    if path_ancestor_link(owned, log) is not None:
+        return ""
+    return attempt_text(log, attempt)
+
+
+def _model_check(repo_root: Path, model: str, log: Path, attempt: dict[str, Any],
+                 owned: Path) -> tuple[str | None, tuple[str | None, str]]:
+    text_out = _span_text(owned, log, attempt)
     rev_entry, prof = rostered(repo_root, model)
     reported, state = check_run(text_out, rev_entry, prof)
     if note := check_note(state, reported, model):
@@ -168,7 +186,7 @@ def _start(repo_root: Path, t: ReviewTarget, model: str, ref: str | None, h: _Ha
 
 
 def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path, Path], session: str | None,
-              retries: int, backoff: float, sleep: Callable[[float], None]) -> str:
+              retries: int, backoff: float, sleep: Callable[[float], None], owned: Path) -> str:
     """Turns until one ends without a capacity error or the retries are spent; returns why it failed, if it did.
 
     A retry resumes the session the harness reported, with the continue prompt; with none reported
@@ -190,14 +208,14 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         cap = turn_capacity_error(turn["errors"], turn["tail"]) if failed else None
         said = cap or next(iter(turn["errors"]), "")
         if failed and not said:   # no parsed error: the last non-blank line of this turn's log span (the harness's own)
-            lines = [ln.strip() for ln in attempt_text(h.log, turn).splitlines() if ln.strip()]
+            lines = [ln.strip() for ln in _span_text(owned, h.log, turn).splitlines() if ln.strip()]
             said = lines[-1][:200] if lines else "no error text"
-        run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
+        run["attempts"].append({"at": utc_now_iso(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
                                 "log_start": turn["log_start"], "log_end": turn["log_end"],   # the span run_text reads
                                 "log_sha256": turn["log_sha256"], **({"repair": True} if "refusal" in run else {})})
         if path.is_symlink():   # replaced below, never followed; the tripwire still reports it (review_write_check)
             h.replaced.append(path)
-        save_run(path, run)
+        _save(path, run)
         if not cap:
             return f"harness exited {turn['exit']}: {said[:200]}" if failed else ""
         reason = f"capacity error after {n + 1} attempt(s): {cap[:200]}"
@@ -206,11 +224,29 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
     return reason
 
 
+def _save(path: Path, run: dict[str, Any]) -> None:
+    """Write the run record unless a symlink sits between the project and it: nothing is created through one."""
+    if ancestor_symlink(path) is None:
+        save_run(path, run)
+
+
+def _prompt_path(repo_root: Path, node_id: str, model: str, suffix: str = "") -> Path:
+    return repo_root / "work" / f"prompt-{node_id}-reviewer-{model}{suffix}.md"
+
+
 def _prompt_file(repo_root: Path, node_id: str, model: str, text: str, suffix: str = "") -> Path:
-    p = repo_root / "work" / f"prompt-{node_id}-reviewer-{model}{suffix}.md"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text, encoding="utf-8")
+    p = _prompt_path(repo_root, node_id, model, suffix)
+    safe_write.write(repo_root, p, text)   # refused before the caller launches
     return p
+
+
+def _prompt_pair(repo_root: Path, node_id: str, model: str, first: tuple[str, str],
+                 second: tuple[str, str]) -> tuple[Path, Path]:
+    """Both prompt files checked before either is written, so a link at the second name writes nothing."""
+    safe_write.check_all(repo_root, (_prompt_path(repo_root, node_id, model, first[0]),
+                                     _prompt_path(repo_root, node_id, model, second[0])))
+    return (_prompt_file(repo_root, node_id, model, first[1], first[0]),
+            _prompt_file(repo_root, node_id, model, second[1], second[0]))
 
 
 def _repair_prompts(repo_root: Path, node_id: str, model: str, text: str, refusal: str,
@@ -218,18 +254,20 @@ def _repair_prompts(repo_root: Path, node_id: str, model: str, text: str, refusa
     """The repair turn's pair for :func:`_attempts`: the full prompt plus the repair section (a fresh launch), and
     the repair section alone (a resumed one), so every launch of the phase carries the refusal of ``kind``."""
     section = repair_prompt(refusal, kind)
-    return (_prompt_file(repo_root, node_id, model, text.rstrip("\n") + "\n\n" + section, "-repair-full"),
-            _prompt_file(repo_root, node_id, model, section, "-repair"))
+    return _prompt_pair(repo_root, node_id, model, ("-repair-full", text.rstrip("\n") + "\n\n" + section),
+                        ("-repair", section))
 
 
 def _file(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harness, run: dict[str, Any],
           before: Any, cwd: Path, ref: str | None, sign_key: Path | None, answer: Path) -> Outcome:
-    """File the last attempt's answer, its model checked from that attempt's own log span, against ``before``."""
+    """File the last attempt's answer, its model checked from that attempt's own log span, against ``before``. A
+    last attempt that ended with a capacity error has no answer (M22.16, D17): an empty rerun reason, so the run's
+    reason is the capacity reason alone; the write check still runs."""
     attempt = run["attempts"][-1] if run["attempts"] else {}
-    reported, model_check = _model_check(repo_root, model, h.log, attempt)
+    reported, model_check = _model_check(repo_root, model, h.log, attempt, before.owned)
     run["reported_model"] = reported
-    return file_review(repo_root, node_id, model, reviews, answer=final_answer(
-        h.adapter, attempt_text(h.log, attempt), answer),
+    return file_review(repo_root, node_id, model, reviews, answer=Rerun("") if attempt.get("capacity") else
+                       final_answer(h.adapter, _span_text(before.owned, h.log, attempt), answer),
         before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
         launch_mode=h.launch_mode, sign_key=sign_key, model_check=model_check)
 
@@ -256,20 +294,21 @@ def _repair(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harnes
     prompts = _repair_prompts(repo_root, node_id, model, text, run["refusal"], run["refusal_kind"])
     session = check_session_id(h.harness, run["session_id"]) if h.can_resume and run["session_id"] else None
     before = snapshot(cwd, reviews, model)
-    reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)   # marked repair: run["refusal"]
+    reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep, before.owned)   # marked repair
     filed = _file(repo_root, node_id, model, reviews, h, run, before, cwd, ref, sign_key, answer)
-    if filed.state != "recorded":   # the first refusal stays in the reason, whatever ended the repair turn
+    # the first refusal stays in the reason, whatever ended the repair turn; after a capacity error none (D17)
+    if filed.state != "recorded" and filed.reason:
         filed = replace(filed, reason=f"{first.reason}; after the repair turn, {filed.reason}")
     return reason, filed
 
 
 def _close(repo_root: Path, t: ReviewTarget, model: str, run: dict[str, Any], path: Path, reason: str,
-           filed: Outcome | None) -> None:
+           filed: Outcome | None, owned: Path) -> None:
     """Close the run from its filing outcome and the last attempt (:func:`close_review_run`). A chore run files
     nothing (``filed`` is ``None``: its reviewer wrote its own verdict file, M8.2), so ``close_run`` judges it by
-    that file."""
+    that file. ``owned`` is the project root saved before the run; a linked ``work`` is not read for the tail."""
     last = run["attempts"][-1] if run["attempts"] else {}
-    tail = stream_lines(attempt_text(path.with_suffix(".log"), last))[-20:]   # the last attempt only
+    tail = stream_lines(_span_text(owned, path.with_suffix(".log"), last))[-20:]   # the last attempt only
     errors = [last["error"]] if last.get("error") else []
     if filed is None:
         close_run(repo_root, t, model, run, exit_code=last.get("exit"), errors=errors, tail=tail, reason_prefix=reason)
@@ -291,43 +330,44 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
         print(h.note, file=sys.stderr)
     if h.api_id is None and entry.get("routing") != "dynamic":
         raise DelegateError(_no_model_refusal(model, h.harness))
+    resume_text = CHORE_RESUME_PROMPT if chore else RESUME_PROMPT
     prompts = (_repair_prompts(repo_root, node_id, model, text, *stored) if stored is not None else
-               (_prompt_file(repo_root, node_id, model, text),
-                _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume")))
+               _prompt_pair(repo_root, node_id, model, ("", text), ("-resume", resume_text)))
     archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
            "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
-           "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
+           "started_at": utc_now_iso(), "ended_at": None, "attempts": [], "events": [], "reason": None,
            "launch_mode": h.launch_mode, "requested_model": h.api_id, "reported_model": None,
            "log": str(path.with_suffix(".log"))}
     if stored is not None:   # this resume is the repair turn: it gets no second one
         run["refusal"], run["refusal_kind"] = stored
-    save_run(path, run)
+    _save(path, run)
     h.log = path.with_suffix(".log")
     try:
         # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
         if not chore:
             write_schema(repo_root, reviews, ref)   # before the snapshot: the reviewer must not change it
         before = snapshot(cwd, reviews, model) if not chore else None
-        reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep)
+        owned = before.owned if before is not None else Path()
+        reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep, owned)
         filed = None if before is None else _file(repo_root, node_id, model, reviews, h, run, before, cwd, ref,
                                                   sign_key, answer)
         last = run["attempts"][-1] if run["attempts"] else {}
         failure = _answer_failure(filed)
         if failure and "refusal" in run:   # the resumed repair turn failed again: no further turn
             first = (run["refusal"] if run.get("refusal_kind") == "parse" else
-                     f"rerun requested: review record refused the output: {run['refusal'][-400:]}")
+                     refusal_summary(run["refusal"], node_id, model))
             filed = replace(filed, reason=f"{first}; after the repair turn, {filed.reason}")
         elif failure and last.get("exit") == 0 and not last.get("capacity"):   # one repair turn, after a clean attempt
             reason, filed = _repair(repo_root, node_id, model, reviews, h, run, path, cwd, text, filed, failure,
                                     retries, backoff, sleep, ref, sign_key, answer)
-        _close(repo_root, t, model, run, path, reason, filed)
+        _close(repo_root, t, model, run, path, reason, filed, owned)
     except BaseException as e:   # an interrupt or a launch refusal still closes the record
         close_review_run(repo_root, t, model, run, Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None))
         raise
     finally:
-        run["ended_at"] = _now()
-        save_run(path, run)
+        run["ended_at"] = utc_now_iso()
+        _save(path, run)
     return run
 
 
@@ -353,7 +393,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             raise DelegateError(f"{model} wrote {wrote[0]} on {node_id}; the executor never reviews its own leaf")
     entry = _entry(repo_root, model)
     _guidance_check(repo_root, entry)   # M21.44: before the harness, the prompt and _start (fresh, resume, chore)
-    cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
+    cwd = (worktree or git_root(repo_root) or repo_root).resolve()
     try:
         h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
     except HarnessSetupError as e:
@@ -374,7 +414,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
 def run_states(repo_root: Path, node_id: str, commit: str | None) -> list[dict[str, Any]]:
     """Each ``RUN-*.json`` for the node; ``current`` when it is for ``commit`` (the commit under review);
     ``superseded`` names a valid record filed later at the run's commit when the run did not complete."""
-    d = reviews_dir(repo_root, node_id)
+    d = reviews_listing(repo_root, node_id)
     out = []
     for p in sorted(d.glob(f"{RUN_PREFIX}*.json")) if d.is_dir() else []:
         r = _read_json(p) or {}
@@ -416,7 +456,8 @@ def cmd_review_delegate(ns: argparse.Namespace) -> int:
     try:
         run = delegate(root, ns.node_id, ns.model, ref=ns.ref, resume=ns.resume, retries=ns.retries,
                        backoff=ns.backoff, worktree=Path(ns.worktree) if ns.worktree else None, sign_key=ns.sign_key)
-    except (DelegateError, ReviewTargetError, WorkerError) as e:   # WorkerError: an unsafe recorded session id
+    except safe_write.SafeWriteError as e:
+        # A symlink on a path the run would write.
         print(f"error: {e}", file=sys.stderr)
         return 1
     except Unsupported as e:
@@ -451,8 +492,8 @@ def add_parser(rsub: Any) -> None:
     """``review delegate``, and ``review usage`` over its runs, under ``review_cli``'s ``review`` subcommands."""
     sp = rsub.add_parser("delegate", help="Run a rostered reviewer on its harness and wait for its record")
     sp.add_argument("node_id")
-    sp.add_argument("--model", required=True, help="Roster id (reviewer role, or an active substitute)")
-    sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_model_arg(sp, help="Roster id (reviewer role, or an active substitute)", required=True)
+    add_ref_arg(sp)
     sp.add_argument("--resume", action="store_true", help="Continue the recorded reviewer session for this commit")
     sp.add_argument("--retries", type=_count, default=DEFAULT_RETRIES, metavar="N",
                     help=f"Capacity or rate-limit retries (default {DEFAULT_RETRIES})")
@@ -462,7 +503,7 @@ def add_parser(rsub: Any) -> None:
                                        "chore slug, else this checkout's git root)")
     sp.add_argument("--sign-key", type=Path, metavar="PATH",
                     help="Sign the filed record with this OpenSSH private key (needed under policy.signed_reviews)")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_review_delegate)
     add_usage_parser(rsub)   # registered here so review_cli.py stays under its file-limits cap

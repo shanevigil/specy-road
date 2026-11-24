@@ -15,6 +15,7 @@
 **Read further for:**
 - which mode fits your situation → "When to use it"
 - `ready`/`blocked`/`waves`, plan versus pickup, the JSON shape → "Planner first: `--plan`"
+- a goal's leaves by state, a completion range, what waits on a person, `--watch` → "Status: `--status`"
 - the cycle, in-flight claims, `why-blocked`, implement modes, step mode, Claude usage limits, the baseline and pre-finish hooks, cleanup, hook-run requirements → "The loop"
 - flags, codes and JSONL events → "Stop conditions", "Exit codes", "JSON events (`--json`)"
 - yamllint and milestone rollup branches → "Registry / pre-commit (yamllint) compatibility", "Relationship to milestone sessions"
@@ -32,10 +33,11 @@ independent work safely and skip waves whose dependencies are not met yet.
 | Goal | Use |
 | --- | --- |
 | Plan sub-agent batches / see what is ready vs blocked | `grind-session --plan [--json]` |
+| How far a goal is, when it may finish, what waits on a person | `grind-session --status --until NODE [--json]` |
 | One agent grinds many leaves autonomously | `grind-session --implement-mode hook --implement-cmd …` |
 | An IDE agent session (Claude Code, Cursor) drives the loop itself | `grind-session --step pickup`, implement, `grind-session --step finish` |
 | A human drives the loop, implementing between cycles | `grind-session` (manual mode, default) |
-| One integration PR for a whole milestone subtree | `start-milestone-session` + `--milestone-subtree` (see dev-workflow.md) |
+| One integration PR for a whole milestone subtree | `milestone start` + `--milestone-subtree` (see dev-workflow.md) |
 
 The loop lands each finished leaf on the integration branch, so run it with
 **`--on-complete merge`** (or `auto`). `pr` mode does not merge between cycles,
@@ -69,7 +71,7 @@ names the valid ones, and `--fields` is accepted only with `--plan --json`.
   `waiting_on` (the blocking node **display ids**) and a `reason`:
   `dependency` (waiting on other work) or `gate` (waiting on a human `type: gate`).
 - **`unauthored`** — leaves pickup skips (with a `reason`): the planning sheet still has
-  scaffold-planning's or brainstorm promote's placeholder text and the node has no
+  planning scaffold's or brainstorm promote's placeholder text and the node has no
   `acceptance`. `--allow-unauthored` (on `--plan`, the loop and `--step`) makes them ready.
 - **`active`** — leaves already claimed in the registry or marked *In Progress*
   (in flight; do **not** re-dispatch).
@@ -161,6 +163,76 @@ dispatched until `M10.5` completes.
 }
 ```
 
+
+## Status: `--status`
+
+```bash
+specy-road grind-session --status --until M16.8.4        # a goal and everything it needs
+specy-road grind-session --status --under M7 --json      # a subtree, one JSON object
+specy-road grind-session --status --watch                # again every interval, until Ctrl+C
+```
+
+`--status` answers the questions a maintainer asks during a grind: how many leaves are left, done and active,
+when the goal may finish, and what waits on a person. It is read-only: no fetch, no git writes, no harness call
+(the history cache under `.specyrd/cache/` is the only file it may write, as `specy-road history` does). It
+cannot be combined with `--plan` or `--step`.
+
+**Scope.** `--until NODE` takes the node's leaves, then, for every node added that is not Complete, its effective
+dependencies (a group dependency adds its leaves, each expanded the same way); a Complete dependency adds its
+leaves as done and is not followed further. `--under NODE` takes the subtree; both flags take the intersection.
+With neither, the parent in `work/.milestone-session.yaml` is used as `--under`; with no session file the command
+exits 2. The loop plans `--under` only and stops after it picks `--until`, so it can run ready leaves under
+`--under` that `--until` does not need; status does not count those.
+
+**Buckets.** Gate nodes are not counted. Each other leaf is in one bucket, first match wins: done, cancelled,
+**held** (an open gate among its unmet dependencies; a claimed leaf whose review is `escalated`,
+`fix_round_budget_spent` or `executor_blocked`, or whose review policy changed since the claim; or a live worker
+leased to `human` or flagged `needs_person`), **active** (claimed or In Progress, with its review state and live
+worker), **ready**, **waiting** (with `waiting_on`), **finished, awaiting merge** (Complete on its feature branch,
+not merged; counted in remaining) and **not pickable** (unauthored, needs a codename). Remaining is total minus
+done and cancelled. Review state is evaluated only for claimed leaves in scope, without the trial merge.
+
+**Estimate.** From the earliest status-to-Complete event of each done leaf (matched by `node_key`, timed by its
+author date): with fewer than 5 completions or under 24 hours between the first and the last it says not enough
+data. Otherwise earliest and latest are now plus remaining divided by the faster and the slower of the overall
+rate, (n-1)/(last-first), and the rate over the last 7 days. The output prints the method and its inputs, and
+assumes held and waiting leaves clear at the past pace.
+
+**Decisions.** Open `decision` and `human-action` entries of the merged ledger, those in scope with every
+recorded field (pros and cons are printed as not recorded: the schema has no field for them), the rest one line
+each; then each held leaf with the next step its record names (`set-gate-status`, the RCA prompt, the budget's
+next command, the executor's `blocked_on` lines, `review accept-policy`, `worker reclaim` or `worker status`).
+Nothing is invented: a field a record lacks is listed under `missing`.
+
+**Decided in the GUI, not yet processed** (`decisions.gui_pending`, whatever the scope): closed entries with
+`channel: pm-gui` (the PM GUI's Status window, [pm-gui.md](pm-gui.md)) that no coordinator has acted on, judged
+from local refs and files without a fetch, each with its `next` steps. An approval over a block is listed while the
+leaf is not Complete and the registry on its own branch (`feature/rm-<codename>`) has no `implementation_review:
+approved`; next: `specy-road mark-implementation-reviewed --yes` on that branch, then `finish-this-task`, or, when
+this clone has no `OPERATOR-<commit>.yaml` marker, "process it from the clone that ran the GUI". An answer is
+listed while the planning sheet on the local integration branch has no `<ID>: <answer>` line in its decision block
+(a line only on a leaf branch does not count); next: commit that line on the integration branch, then act on it.
+An answer on an entry with a `criterion` (a leaf's `human:` acceptance criterion) is never listed:
+`finish-this-task` reads it from the ledger.
+The GUI pushes to the integration branch, so a coordinator pulls it (`git pull --ff-only`) before each status
+check. Each claimed leaf whose review was evaluated also carries `commit`, `can_approve_over_block` and `settles`
+(what an approval over its blocks would name), which the GUI reads.
+
+**Sessions.** Open brainstorm sessions (slug, mode, idea count) and every live presence session (agent, branch,
+note, expiry), whatever the scope. A presence record has no role, so no session is classed as a planner: a planner
+starts with `specy-road session start --note 'planner: <topic>'` so its note says what it is.
+
+**JSON.** `--status --json` prints one object with `generated_at`, `source` (`branch`, `head`, `fetched`: false),
+`goal`, `scope`, `totals`, `held`, `active`, `ready`, `waiting`, `awaiting_merge`, `not_pickable`, `estimate`
+(`method`, `inputs`, `earliest`, `latest`, `reason`), `decisions` (`ledger`, `ledger_outside_scope`, `held`,
+`gui_pending`),
+`sessions` (`brainstorm`, `presence`) and `missing`.
+
+**Watch.** `--status --watch [MINUTES]` prints the report again after each interval, each after a separator line
+with its `last updated` time, until Ctrl+C (exit 0); with `--json` each report is one line. The interval is
+MINUTES, else `grind.status_interval_minutes` in `roadmap/git-workflow.yaml`, else 30; a value below 1 exits
+2. `--watch` is for a person's terminal: a coordinator in a chat runs `--status` once per interval instead
+(the bundled orchestrate and grind-session skills say how).
 
 ## The loop
 
@@ -304,8 +376,8 @@ limit, so they can poll but cannot restart one. The installed
 `--baseline-cmd "make test"` runs in each pickup on the integration branch, after
 the sync and before the claim: a red base is caught before a leaf inherits it, and
 no implementer "fixes" failures it did not cause. Failure claims nothing and stops
-the session (exit `5`); `--baseline-warn` only warns. Default: `baseline_cmd` in
-`git-workflow.yaml`. Writes under `work/` are allowed; any other file change, a new
+the session (exit `5`); `--baseline-warn` only warns. Default: the `checks:` entries
+with `when: baseline` in `git-workflow.yaml`. Writes under `work/` are allowed; any other file change, a new
 HEAD or a branch switch refuses the pickup, even with `--baseline-warn`.
 `--pre-finish-cmd "make test && specy-road validate"` runs before `finish-this-task`;
 a non-zero exit stops the session (exit `4`) and leaves the feature branch intact.
@@ -350,15 +422,15 @@ behind the executable and copies the rest of your command byte for byte, so a
 prompt file is still on disk, because `finish-this-task` has not run. It never
 adds `--dangerously-skip-permissions`.
 
-Bounds — CLI flag wins over `roadmap/git-workflow.yaml`, which wins over the
-default:
+Bounds — CLI flag wins over `roadmap/git-workflow.yaml` (under `grind:`), which
+wins over the default:
 
 | Bound | CLI flag | `roadmap/git-workflow.yaml` | Default |
 | --- | --- | --- | --- |
-| waits per leaf | `--max-limit-waits N` | `grind_session_max_limit_waits` | 3 |
-| ceiling on any one wait | `--max-limit-wait-hours H` | `grind_session_max_limit_wait_hours` | 6 |
-| grace after the stated reset | `--limit-wait-grace-seconds S` | `grind_session_limit_wait_grace_seconds` | 120 |
-| re-runs when it dies silently | `--max-empty-retries N` | `grind_session_max_empty_retries` | 2 |
+| waits per leaf | `--max-limit-waits N` | `grind.max_limit_waits` | 3 |
+| ceiling on any one wait | `--max-limit-wait-hours H` | `grind.max_limit_wait_hours` | 6 |
+| grace after the stated reset | `--limit-wait-grace-seconds S` | `grind.limit_wait_grace_seconds` | 120 |
+| re-runs when it dies silently | `--max-empty-retries N` | `grind.max_empty_retries` | 2 |
 
 If your plan's limit resets on an **8-hour** cadence, the 6h default ceiling
 stops the run rather than waiting the extra two hours. Pass
@@ -383,8 +455,12 @@ merged a dozen.
 `--delete-merged-branches` also deletes the `feature/rm-*` branches the session
 finished: locally with `git branch -d`, and on the remote too when `--push` was
 given. A branch is deleted only if the integration branch already contains it, so a
-leaf that fell back to a PR keeps its branch. Without the flag the loop prints the
-exact command instead.
+leaf that fell back to a PR keeps its branch, and never while the cleanup planner's
+live rule holds it (an open claim or rollup, a running worker, a live session).
+Without the flag the loop prints the exact command instead. The flag is a hidden,
+deprecated alias, removed in the release after 0.3.1: it prints one line naming
+`specy-road doctor --prune --kind branches`, which removes merged branches after any
+session (see [git-workflow.md](git-workflow.md#finding-leftovers-doctor)).
 
 Nothing here changes the exit code, and none of it runs after a failed cycle — a
 failure leaves the feature branch exactly as it was so you can fix and resume.
@@ -494,7 +570,7 @@ through `specy-road` (do not hand-edit) so the indentation stays consistent.
 
 - **`grind-session`** drives the *per-leaf* loop (each leaf lands on integration
   via `on_complete`), and `--plan` helps you parallelize across leaves.
-- **`start-milestone-session` + `--milestone-subtree`** collects a whole subtree
+- **`milestone start` + `--milestone-subtree`** collects a whole subtree
   onto one rollup branch for a *single* integration PR. Use that when you want one
   PR per milestone instead of per leaf. `grind-session --milestone-subtree` passes
   the flag through to pickup. See [dev-workflow.md](dev-workflow.md#milestone-scoped-execution-rollup-branch).

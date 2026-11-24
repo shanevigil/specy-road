@@ -1,0 +1,19 @@
+$ specy-road scaffold-planning --help
+exit: 0
+--- stdout ---
+usage: specy-road scaffold-planning [-h] [--planning-dir PATH] [--force] [--repo-root DIR] node_id
+
+Create a flat planning feature sheet (planning/<id>_<slug>_<node_key>.md) and set planning_dir.
+
+positional arguments:
+  node_id              Roadmap node id owning the planning file (e.g. M1.2)
+
+options:
+  -h, --help           show this help message and exit
+  --planning-dir PATH  Repo-relative path to the .md file (default:
+                       planning/<id>_<slug>_<node_key>.md)
+  --force              Overwrite existing feature sheet
+  --repo-root DIR      Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                       .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                       root, else the current directory).
+--- stderr ---

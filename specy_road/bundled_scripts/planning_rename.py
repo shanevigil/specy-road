@@ -12,7 +12,7 @@ import re
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 
 
@@ -51,28 +51,46 @@ def rename_planning_file_if_path_changed(
 # acceptance; never docs/, CHANGELOG.md, work/, the generated roadmap.md or
 # git history.
 
-_FENCE = re.compile(r"^\s*`{3,}")
+# At most three spaces, then three or more of one fence character, then the rest of the line.
+_FENCE_LINE = re.compile(r"^( {0,3})((?P<char>[`~])(?P=char){2,})(?P<rest>.*)$")
 _HISTORICAL = re.compile(r"<!--\s*historical\s*-->.*?(?:<!--\s*/historical\s*-->|\Z)", re.S)
 
 
-def _protected_spans(text: str) -> list[tuple[int, int]]:
-    """Fenced blocks (fence line through the next fence line) and historical blocks.
+def _fence(line: str) -> tuple[str, int, str] | None:
+    """``(character, length, rest)`` of a backtick or tilde fence indented by at most three spaces."""
+    body = line[:-2] if line.endswith("\r\n") else line[:-1] if line.endswith(("\n", "\r")) else line
+    m = _FENCE_LINE.match(body)
+    if not m:
+        return None
+    return m["char"], len(m.group(2)), m["rest"]
 
-    An unclosed fence or historical block runs to the end of the text.
+
+def _closes(fence: tuple[str, int, str] | None, opened: tuple[int, str, int]) -> bool:
+    """A closing line is the same character, at least as long, and nothing after it but spaces."""
+    return bool(fence and fence[0] == opened[1] and fence[1] >= opened[2] and not fence[2].strip(" "))
+
+
+def _protected_spans(text: str) -> list[tuple[int, int]]:
+    """Fenced blocks and historical blocks.
+
+    An opening fence has at most three spaces of indent and three or more backticks or tildes. It closes
+    only on a line of the same character, at least as long, with at most three spaces of indent and nothing
+    after it but spaces. An unclosed fence or historical block runs to the end of the text.
     """
     spans: list[tuple[int, int]] = []
     pos = 0
-    start: int | None = None
+    opened: tuple[int, str, int] | None = None
     for line in text.splitlines(keepends=True):
-        if _FENCE.match(line):
-            if start is None:
-                start = pos
-            else:
-                spans.append((start, pos + len(line)))
-                start = None
+        fence = _fence(line)
+        if opened is None:
+            if fence:
+                opened = (pos, fence[0], fence[1])
+        elif _closes(fence, opened):
+            spans.append((opened[0], pos + len(line)))
+            opened = None
         pos += len(line)
-    if start is not None:
-        spans.append((start, len(text)))
+    if opened is not None:
+        spans.append((opened[0], len(text)))
     spans.extend(m.span() for m in _HISTORICAL.finditer(text))
     return sorted(spans)
 
@@ -188,9 +206,9 @@ def _load_id_map(path: Path) -> dict[str, str]:
 
 def rename_refs(root: Path, id_map: dict[str, str], *, dry_run: bool = False) -> dict[str, int]:
     """Rewrite prose id references across live nodes in one validated transaction."""
-    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+    from specy_road.roadmap_crud_ops import run_validate_raise
     from specy_road.bundled_scripts.roadmap_id_rewrite_staging import _stage_merged_nodes
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     nodes = list(load_roadmap(root)["nodes"])
     plan = AtomicWritePlan(root)
@@ -236,8 +254,8 @@ def print_rewrite_refs_note(rewrite_refs: bool) -> None:
         )
 
 
-def main(argv: list[str] | None = None) -> None:
-    from specy_road.bundled_scripts.roadmap_crud_ops import repo_root
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road rename-refs`` parser."""
     from specy_road.runtime_paths import add_repo_root_arg
 
     p = argparse.ArgumentParser(
@@ -254,6 +272,13 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("id_map", metavar="ID_MAP_JSON", help='JSON file: {"OLD_ID": "NEW_ID", ...}.')
     p.add_argument("--dry-run", action="store_true", help="Print the counts; write nothing.")
     add_repo_root_arg(p)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    from specy_road.roadmap_crud_ops import repo_root
+
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = repo_root(args)
     try:

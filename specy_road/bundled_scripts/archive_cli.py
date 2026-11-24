@@ -13,11 +13,13 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg
 from specy_road.archive_deep import deepen_archive
 from specy_road.archive_index import index_records, load_archive_index
 from specy_road.archive_ops import archive_node, auto_archive_candidates
 from specy_road.archive_plan import plan_archive, plan_summary
 from specy_road.archive_restore import restore_archive
+from specy_road.roadmap_crud_ops import cmd_archive as archive_node_cmd
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.generated_files import regenerate_generated_files
 
@@ -29,6 +31,8 @@ def _add_repo_root(p: argparse.ArgumentParser) -> None:
 
 
 def cmd_archive(ns: argparse.Namespace) -> int:
+    if ns.hard_remove:
+        return _cmd_hard_remove(ns)
     root = resolve_repo_root(ns)
     if ns.auto:
         return _cmd_archive_auto(root, ns)
@@ -53,6 +57,21 @@ def cmd_archive(ns: argparse.Namespace) -> int:
         rec = deepen_archive(root, rec["archive_id"])
         _print_deepened(rec)
     print("     restore with: specy-road restore-archive " + rec["archive_id"])
+    return 0
+
+
+def _cmd_hard_remove(ns: argparse.Namespace) -> int:
+    """``archive --hard-remove NODE_ID``: delete the node outright, as ``archive-node NODE_ID
+    --hard-remove`` did. Not reversible, so an archive option beside it (``--dry-run`` above all)
+    is refused rather than ignored."""
+    options = ("auto", "deep", "dry_run", "force")
+    given = [f"--{o.replace('_', '-')}" for o in options if getattr(ns, o)]
+    if given or not ns.node_id:
+        named = f" (given: {', '.join(given)})" if given else ""
+        print("error: --hard-remove takes one NODE_ID and none of --auto, --deep, --dry-run, "
+              f"--force{named}.", file=sys.stderr)
+        return 2
+    archive_node_cmd(ns)
     return 0
 
 
@@ -197,6 +216,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fold the archive into one capsule file, leaving only a reference.",
     )
     sp.add_argument("--dry-run", action="store_true", help="Show the plan; write nothing.")
+    sp.add_argument(
+        "--hard-remove",
+        action="store_true",
+        help="Delete NODE_ID from the roadmap outright instead (not reversible; fails while a "
+        "parent or dependency refers to it).",
+    )
     _add_repo_root(sp)
     sp.set_defaults(func=cmd_archive)
 
@@ -209,13 +234,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_deepen)
 
     sp = sub.add_parser("list-archives", help="List archive records.")
-    sp.add_argument("--json", action="store_true", help="Emit the raw index JSON.")
+    add_json_arg(sp, help="Emit the raw index JSON.")
     _add_repo_root(sp)
     sp.set_defaults(func=cmd_list)
 
     sp = sub.add_parser("show-archive", help="Show one archive record in detail.")
     sp.add_argument("archive_id", metavar="ARCHIVE_ID")
-    sp.add_argument("--json", action="store_true", help="Emit the raw record JSON.")
+    add_json_arg(sp, help="Emit the raw record JSON.")
     _add_repo_root(sp)
     sp.set_defaults(func=cmd_show)
 

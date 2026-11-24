@@ -52,6 +52,41 @@ def is_ancestor(root: Path, older: str, newer: str) -> bool:
     return run(["merge-base", "--is-ancestor", older, newer], root).ok
 
 
+def _full_sha(root: Path, rev: str) -> str | None:
+    """Commit SHA for ``rev``, or ``None`` when git cannot resolve it."""
+    if not rev:
+        return None
+    out = git_stdout(["rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"], root)
+    return out.strip() if out else None
+
+
+def is_first_parent_ancestor(root: Path, older: str, newer: str) -> bool:
+    """Whether ``older`` lies on ``newer``'s first-parent line.
+
+    A merged side-branch tip is still an ancestor, but the walk records that
+    branch as the merge step alone. Appending from the tip would keep the
+    side branch's own edits, so that cache is rebuilt instead.
+    """
+    older_sha = _full_sha(root, older)
+    newer_sha = _full_sha(root, newer)
+    if older_sha is None or newer_sha is None:
+        return False
+    if older_sha == newer_sha:
+        return True
+    if not is_ancestor(root, older_sha, newer_sha):
+        return False
+    # Oldest commit on this walk. Its first parent is ``older`` when ``older``
+    # is on the first-parent line, and the fork point when it is not.
+    out = git_stdout(
+        ["log", "--first-parent", "--reverse", "--format=%P", f"{older_sha}..{newer_sha}"],
+        root,
+    )
+    if not out:
+        return False
+    parents = out.splitlines()[0].split()
+    return bool(parents) and parents[0] == older_sha
+
+
 def log_raw(root: Path, scopes: list[str], since: str | None = None) -> str | None:
     """One ``git log --raw`` pass over ``scopes``, oldest commit first.
 

@@ -13,10 +13,14 @@ from typing import Any
 
 import yaml
 
-from specy_road.managed_block import refused_link
+from specy_road import safe_write
+from specy_road.clock import utc_now, utc_now_iso
 from specy_road.orphaned_claims import relative_age
 from specy_road.orchestration_config import substitute_for
-from specy_road.review_files import archive_review, list_reviews, render_front_matter, review_path, reviews_dir, write_review
+from specy_road.review_files import (
+    HISTORY_DIRNAME, archive_review, list_reviews, project_of, render_front_matter, review_path, reviews_dir,
+    write_review,
+)
 from specy_road.review_gate import evaluate_gate, rerun_problem
 from specy_road.review_record_rules import check_record
 from specy_road.reviewer_run_failure import gate_policy_summary
@@ -33,16 +37,20 @@ def rejected_path(reviews: Path, model: str) -> Path:
 
 
 def write_rejected(reviews: Path, model: str, commit: str, reason: str) -> Path:
-    """Write or replace the refusal marker for ``model`` at ``commit``; ``reason`` is the full stderr message."""
-    reviews.mkdir(parents=True, exist_ok=True)
-    refused_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    body = reason if reason.endswith("\n") else reason + "\n"
+    """Write or replace the refusal marker for ``model`` at ``commit``; ``reason`` is the full stderr message.
+
+    The marker is checked from the project root before any directory is made. A symlink is not written through;
+    the refusal being recorded keeps its own error and exit code.
+    """
     path = rejected_path(reviews, model)
-    why = refused_link(reviews, path, any_link=True)
-    if why:   # the refusal being recorded keeps its own error and exit code
-        print(f"error: {why}", file=sys.stderr)
+    try:
+        safe_write.check(project_of(path), path)
+    except safe_write.SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
         return path
-    path.write_text(render_front_matter({"commit": commit, "refused_at": refused_at}, body), encoding="utf-8")
+    refused_at = utc_now_iso()
+    body = reason if reason.endswith("\n") else reason + "\n"
+    write_review(path, render_front_matter({"commit": commit, "refused_at": refused_at}, body))   # replaces rejected-x.md
     return path
 
 
@@ -82,11 +90,12 @@ def read_rejected_marker(path: Path) -> tuple[dict[str, Any], str] | str | None:
 
 
 def unreadable_rejected_lines(reviews: Path) -> list[str]:
-    """Every ``marker unreadable: …`` line for ``REJECTED-*.md`` under ``reviews``."""
+    """Every ``marker unreadable: …`` line for ``REJECTED-*.md`` under ``reviews``, its name matched in any case."""
     if not reviews.is_dir():
         return []
     lines: list[str] = []
-    for path in sorted(reviews.glob(f"{REJECTED_PREFIX}*.md")):
+    for path in sorted(p for p in reviews.iterdir()
+                       if p.name.lower().startswith(REJECTED_PREFIX.lower()) and p.suffix.lower() == ".md"):
         read = read_rejected_marker(path)
         if isinstance(read, str):
             lines.append(read)
@@ -127,7 +136,7 @@ def rejected_state(reviews: Path, model: str, commit: str | None,
     if when is None:
         return None
     first = body.strip().split("\n", 1)[0] if body.strip() else ""
-    return relative_age(when, now or datetime.now(timezone.utc)), first
+    return relative_age(when, now or utc_now()), first
 
 
 class ReviewRecordTrace:
@@ -166,6 +175,32 @@ def _review_record_setup(ns: Any, root: Path, trace: ReviewRecordTrace, fail: An
     return t, gate, entry
 
 
+def _notes_normalised(body: str) -> str:
+    """The notes body as :func:`notes_digest` hashes it, before the hash."""
+    return "\n".join(body.splitlines()).rstrip()
+
+
+def _notes_body_problem(root: Path, node_id: str, model: str, commit: str | None, body: str) -> str | None:
+    """Why ``body`` cannot be filed for ``model`` at ``commit``, else ``None``.
+
+    Empty or whitespace after :func:`notes_digest`'s normalisation says nothing. A non-empty digest that matches
+    another model's stored REVIEW body at this commit is the same notes; ``list_reviews`` rows with ``ok`` are
+    the candidates, and signature, roster and policy are not checked.
+    """
+    if not _notes_normalised(body).strip():
+        return "the notes go in the body below the front matter; notes_sha256 covers only that body"
+    digest = notes_digest(body)
+    for other in list_reviews(root, node_id):
+        if not other.ok or other.data.get("model") in (None, model):
+            continue
+        if not same_commit(root, other.data.get("commit"), commit) or notes_digest(other.body) != digest:
+            continue
+        return (f"{model} and {other.data.get('model')} have the same notes body after normalisation; "
+                "findings and commands_rerun are not in the digest, and a body left as the notes template "
+                "matches too. Put this review's own notes in the body below the front matter.")
+    return None
+
+
 def _review_record_validate(ns: Any, root: Path, t: Any, gate: Any, entry: dict, trace: ReviewRecordTrace,
                             fail: Any) -> dict | int:
     rec, err = check_record(ns, root, t)
@@ -176,6 +211,8 @@ def _review_record_validate(ns: Any, root: Path, t: Any, gate: Any, entry: dict,
         return trace.refuse(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}", fail)
     if why := rerun_problem(config["policy"], rec["data"]):
         return trace.refuse(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun", fail)
+    if why := _notes_body_problem(root, ns.node_id, ns.model, gate.commit, rec["body"]):
+        return trace.refuse(why, fail)
     return rec
 
 
@@ -212,6 +249,11 @@ def _review_record_signed_data(ns: Any, root: Path, rec: dict, gate: Any, entry:
 def _review_record_finish(root: Path, ns: Any, t: Any, gate: Any, entry: dict, rec: dict, data: dict,
                           trace: ReviewRecordTrace, relabel: Any) -> int:
     dest = review_path(root, ns.node_id, ns.model)
+    owned = project_of(dest)
+    # Every path this filing writes or clears, before the first write: a linked history/ or a linked marker leaves both.
+    safe_write.check(owned, dest)
+    safe_write.check(owned, dest.parent / HISTORY_DIRNAME, safe_write.DIRECTORY)
+    safe_write.check(owned, rejected_path(trace.reviews, ns.model))
     text = render_front_matter(data, rec["body"])
     write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
     clear_rejected(trace.reviews, ns.model)

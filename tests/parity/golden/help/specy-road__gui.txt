@@ -1,0 +1,14 @@
+$ specy-road gui --help
+exit: 0
+--- stdout ---
+usage: specy-road gui [-h] [--host HOST] [--port PORT] [--read-only] [--repo-root DIR]
+
+options:
+  -h, --help       show this help message and exit
+  --host HOST
+  --port PORT
+  --read-only      Serve every GET route and refuse every write route with 403.
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

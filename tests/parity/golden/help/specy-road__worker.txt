@@ -1,0 +1,30 @@
+$ specy-road worker --help
+exit: 0
+--- stdout ---
+usage: specy-road worker [-h]
+                         {delegate,list,status,events,sync,message,resume,interrupt,terminate,handoff,reclaim,reconcile,open,timeline,usage,adopt,hook}
+                         ...
+
+positional arguments:
+  {delegate,list,status,events,sync,message,resume,interrupt,terminate,handoff,reclaim,reconcile,open,timeline,usage,adopt,hook}
+    delegate            Launch a worker for a claimed leaf and return at once
+    list                Active workers (--all includes finished)
+    status              One worker's record and last events
+    events              A worker's events after a sequence number
+    sync                Every worker's events since the last --ack; call at the start of each turn
+    message             Send a follow-up prompt (resumes the native session)
+    resume              Resume a stopped worker with a continue prompt
+    interrupt           Stop the current turn (declared unsupported by the CLI adapters)
+    terminate           SIGTERM the worker and close its record (--orphaned: every orphaned one)
+    handoff             Lease the worker to a human and print the native resume command
+    reclaim             Take the lease back; record what the human did
+    reconcile           Changed paths since the checkpoint vs the leaf's touch zones
+    open                Where a human can look: worktree, log, resume command
+    timeline            Seconds per phase of a worker's latest turn (worker id or node id)
+    usage               Tokens and cost per attempt, and the node's total (worker id or node id)
+    adopt               Register a session the user started natively (observe only)
+    hook                Prompt-submit hook body: record a human's prompt to a worker session
+
+options:
+  -h, --help            show this help message and exit
+--- stderr ---

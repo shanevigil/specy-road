@@ -1,0 +1,64 @@
+"""Tests for rollup vs integration merge detection."""
+
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+from specy_road.git_milestone_delivery import rollup_merged_into_integration
+from tests.support.same.commit_553cf5f7a1bf import commit
+from tests.support.same.git_df16ee62bf81 import git
+
+
+
+
+
+
+def _repo_with_merged_feature(tmp_path: Path) -> Path:
+    bare = tmp_path / "remote.git"
+    subprocess.check_call(["git", "init", "--bare", "-q", str(bare)])
+    repo = tmp_path / "work"
+    subprocess.check_call(["git", "init", "-q", "-b", "master", str(repo)])
+    git(repo, "config", "user.email", "t@e.com")
+    git(repo, "config", "user.name", "T")
+    git(repo, "remote", "add", "origin", str(bare))
+    commit(repo, "init")
+    git(repo, "push", "-q", "-u", "origin", "master")
+    git(repo, "checkout", "-b", "feature/rm-mile")
+    commit(repo, "milestone work")
+    git(repo, "push", "-q", "-u", "origin", "feature/rm-mile")
+    git(repo, "checkout", "master")
+    git(repo, "merge", "-q", "--ff-only", "feature/rm-mile")
+    git(repo, "push", "-q", "origin", "master")
+    return repo
+
+
+def test_rollup_merged_true_after_ff_merge_and_push(tmp_path: Path) -> None:
+    repo = _repo_with_merged_feature(tmp_path)
+    assert (
+        rollup_merged_into_integration(
+            repo,
+            remote="origin",
+            rollup_branch="feature/rm-mile",
+            integration_branch="master",
+        )
+        is True
+    )
+
+
+def test_rollup_merged_none_when_remote_ref_missing(tmp_path: Path) -> None:
+    repo = tmp_path / "solo"
+    repo.mkdir()
+    subprocess.check_call(["git", "init", "-q", "-b", "master", str(repo)])
+    git(repo, "config", "user.email", "t@e.com")
+    git(repo, "config", "user.name", "T")
+    commit(repo, "solo")
+    assert (
+        rollup_merged_into_integration(
+            repo,
+            remote="origin",
+            rollup_branch="feature/rm-x",
+            integration_branch="master",
+        )
+        is None
+    )

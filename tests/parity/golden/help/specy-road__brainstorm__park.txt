@@ -1,0 +1,19 @@
+$ specy-road brainstorm park --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm park [-h] --reason TEXT [--revisit-when TEXT] [--slug SLUG]
+                                  [--repo-root DIR]
+                                  IDEA_ID [IDEA_ID ...]
+
+positional arguments:
+  IDEA_ID
+
+options:
+  -h, --help           show this help message and exit
+  --reason TEXT        Required; recorded as the decision reason.
+  --revisit-when TEXT  Optional: what would make the idea worth another look.
+  --slug SLUG          Session name (default: the only open session; required when several are).
+  --repo-root DIR      Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                       .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                       root, else the current directory).
+--- stderr ---

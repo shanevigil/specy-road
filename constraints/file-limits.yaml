@@ -2,28 +2,22 @@
 
 # Raised from 400 to 1,000 by the maintainer (2026-11-05): the 400 cap dated from 8k-context agents and had
 # driven cap-only module splits. Touch zones are per file, so a cap still protects parallel pickup and review cost.
-# A 100-character line-width rule and folding the cap-driven splits are planned for M16 (rc5).
+# Lines over 100 characters are reported per file against scripts/line_width_baseline.json, never gated;
+# folding the cap-driven splits is planned for M16 (rc5).
 max_lines_per_file: 1000
 max_lines_per_function: 80  # Python (.py) and TS/JS (.ts .tsx .js .jsx .mjs) functions
 applies_to_globs:
   - "specy_road/bundled_scripts/**/*.py"
   - "specy_road/*.py"
+  - "specy_road/orchestration/**/*.py"
   - "tests/**/*.py"
   - "docs/**/*.md"
 
 override_limits:
   - name: set_gate_status_fixture
     file_globs:
-      - "tests/test_set_gate_status.py"
+      - "tests/unit/test_set_gate_status.py"
     max_lines_per_function: 120
-  # Verbatim copy of the external model-aware orchestration proposal (0.3.x
-  # source material). Kept byte-for-byte so it can be diffed against the
-  # original; splitting it would break that. Slices are tracked in
-  # docs/design-notes/v0-3-0-orchestration-slices.md.
-  - name: orchestration_proposal_verbatim
-    file_globs:
-      - "docs/design-notes/model-aware-orchestration-proposal.md"
-    max_lines_per_file: 1100
 
 # Warn (do not fail) as a file approaches the cap.
 hard_alerts:

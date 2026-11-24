@@ -1,0 +1,23 @@
+$ specy-road digest --help
+exit: 0
+--- stdout ---
+usage: specy-road digest [-h] [-o FILE] [--check] [--repo-root DIR]
+
+Generate a compact current-state summary of the roadmap for agents to read instead of crawling
+planning/ and work/. roadmap-context.md is generated AND committed, exactly like roadmap.md:
+agents read it out of the tree they clone, so it must be tracked. Regenerate it whenever the graph
+changes and gate CI on --check, the way you gate on export --check.
+
+options:
+  -h, --help            show this help message and exit
+  -o FILE, --output FILE
+                        Where to write it, repo-relative (default: roadmap-context.md). Use - for
+                        stdout. A relative path, or an absolute one at or under the checkout
+                        (compared lexically with the resolved checkout), refuses any symlink on
+                        the way; an absolute path outside the checkout is written as given.
+  --check               Exit 1 if the committed file is missing or has drifted from the graph (CI
+                        gate; mirrors export --check).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

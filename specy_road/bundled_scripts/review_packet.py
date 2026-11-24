@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble the verification packet a reviewer reads: ``specy-road review-packet``.
+"""Assemble the verification packet a reviewer reads: ``specy-road review packet``.
 
 Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in order:
 
@@ -32,6 +32,7 @@ With ``prior``, ``prompt --role reviewer`` builds one reviewer's delta packet; `
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import re
 import subprocess
 import sys
@@ -39,36 +40,58 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
-from specy_road.bundled_scripts.generate_brief import index, render_brief
-from specy_road.bundled_scripts.review_packet_nested import nested_diff_section
-from specy_road.bundled_scripts.review_packet_observed import (
-    computed_note as _computed, integrity_sections, test_integrity_section,
-)
-from specy_road.bundled_scripts.review_packet_uncommitted_refs import uncommitted_refs_section
+from specy_road.cli_args import add_base_arg, add_ref_arg
+from specy_road.cli_entry import run_reporting
+from specy_road.brief_generation import _chain_sheet_paths, index, render_brief
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_stdout, git_text, head_sha
+from specy_road.git_subprocess import git_ok, git_root, git_stdout, git_text, head_sha
+from specy_road.integrity import compare_integrity
+from specy_road.integrity_removals import REQUIRED_HEADING, planned_for_target, unplanned_removals
+from specy_road.nested_repos import NestedRepo, branch_diff_range, nested_repos
 from specy_road.impact import impact_for_diff, section_lines
+from specy_road.registry_yaml import REGISTRY_REL
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 from specy_road.review_gate import FULL_MARK
 from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
-from specy_road.review_resumed_delta import RESUMED_KEY, resumed_delta_on
+from specy_road.review_gate import RESUMED_KEY, resumed_delta_on
 from specy_road.review_target import (
-    MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
-    resolve_target_or_exit, same_commit,
+    MILESTONE_SUMMARY,
+    ReviewTarget,
+    full_sha,
+    milestone_packet_or_exit,
+    milestone_packet_lines,
+    resolve_target_or_exit,
+    same_commit,
 )
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
+from specy_road.roadmap_load import load_roadmap
+from specy_road.orchestration import claimed_worktree
+from specy_road.runtime_paths import (
+    add_repo_root_arg,
+    default_user_repo_root,
+    project_prefix,
+    rebase_to_project,
+)
+from specy_road.orchestration import project_root_from_worktree
 
 TAIL_LINES = 60
 MAX_DIFF_LINES = 1500
-MAX_DIFF_BYTES = 200_000   # a minified bundle is a few very long lines; lines alone do not bound it
+MAX_DIFF_BYTES = 200_000  # a minified bundle is a few very long lines; lines alone do not bound it
 # Generated artefacts, git-root relative; with .gitattributes `linguist-generated` paths, listed, never inlined.
-GENERATED_PATHS = ("specy_road/pm_gantt_static/",)   # the packaged PM GUI bundle
+GENERATED_PATHS = ("specy_road/pm_gantt_static/",)  # the packaged PM GUI bundle
 # Lockfiles, by file name in any directory: generated unless a .gitattributes entry
 # sets linguist-generated for them (`linguist-generated=false` opts one back in).
-LOCKFILES = ("package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "uv.lock", "Cargo.lock", "go.sum")
+LOCKFILES = (
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "uv.lock",
+    "Cargo.lock",
+    "go.sum",
+)
 GENERATED_NOTE = "_Generated files are never inlined: review the source they are built from._"
-DIFF_NAME = "DIFF.patch"   # beside PACKET.md when the diff is capped
+DIFF_NAME = "DIFF.patch"  # beside PACKET.md when the diff is capped
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
 # work/ holds the brief, implementation summary, and session files the scaffold
 # tracks on the feature branch on purpose.
@@ -78,19 +101,30 @@ _BOOKKEEPING_PREFIXES = ("roadmap/", "planning/", "roadmap.md", "roadmap-context
 _POLICY_PATHS = ("roadmap/orchestration.yaml", "roadmap/git-workflow.yaml")
 # Who asserts each section, so a reviewer weighs a claim as a claim.
 ASSERTED = "_Asserted by the executor at the reviewed commit; a claim to check, not evidence._"
-ASSERTED_WORKING_TREE = ("_Asserted by the executor; read from the working tree, **not committed at the "
-                         "reviewed commit**. A claim to check, not evidence._")
-SUMMARY_MISSING = "_Not provided: no summary at the reviewed commit or in the working tree._"
+ASSERTED_WORKING_TREE = (
+    "_Asserted by the executor; read from the working tree, **not committed at the "
+    "reviewed commit**. A claim to check, not evidence._"
+)
+SUMMARY_MISSING = (
+    "_Not provided: no summary at the reviewed commit, in the leaf's worktree, "
+    "or in the working tree._"
+)
 # The executor prompt asks the summary to end with an `## Added` inventory (helpers, guards,
 # mocks, tests, each with a reason). Its absence is noted, never fatal.
-NO_INVENTORY = ("_No `Added` inventory in the summary: helpers, guards, mocks and tests added are not "
-                "listed; inventory the diff's additions yourself._")
+NO_INVENTORY = (
+    "_No `Added` inventory in the summary: helpers, guards, mocks and tests added are not "
+    "listed; inventory the diff's additions yourself._"
+)
 _INVENTORY = re.compile(r"(?im)^(?:#+\s*added\b|\*\*added\b|added:)")
 RENDERED = "_Rendered from the roadmap at the working tree._"
 # The registry stays in the diff: only this node's claim row and approval stamp are bookkeeping.
-BOOKKEEPING_MARK = "  _← toolkit bookkeeping; any edit beyond this node's claim and approval is under review_"
-BOOKKEEPING_NOTE = (f"_`{REGISTRY_REL}` is in this diff. Expected there: this node's claim row (pickup) and its "
-                    "approval stamp (`mark-implementation-reviewed`). Any other edit in that file is under review._")
+BOOKKEEPING_MARK = (
+    "  _← toolkit bookkeeping; any edit beyond this node's claim and approval is under review_"
+)
+BOOKKEEPING_NOTE = (
+    f"_`{REGISTRY_REL.as_posix()}` is in this diff. Expected there: this node's claim row (pickup) and its "
+    "approval stamp (`mark-implementation-reviewed`). Any other edit in that file is under review._"
+)
 
 
 def _tail(text: str, n: int = TAIL_LINES) -> str:
@@ -103,10 +137,14 @@ def _fence(text: str, lang: str = "") -> list[str]:
 
 
 def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[str]:
-    base_how = ("first parent of the oldest leaf registration" if t.milestone and t.base_ref == integration_ref
-                else f"merge base with `{t.base_ref or '?'}`")
+    base_how = (
+        "first parent of the oldest leaf registration"
+        if t.milestone and t.base_ref == integration_ref
+        else f"merge base with `{t.base_ref or '?'}`"
+    )
     return [
-        f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}", "",
+        f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}",
+        "",
         f"- **Commit under review:** `{t.commit or 'unknown'}` (`{t.ref}`)",
         f"- **Base:** `{t.base or 'unknown'}` ({base_how})",
         *milestone_packet_lines(t),
@@ -117,20 +155,70 @@ def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[st
         "",
         "Record your verdict with `specy-road review record "
         f"{t.node_id} --model <id> --verdict approve|block --file <notes.md>`. "
-        "Your record's `commit` must equal the commit above.", "",
+        "Your record's `commit` must equal the commit above.",
+        "",
     ]
 
 
-def _summary(root: Path, t: ReviewTarget) -> list[str]:
-    """The summary as committed at the reviewed commit, else the working tree's; each labelled."""
+def _leaf_label(path: Path) -> str:
+    """Provenance line for a summary read from the leaf worktree's ``path``."""
+    return (
+        "_Asserted by the executor; read from the leaf's worktree "
+        f"`{path}`, **not committed at the reviewed commit**. "
+        "A claim to check, not evidence._"
+    )
+
+
+def _other_leaf_root(root: Path, t: ReviewTarget) -> Path | None:
+    """Project root of the worktree with the leaf's branch, when it is not ``root``.
+
+    A milestone has no claim. The checkout running the command keeps the working-tree label.
+    """
+    if t.milestone:
+        return None
+    wt = claimed_worktree(root, (t.entry or {}).get("branch"))
+    if wt is None:
+        return None
+    project = project_root_from_worktree(wt).resolve()
+    return None if project == root.resolve() else project
+
+
+def _read_summary(root: Path, t: ReviewTarget, rel: str) -> tuple[str, str] | None:
+    """``(text, label)`` from the reviewed commit, else the leaf worktree, else this checkout."""
+    text = (
+        git_stdout(["show", f"{t.commit}:./{rel}"], root) if t.commit else None
+    )  # ./ = project-root relative
+    if text is not None:
+        return text, ASSERTED
+    leaf = _other_leaf_root(root, t)
+    if leaf is not None and (leaf / rel).is_file():
+        path = (leaf / rel).resolve()
+        return path.read_text(encoding="utf-8"), _leaf_label(path)
+    if (root / rel).is_file():
+        return (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE
+    return None
+
+
+def _missing_summary(root: Path, t: ReviewTarget, rel: str) -> str:
+    """Every path the summary lookup checked, committed path first."""
+    paths = [f"`{rel}` at `{t.commit}`" if t.commit else f"`{rel}`"]
+    leaf = _other_leaf_root(root, t)
+    if leaf is not None:
+        paths.append(f"`{(leaf / rel).resolve()}`")
+    paths.append(f"`{(root / rel).resolve()}`")
+    return f"_(missing: {', '.join(paths)})_"
+
+
+def summary(root: Path, t: ReviewTarget) -> list[str]:
+    """Committed summary, else the leaf worktree's, else this checkout's; each labelled."""
     rel = f"work/implementation-summary-{t.node_id}.md"
     out = ["## Implementation summary", ""]
-    text = git_stdout(["show", f"{t.commit}:./{rel}"], root) if t.commit else None   # ./ = project-root relative
-    label = ASSERTED
-    if text is None and (root / rel).is_file():
-        text, label = (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE
-    if text is None:
-        return out + ([MILESTONE_SUMMARY, ""] if t.milestone else [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""])
+    found = _read_summary(root, t, rel)
+    if found is None:
+        if t.milestone:
+            return out + [MILESTONE_SUMMARY, ""]
+        return out + [SUMMARY_MISSING, "", _missing_summary(root, t, rel), ""]
+    text, label = found
     note = [] if _INVENTORY.search(text) else [NO_INVENTORY, ""]
     return out + [label, "", text.rstrip(), ""] + note
 
@@ -143,7 +231,7 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
     # are project-relative, and zones may be either. A path outside the project
     # (a monorepo's other trees) keeps its repository-root name.
     prefix = project_prefix(root)
-    changed = diff_paths(root, f"{t.base}...{t.commit}") or []   # both sides of a rename or copy
+    changed = diff_paths(root, f"{t.base}...{t.commit}") or []  # both sides of a rename or copy
     paths = [rebase_to_project(p, prefix) or p for p in changed]
     zones = [z.strip().strip("/") for z in t.review_zones if isinstance(z, str) and z.strip()]
     lines = ["## Changed paths", "", _computed(t), ""]
@@ -157,33 +245,45 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
         mark = "" if inside or bookkeeping else "  **← outside touch zones**"
         if p in policy:
             mark = "  **← review policy changed on this branch**"
-        if p == REGISTRY_REL:
+        if p == REGISTRY_REL.as_posix():
             mark = BOOKKEEPING_MARK
         lines.append(f"- `{p}`{mark}")
     if not paths:
         lines.append("- _none_")
     lines.append("")
     if outside:
-        lines += [f"**{len(outside)} path(s) outside the touch zones.** "
-                  "An executor must stop for the coordinator rather than edit these.", ""]
+        lines += [
+            f"**{len(outside)} path(s) outside the touch zones.** "
+            "An executor must stop for the coordinator rather than edit these.",
+            "",
+        ]
     if policy:
-        lines += ["**This branch edits review policy.** The gate ignores it (policy is read "
-                  "from the integration branch); block unless the leaf is about policy.", ""]
+        lines += [
+            "**This branch edits review policy.** The gate ignores it (policy is read "
+            "from the integration branch); block unless the leaf is about policy.",
+            "",
+        ]
     return paths, lines
 
 
 def tests_at_risk_section(root: Path, t: ReviewTarget) -> list[str]:
     """``## Tests at risk``: test files importing a changed module, from git objects (advisory)."""
     impact = impact_for_diff(root, t.base, t.commit) if t.base and t.commit else None
-    intro = (f"{_computed(t)} Python test files that import, at any depth, a module this diff changes "
-             "(advisory; not a gate).")
-    return section_lines(impact, intro=intro, full_cmd=f"specy-road impact {t.node_id} --ref {t.commit}")
+    intro = (
+        f"{_computed(t)} Python test files that import, at any depth, a module this diff changes "
+        "(advisory; not a gate)."
+    )
+    return section_lines(
+        impact, intro=intro, full_cmd=f"specy-road impact {t.node_id} --ref {t.commit}"
+    )
 
 
 def _empty_diff_reason(t: ReviewTarget) -> str:
-    return (f"the diff is empty: `{t.commit}` adds nothing past its merge base with `{t.base_ref}`, as when the "
-            "branch is already merged there; `review-packet --base <ref>` sets the diff range (e.g. the commit "
-            "before the leaf)")
+    return (
+        f"the diff is empty: `{t.commit}` adds nothing past its merge base with `{t.base_ref}`, as when the "
+        "branch is already merged there; `review packet --base <ref>` sets the diff range (e.g. the commit "
+        "before the leaf)"
+    )
 
 
 def _split_files(diff: str) -> list[str]:
@@ -199,14 +299,16 @@ def _split_files(diff: str) -> list[str]:
 
 def _numstat(root: Path, t: ReviewTarget) -> list[tuple[str, str, str]]:
     """``(added, removed, path)`` per file, in diff order (``-`` for binary; a rename's new path)."""
-    fields = iter((git_stdout(["diff", "--numstat", "-z", f"{t.base}...{t.commit}"], root) or "").split("\0"))
+    fields = iter(
+        (git_stdout(["diff", "--numstat", "-z", f"{t.base}...{t.commit}"], root) or "").split("\0")
+    )
     rows = []
     for f in fields:
         a, _, rest = f.partition("\t")
         r, tab, path = rest.partition("\t")
         if not tab:
             continue
-        if not path:   # a rename or copy: the old and the new path follow
+        if not path:  # a rename or copy: the old and the new path follow
             next(fields, "")
             path = next(fields, "")
         rows.append((a, r, path))
@@ -217,12 +319,18 @@ def _generated(root: Path, commit: str, paths: list[str]) -> set[str]:
     """The git-root ``paths`` under GENERATED_PATHS, marked ``linguist-generated`` at ``commit``, or a
     LOCKFILES name with no ``linguist-generated`` entry there."""
     out = {p for p in paths if p.startswith(GENERATED_PATHS)}
-    top = Path(git_text(["rev-parse", "--show-toplevel"], root) or root)   # check-attr paths are cwd-relative
+    top = git_root(root) or root  # check-attr paths are cwd-relative
     attr = ["check-attr", "-z", "linguist-generated", "--", *paths]
-    raw = git_stdout(attr[:2] + [f"--source={commit}"] + attr[2:], top) or git_stdout(attr, top) or ""
-    f = raw.split("\0")   # path, attribute, value; repeated
+    raw = (
+        git_stdout(attr[:2] + [f"--source={commit}"] + attr[2:], top) or git_stdout(attr, top) or ""
+    )
+    f = raw.split("\0")  # path, attribute, value; repeated
     value = {f[i]: f[i + 2] for i in range(0, len(f) - 2, 3)}
-    lock = {p for p in paths if p.rsplit("/", 1)[-1] in LOCKFILES and value.get(p, "unspecified") == "unspecified"}
+    lock = {
+        p
+        for p in paths
+        if p.rsplit("/", 1)[-1] in LOCKFILES and value.get(p, "unspecified") == "unspecified"
+    }
     return out | lock | {p for p, v in value.items() if v in ("set", "true")}
 
 
@@ -233,50 +341,82 @@ def _budget(cap: int, max_bytes: int) -> str:
     return " and ".join(caps) or "**Diff not inlined in full**"
 
 
-def _capped_diff(root: Path, t: ReviewTarget, diff: str, rows: list[tuple[str, str, str]], generated: set[str],
-                 cap: int, max_bytes: int, patch_name: str = DIFF_NAME) -> list[str]:
+def _capped_diff(
+    root: Path,
+    t: ReviewTarget,
+    diff: str,
+    rows: list[tuple[str, str, str]],
+    generated: set[str],
+    cap: int,
+    max_bytes: int,
+    patch_name: str = DIFF_NAME,
+) -> list[str]:
     """Inline the first whole files within both budgets, list the rest and every generated file, write DIFF.patch."""
     chunks = _split_files(diff)
-    if len(rows) != len(chunks):   # name each file from its header instead
+    if len(rows) != len(chunks):  # name each file from its header instead
         rows = [("?", "?", c.split("\n", 1)[0].rsplit(" b/", 1)[-1]) for c in chunks]
     kept: list[str] = []
     listed: list[str] = []
     lines = size = 0
-    full = False   # once a file misses a budget, every later one is listed too
+    full = False  # once a file misses a budget, every later one is listed too
     for c, (a, r, path) in zip(chunks, rows):
         n, b, gen = c.count("\n"), len(c.encode()), path in generated
-        full = full or (not gen and bool(cap and lines + n > cap or max_bytes and size + b > max_bytes))
+        full = full or (
+            not gen and bool(cap and lines + n > cap or max_bytes and size + b > max_bytes)
+        )
         if gen or full:
-            listed.append(f"- `{path}` (+{a} -{r}) — not inlined{', generated' if gen else ''} ({b} bytes of diff)")
+            listed.append(
+                f"- `{path}` (+{a} -{r}) — not inlined{', generated' if gen else ''} ({b} bytes of diff)"
+            )
         else:
             kept, lines, size = kept + [c], lines + n, size + b
     patch = reviews_dir(root, t.node_id) / patch_name
     patch.parent.mkdir(parents=True, exist_ok=True)
     patch.write_text(diff, encoding="utf-8")
-    out = [f"{_budget(cap, max_bytes)} ({diff.count(chr(10))} lines, {len(diff.encode())} bytes in all): the first "
-           f"{len(kept)} of {len(chunks)} changed file(s) are inlined whole below; the full diff is at `{patch}`.", ""]
+    out = [
+        f"{_budget(cap, max_bytes)} ({diff.count(chr(10))} lines, {len(diff.encode())} bytes in all): the first "
+        f"{len(kept)} of {len(chunks)} changed file(s) are inlined whole below; the full diff is at `{patch}`.",
+        "",
+    ]
     out += [GENERATED_NOTE, ""] if generated & {path for *_, path in rows} else []
     out += listed + [""]
     return out + (_fence("".join(kept), "diff") if kept else [])
 
 
-def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = MAX_DIFF_LINES,
-          max_diff_bytes: int = MAX_DIFF_BYTES, patch_name: str = DIFF_NAME) -> list[str]:
+def _diff(
+    root: Path,
+    t: ReviewTarget,
+    paths: list[str],
+    max_diff_lines: int = MAX_DIFF_LINES,
+    max_diff_bytes: int = MAX_DIFF_BYTES,
+    patch_name: str = DIFF_NAME,
+) -> list[str]:
     out = ["## Diff", ""]
-    (reviews_dir(root, t.node_id) / patch_name).unlink(missing_ok=True)   # only a capped packet names one
+    (reviews_dir(root, t.node_id) / patch_name).unlink(
+        missing_ok=True
+    )  # only a capped packet names one
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
-    note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL in paths else []
+    note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL.as_posix() in paths else []
     diff = git_stdout(["diff", f"{t.base}...{t.commit}"], root) or ""
     if not diff.strip():
         print(f"warning: {_empty_diff_reason(t)}", file=sys.stderr)
         return out + [_computed(t), ""] + note + [f"_({_empty_diff_reason(t)})_", ""]
     rows = _numstat(root, t)
     generated = _generated(root, t.commit, [path for *_, path in rows])
-    if generated or (max_diff_lines and diff.count("\n") > max_diff_lines) or \
-            (max_diff_bytes and len(diff.encode()) > max_diff_bytes):
-        return out + [_computed(t), ""] + note + _capped_diff(root, t, diff, rows, generated, max_diff_lines,
-                                                              max_diff_bytes, patch_name)
+    if (
+        generated
+        or (max_diff_lines and diff.count("\n") > max_diff_lines)
+        or (max_diff_bytes and len(diff.encode()) > max_diff_bytes)
+    ):
+        return (
+            out
+            + [_computed(t), ""]
+            + note
+            + _capped_diff(
+                root, t, diff, rows, generated, max_diff_lines, max_diff_bytes, patch_name
+            )
+        )
     return out + [_computed(t), ""] + note + _fence(diff, "diff")
 
 
@@ -285,7 +425,9 @@ def _with_base(root: Path, t: ReviewTarget, base: str) -> ReviewTarget:
     if not full_sha(root, base):
         print(f"error: --base {base!r} does not resolve to a commit", file=sys.stderr)
         raise SystemExit(1)
-    return replace(t, base_ref=base, base=git_text(["merge-base", base, str(t.commit)], root) or None)
+    return replace(
+        t, base_ref=base, base=git_text(["merge-base", base, str(t.commit)], root) or None
+    )
 
 
 def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
@@ -323,20 +465,403 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
 
 def _delta_section(root: Path, prior: ReviewFile) -> list[str]:
     sha, model = prior.data["commit"], prior.data["model"]
-    session = (f"You may read it in the session that approved `{sha}`, resumed: then set `fresh_session: false` "
-               f"(`{RESUMED_KEY}` is on). " if resumed_delta_on(root) else "Read it in a fresh session "
-               f"(`fresh_session: true`); a resumed session counts only when `{RESUMED_KEY}` is on. ")
-    return ["## Delta review", "", f"`{model}`, you approved `{sha}`. This packet covers only the change since: "
-            f"at most three documentation or test files inside the touch zones, with no integrity findings. {session}"
-            f"Add `delta_from: \"{sha}\"` to your record's front matter; the gate counts it only for `{model}`.", "",
-            f"### Your notes on `{sha}`", "", prior.body.strip() or "_(none)_", ""]
+    session = (
+        f"You may read it in the session that approved `{sha}`, resumed: then set `fresh_session: false` "
+        f"(`{RESUMED_KEY}` is on). "
+        if resumed_delta_on(root)
+        else "Read it in a fresh session "
+        f"(`fresh_session: true`); a resumed session counts only when `{RESUMED_KEY}` is on. "
+    )
+    return [
+        "## Delta review",
+        "",
+        f"`{model}`, you approved `{sha}`. This packet covers only the change since: "
+        f"at most three documentation or test files inside the touch zones, with no integrity findings. {session}"
+        f'Add `delta_from: "{sha}"` to your record\'s front matter; the gate counts it only for `{model}`.',
+        "",
+        f"### Your notes on `{sha}`",
+        "",
+        prior.body.strip() or "_(none)_",
+        "",
+    ]
 
 
-def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str],
-                 base: str | None = None, max_diff_lines: int = MAX_DIFF_LINES,
-                 max_diff_bytes: int = MAX_DIFF_BYTES, prior: ReviewFile | None = None, full: bool = False) -> str:
-    t = resolve_target_or_exit(root, node_id, ref)
-    integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
+def computed_note(t: ReviewTarget) -> str:
+    """The line naming the git range a computed section was read from."""
+    return f"_Computed by review-packet from git (`{t.base}...{t.commit}`)._"
+
+
+_computed = computed_note
+
+
+def test_integrity_section(root: Path, t: ReviewTarget) -> list[str]:
+    """Deterministic ``## Test integrity`` block for the review packet."""
+    return _integrity_block(t, _findings(root, t))
+
+
+def integrity_sections(root: Path, t: ReviewTarget) -> list[str]:
+    """``## Test integrity``, then the required check when a removal or weakening is unplanned.
+
+    ``## Test integrity`` lists every ``specy-road integrity`` finding for the commit
+    under review. When one of them removes or weakens a test and the node's
+    ``planned_test_changes`` does not list it, ``## Required check: unplanned test
+    removal`` follows, for a leaf or a milestone and whatever ``policy.integrity_gate``
+    says, and ``review record`` refuses an approve without an ``acceptance`` entry
+    for each line.
+    """
+    findings = _findings(root, t)
+    removals = [] if not findings else unplanned_removals(findings, planned_for_target(root, t))
+    return _integrity_block(t, findings) + (
+        unplanned_removal_lines(t, removals) if removals else []
+    )
+
+
+def _findings(root: Path, t: ReviewTarget) -> list[str] | None:
+    """Integrity lines for ``base...commit``; ``None`` without both."""
+    return (
+        [f.line() for f in compare_integrity(root, t.base, t.commit)]
+        if t.base and t.commit
+        else None
+    )
+
+
+def _integrity_block(t: ReviewTarget, findings: list[str] | None) -> list[str]:
+    if findings is None:
+        return ["## Test integrity", "", "_(cannot compute: no merge base or no commit)_", ""]
+    return ["## Test integrity", "", computed_note(t), "", *(findings or ["_none_"]), ""]
+
+
+def unplanned_removal_lines(t: ReviewTarget, removals: list[str]) -> list[str]:
+    """The required-check section for ``removals`` (integrity lines not in ``planned_test_changes``)."""
+    return [
+        f"## {REQUIRED_HEADING}",
+        "",
+        f"These findings remove or weaken a test, and `{t.node_id}`'s `planned_test_changes` (on the integration "
+        f"branch or at the commit under review) does not list them. Whatever `policy.integrity_gate` says, an "
+        "approve must carry one `acceptance` entry per line, keyed by the line exactly, once you have checked "
+        'that an acceptance item and the diff justify the change: `"<line>": pass`. Otherwise block with a '
+        "`required_changes` entry. `review record` refuses an approve without them.",
+        "",
+        *(f"- `{line}`" for line in removals),
+        "",
+        "The entries, for your record's `acceptance` once each is justified:",
+        "",
+        "```yaml",
+        *(f'"{line}": pass' for line in removals),
+        "```",
+        "",
+    ]
+
+
+NOTE = (
+    "_Computed by review-packet from each nested repository's git (`nested_repos` in "
+    "`roadmap/git-workflow.yaml`): the leaf's branch there, from its merge base with that repository's "
+    "integration branch. Paths are project-relative._"
+)
+
+
+def patch_name(nr: NestedRepo) -> str:
+    """``DIFF-nested-<path>.patch`` with ``/`` as ``+``: no path ``nested_repos`` accepts has a ``+``, so two
+    repositories never share a name (``a/b`` and ``a-b`` would, were ``/`` written ``-``)."""
+    return "DIFF-nested-" + nr.path.replace("/", "+") + ".patch"
+
+
+def _over_budget(diff: str, max_diff_lines: int, max_diff_bytes: int) -> list[str]:
+    """The packet budgets ``diff`` exceeds (``0`` = no cap), as the main diff applies them."""
+    lines, size = diff.count("\n"), len(diff.encode())
+    return ([f"{max_diff_lines} lines"] if max_diff_lines and lines > max_diff_lines else []) + (
+        [f"{max_diff_bytes} bytes"] if max_diff_bytes and size > max_diff_bytes else []
+    )
+
+
+def _repo_lines(
+    root: Path,
+    t: ReviewTarget,
+    nr: NestedRepo,
+    branch: str,
+    zones: list[str],
+    max_diff_lines: int,
+    max_diff_bytes: int,
+) -> list[str]:
+    """One repository's subsection: changed paths with outside-zone marks, then its diff (or where it was written)."""
+    out = [f"### `{nr.path}`", ""]
+    patch = reviews_dir(root, t.node_id) / patch_name(nr)
+    patch.unlink(missing_ok=True)  # only a capped section names one
+    rng = branch_diff_range(root, nr, branch)
+    if rng is None:
+        return out + [f"_No `{branch}` branch in this repository: the leaf did not change it._", ""]
+    repo, prefix = root / nr.path, project_prefix(root)
+    paths = diff_paths(repo, rng) or []
+    out += [f"_`{rng}` in `{nr.path}`._", ""]
+    for p in paths:
+        inside = not zones or in_zones(zones, f"{prefix}{nr.path}/{p}", prefix)
+        out.append(f"- `{nr.path}/{p}`" + ("" if inside else "  **← outside touch zones**"))
+    if not paths:
+        return out + ["- _none_", ""]
+    diff = git_stdout(["diff", rng], repo) or ""
+    over = _over_budget(diff, max_diff_lines, max_diff_bytes)
+    if over:
+        patch.parent.mkdir(parents=True, exist_ok=True)
+        patch.write_text(diff, encoding="utf-8")
+        return out + [
+            "",
+            f"**Diff capped at {' and '.join(over)}** ({diff.count(chr(10))} lines, "
+            f"{len(diff.encode())} bytes): the full diff is at `{patch}`.",
+            "",
+        ]
+    return out + [""] + _fence(diff, "diff")
+
+
+def nested_diff_section(
+    root: Path, t: ReviewTarget, max_diff_lines: int, max_diff_bytes: int
+) -> list[str]:
+    """The nested-repositories section, or nothing when none are configured.
+
+    Each diff stays within both packet budgets. A leaf whose work lives in a
+    separately versioned repository under the project root has its branch there
+    under the same name; the main repository's diff cannot show it, so reviewers
+    had to be handed it by hand. Each configured repository gets its changed
+    paths, judged against the touch zones as the main repository's are, and its
+    diff from the merge base with its integration branch.
+    """
+    repos = nested_repos(root)
+    if not repos:
+        return []
+    branch = (t.entry or {}).get("branch") or t.ref
+    zones = [z.strip().strip("/") for z in t.review_zones if isinstance(z, str) and z.strip()]
+    out = ["## Nested repositories", "", NOTE, ""]
+    for nr in repos:
+        out += _repo_lines(root, t, nr, branch, zones, max_diff_lines, max_diff_bytes)
+    return out
+
+
+UNCOMMITTED_REF_NOTE = (
+    "_The brief, a planning sheet or the implementation summary names these paths, but they "
+    "are not in the tree at the commit under review (untracked or uncommitted). Commit them "
+    "before reviewers start._"
+)
+_GLOB = re.compile(r"[*?[]")
+_QUERY = re.compile(r"\?\w+=")  # a link's query string ("x.md?plain=1"), not a glob's ?
+
+
+def is_glob(text: str) -> bool:
+    """True if ``text`` is a glob (``*``, ``?`` or ``[...]``): kept whole when a path is extracted, and matched
+    against files rather than looked up."""
+    return bool(_GLOB.search(text))
+
+
+_LINK = re.compile(r"\]\(\s*([^)\s#]+)")
+_CODE = re.compile(r"`([^`\n]+)`")
+_BRANCH = frozenset(
+    {"feature", "fix", "chore", "hotfix", "WIP", "release", "origin", "refs", "heads", "remotes"}
+)
+_TOP = frozenset(
+    {
+        "roadmap",
+        "planning",
+        "shared",
+        "work",
+        "constitution",
+        "constraints",
+        "specy_road",
+        "tests",
+        "docs",
+        "src",
+        "gui",
+        "scripts",
+        "schemas",
+        "suggested_prompts",
+        ".github",
+        ".cursor",
+        ".specyrd",
+    }
+)
+_ROOT = frozenset(
+    {
+        "README.md",
+        "CHANGELOG.md",
+        "pyproject.toml",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "roadmap.md",
+        "roadmap-context.md",
+        ".gitignore",
+        ".gitattributes",
+    }
+)
+
+
+def _present(root: Path, commit: str, name: str) -> bool:
+    """True if ``name`` is a tree or blob at ``commit`` or on disk, project or git top."""
+    if _exists_at_commit(root, commit, name):
+        return True
+    top = git_root(root) or root
+    return (root / name).exists() or (top / name).exists()
+
+
+def _named_repo_path(token: str, root: Path, commit: str) -> str | None:
+    raw = (token or "").strip().replace("\\", "/")
+    if not raw or raw.startswith(("http://", "https://", "git@", "mailto:")):
+        return None
+    raw = _QUERY.split(raw.split()[0])[0].split("#")[0]
+    raw = raw.split("::", 1)[0]  # pytest node id: path::name
+    raw = re.sub(r":\d+$", "", raw)  # editor / compiler :line
+    while raw.startswith("./") or raw.startswith("../"):
+        raw = raw[2:] if raw.startswith("./") else raw[3:]
+    raw = raw.lstrip("/").rstrip("/")
+    if not raw or ".." in raw.split("/"):
+        return None
+    if raw.split("/")[0] == ".git":
+        return None
+    if "/" not in raw:
+        if "." not in raw and raw not in _ROOT:
+            return None
+        return raw if raw in _ROOT or is_glob(raw) or _present(root, commit, raw) else None
+    head, last = raw.split("/", 1)[0], raw.rsplit("/", 1)[-1]
+    ext = last.rsplit(".", 1)[-1] if "." in last else ""
+    if (
+        head in _BRANCH
+        or not last
+        or (last not in _ROOT and not ext.isalpha() and not is_glob(last))
+    ):
+        return None
+    if head in _TOP:
+        return raw
+    return (
+        raw
+        if _present(root, commit, head) and (is_glob(raw) or _present(root, commit, raw))
+        else None
+    )
+
+
+def _named_paths(text: str, root: Path, commit: str) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for token in _LINK.findall(text) + _CODE.findall(text):
+        rel = _named_repo_path(token, root, commit)
+        if rel is not None and rel not in seen:
+            seen.add(rel)
+            out.append(rel)
+    return out
+
+
+def _show(root: Path, commit: str, rel: str) -> str | None:
+    return git_stdout(["show", f"{commit}:./{rel}"], root)
+
+
+def _exists_at_commit(root: Path, commit: str, rel: str) -> bool:
+    """True if ``rel`` is a blob or tree at ``commit`` from the project root or the git top."""
+    if git_ok(["cat-file", "-e", f"{commit}:./{rel}"], root)[0]:
+        return True
+    top = git_root(root) or root
+    return git_ok(["cat-file", "-e", f"{commit}:{rel}"], top)[0]
+
+
+def _committed_or_disk(root: Path, commit: str, path: Path) -> str | None:
+    """``path``'s text at ``commit``, else on disk, else None."""
+    body = _show(root, commit, path.relative_to(root).as_posix())
+    if body is None and path.is_file():
+        body = path.read_text(encoding="utf-8")
+    return body
+
+
+def _packet_texts(
+    root: Path, t: ReviewTarget, brief: str, node: dict, by_id: dict[str, dict]
+) -> list[str]:
+    """The brief, the implementation summary and the chain's planning sheets."""
+    summary = _committed_or_disk(
+        root, t.commit, root / f"work/implementation-summary-{t.node_id}.md"
+    )
+    sheets = [_committed_or_disk(root, t.commit, s) for s in _chain_sheet_paths(node, root, by_id)]
+    return [brief] + [text for text in [summary, *sheets] if text]
+
+
+def _ignored(root: Path, rel: str) -> bool:
+    """True if git ignores ``rel`` (``git check-ignore``), from the project root or the git top: build output,
+    caches and other paths no commit would hold."""
+    top = git_root(root) or root
+    return any(git_ok(["check-ignore", "-q", "--", rel], where)[0] for where in (root, top))
+
+
+def _glob_matches(root: Path, commit: str, rel: str) -> bool:
+    """True if the glob ``rel`` matches a file at ``commit`` or on disk (tracked, or untracked and not ignored),
+    project or git top. ``rel`` comes from packet text, so it is matched only with ``fnmatch.fnmatchcase``, which
+    takes any string (``**x``, a lone ``[``) without raising; a pattern it cannot match is unmatched."""
+    top = git_root(root) or root
+    for where in (root, top):  # git lists names relative to where it runs
+        names = (
+            git_stdout(["ls-tree", "-r", "--name-only", commit, "--", "."], where) or ""
+        ).splitlines()
+        names += (
+            git_stdout(["ls-files", "-co", "--exclude-standard", "--", "."], where) or ""
+        ).splitlines()
+        if any(fnmatch.fnmatchcase(n, rel) for n in names):
+            return True
+    return False
+
+
+def _missing_refs(root: Path, commit: str, texts: list[str]) -> tuple[list[str], int]:
+    """``(paths missing at commit, how many were skipped)``: a path git ignores, or a glob (a planning-sheet
+    pattern) that matches no file, is skipped, not listed; a glob that matches a file is present."""
+    missing: list[str] = []
+    skipped: set[str] = set()
+    for text in texts:
+        for rel in _named_paths(text, root, commit):
+            if rel in missing or rel in skipped or _exists_at_commit(root, commit, rel):
+                continue
+            if is_glob(rel):
+                if not _glob_matches(root, commit, rel):
+                    skipped.add(rel)
+            elif _ignored(root, rel):
+                skipped.add(rel)
+            else:
+                missing.append(rel)
+    return missing, len(skipped)
+
+
+def uncommitted_refs_section(
+    root: Path, t: ReviewTarget, brief: str, node: dict, by_id: dict[str, dict], computed: str
+) -> list[str]:
+    """Paths the brief, a planning sheet or the summary names that are missing at the reviewed commit."""
+    out = ["## Uncommitted references", ""]
+    if not t.commit:
+        return out + ["_(cannot compute: no commit under review)_", ""]
+    missing, skipped = _missing_refs(root, t.commit, _packet_texts(root, t, brief, node, by_id))
+    if skipped:
+        print(
+            f"note: {skipped} path(s) named in the packet but not at commit `{t.commit}` are not warned about: "
+            "git ignores them, or they are globs that match no file",
+            file=sys.stderr,
+        )
+    out += [computed, ""]
+    if not missing:
+        return out + ["_none_", ""]
+    out += [UNCOMMITTED_REF_NOTE, ""]
+    for rel in missing:
+        out.append(f"- `{rel}`")
+        print(
+            f"warning: `{rel}` is named in the packet but not at commit `{t.commit}`",
+            file=sys.stderr,
+        )
+    return out + [""]
+
+
+def build_packet(
+    root: Path,
+    node_id: str,
+    *,
+    ref: str | None,
+    verify_cmds: list[str],
+    base: str | None = None,
+    max_diff_lines: int = MAX_DIFF_LINES,
+    max_diff_bytes: int = MAX_DIFF_BYTES,
+    prior: ReviewFile | None = None,
+    full: bool = False,
+) -> str:
+    t = resolve_target_or_exit(root, node_id, ref, nodes=load_roadmap(root)["nodes"])
+    integration_ref = (
+        t.base_ref
+    )  # --base moves the diff range, never the trial merge mark and finish check
     if base or prior:
         t = _with_base(root, t, prior.data["commit"] if prior else str(base))
     milestone_packet_or_exit(t)
@@ -345,46 +870,108 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
-        _header(root, t, integration_ref) + (_delta_section(root, prior) if prior else [FULL_MARK, ""] if full else []),
+        _header(root, t, integration_ref)
+        + (_delta_section(root, prior) if prior else [FULL_MARK, ""] if full else []),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
-        _summary(root, t),
+        summary(root, t),
         uncommitted_refs_section(root, t, brief, t.node, by_id, _computed(t)),
         changed,
         integrity_sections(root, t),
         tests_at_risk_section(root, t),
-        _diff(root, t, paths, max_diff_lines, max_diff_bytes, f"DIFF-{prior.data['model']}.patch" if prior else DIFF_NAME) + nested_diff_section(root, t, max_diff_lines, max_diff_bytes),
+        _diff(
+            root,
+            t,
+            paths,
+            max_diff_lines,
+            max_diff_bytes,
+            f"DIFF-{prior.data['model']}.patch" if prior else DIFF_NAME,
+        )
+        + nested_diff_section(root, t, max_diff_lines, max_diff_bytes),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
 
 
-def main(argv: list[str] | None = None) -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road review packet`` parser (``review-packet``, its deprecated alias, reads it too)."""
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("node_id", help="Roadmap node id, e.g. M1.2")
-    p.add_argument("--ref", help="Branch or commit to review (default: the node's registered branch, local or remote-tracking)")
-    p.add_argument("--base", metavar="REF",
-                   help="Diff from the merge base with REF instead of the integration branch's "
-                        "(e.g. the commit before the leaf, when its branch is already merged)")
-    p.add_argument("--verify-cmd", action="append", default=[], metavar="CMD",
-                   help="Run CMD now and include its exit code and output tail (repeatable)")
-    p.add_argument("--max-diff-lines", type=int, default=MAX_DIFF_LINES, metavar="N",
-                   help=f"Inline at most N diff lines (default {MAX_DIFF_LINES}): whole files up to the cap, "
-                        f"the rest listed with +/- counts and the full diff written to "
-                        f"work/reviews/<NODE_ID>/{DIFF_NAME}; 0 = no line cap")
-    p.add_argument("--max-diff-bytes", type=int, default=MAX_DIFF_BYTES, metavar="N",
-                   help=f"Inline at most N bytes of diff too (default {MAX_DIFF_BYTES}), as for --max-diff-lines; "
-                        f"0 = no byte cap. With both 0 and no generated file, nothing is listed and no {DIFF_NAME}")
-    p.add_argument("--full", action="store_true", help="Every reviewer reads this full packet: `prompt --role "
-                   "reviewer` builds no delta packet (policy.delta_review) while it is current")
-    p.add_argument("-o", "--output", type=Path,
-                   help=f"Also write here; work/reviews/<NODE_ID>/{PACKET_NAME} is always written, "
-                        "since `prompt --role reviewer` reads that path")
+    add_ref_arg(
+        p,
+        help="Branch or commit to review (default: the node's registered branch, "
+        "local or remote-tracking)",
+    )
+    add_base_arg(
+        p,
+        metavar="REF",
+        help="Diff from the merge base with REF instead of the integration branch's "
+        "(e.g. the commit before the leaf, when its branch is already merged)",
+    )
+    p.add_argument(
+        "--verify-cmd",
+        action="append",
+        default=[],
+        metavar="CMD",
+        help="Run CMD now and include its exit code and output tail (repeatable)",
+    )
+    p.add_argument(
+        "--max-diff-lines",
+        type=int,
+        default=MAX_DIFF_LINES,
+        metavar="N",
+        help=f"Inline at most N diff lines (default {MAX_DIFF_LINES}): whole files up to the cap, "
+        f"the rest listed with +/- counts and the full diff written to "
+        f"work/reviews/<NODE_ID>/{DIFF_NAME}; 0 = no line cap",
+    )
+    p.add_argument(
+        "--max-diff-bytes",
+        type=int,
+        default=MAX_DIFF_BYTES,
+        metavar="N",
+        help=f"Inline at most N bytes of diff too (default {MAX_DIFF_BYTES}), as for --max-diff-lines; "
+        f"0 = no byte cap. With both 0 and no generated file, nothing is listed and no {DIFF_NAME}",
+    )
+    p.add_argument(
+        "--full",
+        action="store_true",
+        help="Every reviewer reads this full packet: `prompt --role "
+        "reviewer` builds no delta packet (policy.delta_review) while it is current",
+    )
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help=f"Also write here; work/reviews/<NODE_ID>/{PACKET_NAME} is always written, "
+        "since `prompt --role reviewer` reads that path",
+    )
     add_repo_root_arg(p)
-    args = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Write the review packet. A command error is printed once and becomes its exit code."""
+    run_reporting(lambda: write_packet(build_parser().parse_args(argv)))
+
+
+def write_packet(args: argparse.Namespace) -> None:
+    """Write ``PACKET.md`` (and ``-o``'s path) for parsed :func:`build_parser` arguments."""
     root = (args.repo_root or default_user_repo_root()).resolve()
-    text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base,
-                        max_diff_lines=args.max_diff_lines, max_diff_bytes=args.max_diff_bytes, full=args.full)
-    for out in [reviews_dir(root, args.node_id) / PACKET_NAME, *([args.output] if args.output else [])]:
+    text = build_packet(
+        root,
+        args.node_id,
+        ref=args.ref,
+        verify_cmds=args.verify_cmd,
+        base=args.base,
+        max_diff_lines=args.max_diff_lines,
+        max_diff_bytes=args.max_diff_bytes,
+        full=args.full,
+    )
+    for out in [
+        reviews_dir(root, args.node_id) / PACKET_NAME,
+        *([args.output] if args.output else []),
+    ]:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(text, encoding="utf-8")
         print(f"Wrote {out}")

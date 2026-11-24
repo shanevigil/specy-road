@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createWorkerSelection,
+  pickWorkerId,
   type WorkerSelectionState,
 } from "./workerSelection";
 
@@ -66,5 +67,24 @@ describe("createWorkerSelection", () => {
     pending.get("w-0001")!.resolve({ worker_id: "w-0001" });
     await a;
     expect(shown()).toEqual({ selected: null, detail: null, loading: false, error: null });
+  });
+});
+
+describe("pickWorkerId (the Workers drawer's initialWorkerId)", () => {
+  const listed = ["w-0001", "w-0002", "w-0003"];
+  it.each([
+    ["an initialWorkerId that is listed selects that worker", "w-0001", "w-0001"],
+    ["no initialWorkerId keeps the newest-worker default", null, "w-0003"],
+    ["an initialWorkerId no longer listed falls back to the newest", "w-0009", "w-0003"],
+  ])("%s", async (_label, initial, expected) => {
+    const { pending, sel, shown } = setup();
+    const done = sel.select(pickWorkerId(listed, initial)!);
+    pending.get(expected)!.resolve({ worker_id: expected });
+    await done;
+    expect(shown()).toMatchObject({ selected: expected, detail: { worker_id: expected } });
+  });
+
+  it("an empty list picks nothing", () => {
+    expect(pickWorkerId([], "w-0001")).toBeNull();
   });
 });

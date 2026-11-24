@@ -1,0 +1,52 @@
+$ specy-road hook_cursor
+exit: 0
+--- stdout ---
+{"argv": ["hook", "--format", "cursor", "--print-config"], "exit": 0, "out": "{\n  \"version\": 1,\n  \"hooks\": {\n    \"beforeSubmitPrompt\": [\n      {\"command\": \"specy-road worker hook --format cursor\", \"timeout\": 10}\n    ]\n  }\n}\n", "err": "# Put the snippet in .cursor/hooks.json. The hook answers {\"continue\": true} so the prompt always goes through. Cursor's conversation_id is what `agent --resume` names, so it matches the worker's session id.\n"}
+{"argv": ["hook", "--format", "cursor"], "exit": 0, "out": "{\"continue\": true}\n", "err": ""}
+{"argv": ["hook", "--format", "cursor"], "exit": 0, "out": "{\"continue\": true}\n", "err": ""}
+{"argv": ["hook", "--format", "cursor"], "exit": 0, "out": "{\"continue\": true}\n", "err": "worker hook: ignored (Expecting value: line 1 column 1 (char 0))\n"}
+=== .lock
+<present>
+=== FLAG
+<present>
+=== w-0001.events.jsonl
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 1, "source": "broker", "summary": "delegated M1.1 to cursor/opus (attempt 1)", "type": "started", "worker_id": "w-0001"}
+=== w-0001.interventions.jsonl
+{"at": "<MASKED>", "harness": "cursor", "prompt": "do not add an abstraction", "session_id": "sid-1"}
+=== w-0001.yaml
+{
+  "attempt": 1,
+  "billing_route": null,
+  "branch": null,
+  "checkpoint": null,
+  "contract_hash": null,
+  "created": "<MASKED>",
+  "descendants_unchecked": null,
+  "flags": [],
+  "harness": "cursor",
+  "harness_pid": null,
+  "harness_start": null,
+  "instruction_epoch": 0,
+  "last_event_seq": 1,
+  "last_output_at": null,
+  "lease": {
+    "holder": "human",
+    "since": "<TIME>"
+  },
+  "limit_reset_at": null,
+  "model": "opus",
+  "node_id": "M1.1",
+  "pgid": null,
+  "pid": null,
+  "provider_session_id": "sid-1",
+  "queued_message": null,
+  "recoveries": null,
+  "started_head": "<MASKED>",
+  "state": "idle",
+  "toolkit_version": "<MASKED>",
+  "updated": "<MASKED>",
+  "worker_id": "w-0001",
+  "worktree": "<REPO>",
+  "wrapper_token": null
+}
+--- stderr ---

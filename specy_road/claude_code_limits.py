@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from specy_road.clock import utc_now
+
 #: A limit that lifts at a stated clock time — the one kind worth waiting for.
 TIMED = "timed"
 #: A spend cap with no reset time. Waiting cannot help; say so and stop.
@@ -104,7 +106,7 @@ def parse_reset_at(text: str, *, now: datetime | None = None) -> datetime | None
         return None
     hour = hour % 12 + (12 if meridiem == "p" else 0)
     return _next_occurrence(
-        hour, minute, _tz(match.group(4)), now or datetime.now(timezone.utc)
+        hour, minute, _tz(match.group(4)), now or utc_now()
     )
 
 

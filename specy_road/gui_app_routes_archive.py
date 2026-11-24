@@ -46,14 +46,14 @@ def _record_or_404(root: Path, archive_id: str) -> dict[str, Any]:
     return rec
 
 
-def _eligible(root: Path) -> list[dict[str, Any]]:
+def eligible(root: Path) -> list[dict[str, Any]]:
     """Nodes the PM GUI may offer an Archive action on.
 
     Mirrors ``plan_archive``'s gate rather than re-deriving it, so the button
     never appears on something the CLI would refuse.
     """
 
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
+    from specy_road.roadmap_load import compute_rollup_status, load_roadmap
 
     from specy_road.milestone_lock import locked_node_ids
 
@@ -105,10 +105,10 @@ def _ids_with_claimed_descendant(root: Path, nodes: list[dict[str, Any]]) -> set
     return blocked
 
 
-def _auto_settings(root: Path) -> tuple[bool, int]:
+def auto_settings(root: Path) -> tuple[bool, int]:
     """``(enabled, older_than_days)`` from the saved ``pm_gui`` preferences."""
     try:
-        from specy_road.bundled_scripts.roadmap_gui_lib import load_settings
+        from specy_road.roadmap_gui_lib import load_settings
 
         pm = load_settings(root).get("pm_gui") or {}
     except Exception:  # noqa: BLE001 - a settings problem must not break the list
@@ -123,7 +123,7 @@ def _auto_settings(root: Path) -> tuple[bool, int]:
 
 def _api_archives_list() -> dict[str, Any]:
     root = get_repo_root()
-    enabled, days = _auto_settings(root)
+    enabled, days = auto_settings(root)
     # Surfaced, never acted on automatically: archiving moves files, so the
     # preference decides what the drawer OFFERS, and the operator still clicks.
     # The scan walks git history, so it is the most failure-prone part of this
@@ -139,7 +139,7 @@ def _api_archives_list() -> dict[str, Any]:
             suggestions = []
     return {
         "records": index_records(load_archive_index(root)),
-        "eligible": _eligible(root),
+        "eligible": eligible(root),
         "auto": {
             "enabled": enabled,
             "older_than_days": days,
@@ -168,7 +168,7 @@ def _api_archive_nodes(archive_id: str) -> dict[str, Any]:
             "nodes": rec.get("nodes_summary") or [],
         }
 
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+    from specy_road.roadmap_chunk_utils import load_json_chunk
 
     return {
         "browsable": True,

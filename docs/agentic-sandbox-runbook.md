@@ -29,6 +29,7 @@
 - hook-mode grind and the gate → "7. Grind and unattended loops"
 - what must be green before §A → "8. Close-out"
 - replaying `docs/context-regressions.yaml` on a harness or model upgrade, and its format → "9. Context regressions"; the opt-in context-feedback block and its triage rule → "10. Context feedback (pilot)"
+- claiming, renewing and releasing a sandbox guest over MCP → "11. Driving a guest over MCP"
 
 **Related:** [`release-runbook.md`](release-runbook.md), [`orchestration-workers.md`](orchestration-workers.md), [`brainstorming.md`](brainstorming.md), [`orchestration.md`](orchestration.md).
 
@@ -63,10 +64,8 @@ Rating for each scenario: **PASS** (criteria met), **PASS-WITH-NOTE**
 In the Notes app:
 
 1. `specy-road init project` → `validate` and `file-limits` exit 0.
-   `export --check` and `digest --check` exit 1 with `missing …` because the
-   scaffold ships neither generated file (`roadmap.md`,
-   `roadmap-context.md`); run `specy-road export` and `specy-road digest`
-   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
+   `export --check` and `digest --check` exit 0 right after init: it writes
+   `roadmap.md` and `roadmap-context.md`. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
    managed stub, `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md` are present.
 2. `specyrd init --ai cursor`, `--ai claude-code`, `--ai codex`: one
    `.agents/skills/<name>/SKILL.md` per command; `.claude/skills/<name>` is a
@@ -75,17 +74,17 @@ In the Notes app:
    `specyrd-do-next-task` by name (Claude `/name`, Codex `$name`, Cursor
    `/name` or `@name`). Pass: the skill text is loaded (the agent quotes a
    line from it), not a lookalike community skill.
-4. Edit a stub, run `specy-road refresh-stubs`: only managed files change;
+4. Edit a stub, run `specy-road upgrade --only stubs`: only managed files change;
    a pre-0.3 `.claude/commands/*.md` that `.specyrd/manifest.json` records
    is named for removal, not deleted. It is named on the first refresh only
    (the refresh drops it from the manifest); an unrecorded one is never named.
 5. **Upgrade from the last release.** In a scratch repo, scaffold with
    `specy-road==0.2.3` from PyPI in its own venv (`init project`, `specyrd
    init --ai claude-code`), commit, then switch to the candidate venv:
-   `refresh-stubs` gives a managed `AGENTS.md` stub and a `.specyrd/AGENTS.md` with a
+   `upgrade --only stubs` gives a managed `AGENTS.md` stub and a `.specyrd/AGENTS.md` with a
    `## Lean changes and tests` section, and leaves every line outside the markers unchanged;
-   `refresh-schemas` and `refresh-profiles` add what is missing;
-   `refresh-profiles --force <path>` brings a profile's `## Code and test
+   `upgrade --only schemas` and `upgrade --only profiles` add what is missing;
+   `upgrade --only profiles --force <path>` brings a profile's `## Code and test
    tendencies`; `validate` exits 0 (with or without the CHANGELOG's
    `.gitignore` lines, which it does not check). No refresh command creates
    `roadmap/orchestration.yaml`; without it the default policy applies
@@ -104,20 +103,22 @@ has no host to open that PR on.
 1. `do-next-available-task` claims a leaf; commit a change inside its touch
    zones; write and commit `work/implementation-summary-<ID>.md`; write
    `work/reviews/<ID>/READY-<agent>.md`.
-2. `review-packet <ID>` writes `PACKET.md` with the brief's `A1..An`, the
+2. `review packet <ID>` writes `PACKET.md` with the brief's `A1..An`, the
    diff, and the verify tails.
 3. In a **fresh** session of another harness, record a review:
    `review record <ID> --model <roster id> --verdict approve --file …`.
-   `handoff status` shows the policy met.
+   `review status` shows the policy met.
 4. `mark-implementation-reviewed --yes` closes the gate; the registry commit
    carries a `Reviewed-by:` trailer.
-5. Commit again on the branch: `handoff status` shows the review stale and
+5. Commit again on the branch: `review status` shows the review stale and
    `finish-this-task` refuses. Re-review, then finish.
 6. Signed: generate an ed25519 key, put its public line on the reviewer's
    roster entry, set `policy.signed_reviews: true` on the integration
    branch. `review record` without `--sign-key` is refused; with it, the
-   gate passes; edit one byte of the record and the gate reports "does not
-   verify".
+   gate passes. Tamper, then restore the record (the gate is met again):
+   a front-matter value byte reports `signature does not verify for <model>`;
+   a notes-body byte reports `notes body does not match notes_sha256`;
+   a schema-breaking edit such as an `A1` value makes the record schema-invalid.
 7. Policy from the branch under review must not count: lower
    `reviewers_required` on the feature branch only; the gate still reads the
    integration branch's file.
@@ -126,7 +127,7 @@ has no host to open that PR on.
    For each harness's executor (here and in §5), record whether its
    implementation summary ends with `## Added` listing each helper, guard,
    mock and test with a reason. Delete that section from one summary:
-   `review-packet` still writes the packet and exits 0, with a one-line
+   `review packet` still writes the packet and exits 0, with a one-line
    note in `PACKET.md` (nothing on the terminal).
 9. **Reviewer restraint.** Make the leaf's change include one boundary check
    with a reachable trigger and a test (for example, reject an empty title
@@ -164,10 +165,11 @@ rules change model behaviour, not a FAIL.
 
 ## 4. Models, prompts, plan
 
-1. `models list` shows each roster entry's profile scores (C/E/R) and a
-   `stale` flag (`--json` adds the profile path); the `researched` dates are
-   in `models show <id>` and `models stale`. `models stale` exits 1 with one
-   rostered profile's `researched` date set 200 days back, 0 otherwise.
+1. `models list` shows each roster entry's C/E/R scores and a trailing
+   `stale` marker on a stale profile's line (`--json` adds the profile path).
+   Check a rostered profile whose `researched` date is a fixed date more than
+   180 days ago: `models stale` lists the reasons and exits 1, and
+   `models show <id>` prints them. With no such profile, `models stale` exits 0.
 2. `prompt <ID> --model <id> --role executor --channel cli` runs the
    profile's `access.cli` on the real harness and the session completes the
    leaf's precondition check (it must not implement when the leaf is not
@@ -184,8 +186,9 @@ rules change model behaviour, not a FAIL.
 
 Roster three entries with `harness: claude-code`, `codex`, `cursor`,
 executor role, each with `profile:` pointing at its scaffolded profile as
-the roster guide recommends, `max_workers: 2`. Claim two leaves. From the
-coordinator chat (any harness):
+the roster guide recommends, `max_workers: 2`. Claim two leaves from one
+checkout: the second is `do-next-available-task --allow-second-claim`
+(exit 6 without it). From the coordinator chat (any harness):
 
 1. **Delegate returns first.** `worker delegate <ID1> --model <claude id>`
    prints a worker id in under two seconds; the chat stays usable; `worker
@@ -269,7 +272,7 @@ coordinator chat (any harness):
     coordinator's checkout, and both trees are clean afterwards. First, with
     an uncommitted edit to a tracked file in the coordinator's checkout,
     finish must refuse before its bookkeeping commit and name that checkout.
-    `worker terminate` the idle worker; `handoff status` no longer lists it.
+    `worker terminate` the idle worker; `review status` no longer lists it.
 
 Pass: 1, 3, 5, 7, 8, 9, 9b (ii), 10 exactly; 2, 4, 6, 9b (i) with their
 notes recorded.
@@ -388,7 +391,7 @@ mapping of `command`, a `specy-road prompt` line, and `send`, the file it
 writes), `pass` (items of `artifact`, a file or a git or `specy-road` read,
 and `expect`; an `expect` may name an outcome that fails the run outright)
 and `runs` (the first runs of the failure rule's sample).
-`tests/test_context_regressions.py` holds the schema and checks the file
+`tests/repo/test_context_regressions.py` holds the schema and checks the file
 against it. Replace a case rather than adding an eleventh.
 
 ## 10. Context feedback (pilot)
@@ -397,4 +400,90 @@ Opt-in, outside every pass criterion. Render the executor prompts of §2.8, §4.
 prompt then asks for three lines at the end of the summary, `missing:` / `wrong:` / `unused:`, each quoting the brief or
 prompt line or naming the turn, or `none`. Copy them into the evidence file with the prompt's `sha256`. **Triage rule:**
 act on an item only when it quotes a line or names a turn **and** recurs in another run or reproduces against the brief
-and the transcript; record offered / cited / reproduced per run. Hit rate and shipping decision: [`design-notes/context-feedback-pilot.md`](design-notes/context-feedback-pilot.md).
+and the transcript; record offered / cited / reproduced per run.
+
+## 11. Driving a guest over MCP
+
+For a run that reaches its guests only through the sandbox's MCP tools. The
+sandbox's own tool contract is the authority, and its `get_changelog` lists
+what changed; read each tool's schema before calling it. The idle action and
+lease length are deployment settings, so trust the fields a call returns over
+the defaults named here.
+
+- **Start with the changelog.** Call `get_changelog`, passing `since` with the
+  `latest_date` from the last run, and record the new `latest_date` in the
+  evidence file. Stop and update the run's prompt if a new entry has
+  `action_required` true. Read `common_notes` from `list_sbvms` as well as each
+  row's notes.
+
+- **Keep the holder secret.** The first `claim_workspace` returns
+  `holder_secret` once. Save it outside the agent's context as soon as it
+  arrives, one per workspace and role, so a killed run can still release, and
+  keep it out of reports and guest commands. Pass `client_label` so other
+  clients can see who holds the pin.
+- **Do not share by accident.** Re-claim only with your own secret. `pin_held`
+  means someone else holds that workspace, so record the holders and use
+  another path. `join=true` shares their guest, so use it only when that is
+  the intent.
+- **Keep the guest active.** Only successful tool calls on a slot count as
+  activity: a job running in the guest does not, and a failed call does not.
+  After the idle window (30 minutes by default) the guest is paused or shut
+  down; a shutdown keeps the disk but kills running jobs. During long jobs call
+  a tool on the slot at least every 25 minutes; an `sbvm_exec` tailing the job's
+  log is the most useful. One `sbvm_exec` is capped at 1800 seconds by default,
+  so run longer jobs detached and poll them. Read `action_at_iso` from
+  `vm_idle_status`, but keep the guest active with another call.
+- **A lease expiry is data loss.** `expires_at` comes back on each claim, and
+  the default lease is 24 hours (`null` means none applies). A successful call
+  on the slot renews it, so a claim's `expires_at` is only a lower bound. When
+  it passes, the guest is stopped and reset and the pin is released, with no
+  notice. Fetch results before any wait that could reach `expires_at`. After a
+  server restart, holder pins get at least an hour before expiry. Canary and
+  maintenance pins never lease.
+- **Spot a silent expiry.** After an expiry, a re-claim can look like success
+  on a clean guest. Only a claim that creates a holder returns `holder_secret`,
+  and an old secret passed after an expiry is ignored, not refused. So a
+  re-claim that returns any `holder_secret` you did not expect means your work
+  is gone, even on the same `sbvm`.
+- **Release.** Fetch what you need, `vm_stop`, then `release_workspace` with
+  the secret. `holder_required` means the pin stays. `detached: true` with
+  `released: false` means another client still holds it and the guest was not
+  reset. `reset_failed` means `ok: false`, yet the pin is gone: confirm with
+  `list_workspace_pins` and record it. That slot then refuses claims with
+  `slot_dirty`, so use another. `ok: true` with `released: false` and no
+  `detached` means no pin existed: if you expected one, its lease ran out, so
+  treat the work as lost, because this does not look like a failure. A running
+  guest is refused with `sbvm_still_running`.
+- **Unexpected refusals.** `release_in_progress` or `pin_held` on a slot you
+  believe is yours, when you have not just released it, can mean the lease ran
+  out: treat that guest's work as lost and redo the step on a new claim. During
+  a reset, any tool on that slot answers `release_in_progress`. If your own
+  release raised an error, repeat the same release to finish it.
+- **A killed run.** Look for its saved secret first, then in the run's
+  transcript, since it arrives as a tool result, and treat that transcript as
+  sensitive until the pin ends. With the secret, carry on or release as normal.
+  Without it, `join=true` gets you back to the guest with its work intact,
+  unless a reset has started, but cleanup is out of reach: the dead holder stays
+  recorded, so your release only detaches. The pin then ends only when the
+  lease runs out or an operator reclaims it. Successful calls that name the
+  slot renew the lease, so stop calling it once you are done.
+- **Older pins.** Pins from before holders have none, need no secret and never
+  expire, so a release wipes them unchecked. Name the slots a run must leave
+  alone.
+- **Pushing files.** Use `content_text` on `sbvm_push_artifact` for scripts and
+  config up to 1 MiB; it is written as UTF-8 exactly as given. Without the
+  upload URL, use `sbvm_push_begin`, `sbvm_push_chunk` and `sbvm_push_commit`
+  for binaries and larger files, and check the returned `sha256`. Limits are
+  64 MiB total and 1 MiB decoded per chunk, each offset must be exactly the next
+  byte (`offset_mismatch` otherwise), and a transfer expires 24 hours after
+  begin. The bytes pass through the agent's context, so keep this to modest
+  files. These tools refuse with `{error, hint}`, not `ok: false`, so check for
+  both shapes.
+- **Fetching files.** `guest_path` must be canonical: no `.` or `..` parts and
+  no repeated or trailing `/`, or the call fails with `invalid_parameter`. To
+  confirm an artifact without passing it through context, use `metadata_only`
+  and compare `size_bytes` and `sha256`; it takes files only and cannot be
+  combined with `out_path`.
+- **Failed browser tests.** Record `failures`, and check that `failures` plus
+  `failures_omitted` equals `failed`, so missing detail is visible.
+- **Inference through the guest proxy.** Set client timeouts above 600 seconds.

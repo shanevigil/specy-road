@@ -1,0 +1,462 @@
+"""Tests for roadmap CRUD and chunk utilities."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from specy_road.roadmap_crud_ops import append_node_to_chunk
+from tests.helpers import script_subprocess_env
+from tests.support.crud import crud_fixture_repo, edit_m99_1, run_crud, write_registry_claim
+from tests.support.cli import run_script
+
+
+def test_find_chunk_path(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    assert find_chunk_path(tmp_path, "M99.1") == tmp_path / "roadmap" / "phases" / "T.json"
+
+
+def test_append_node_validate(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    nk = "10000000-0000-4000-8000-000000009904"
+    node = {
+        "id": "M99.3",
+        "node_key": nk,
+        "parent_id": "M99",
+        "type": "task",
+        "title": "Three",
+        "codename": "three",
+        "planning_dir": f"planning/M99.3_three_{nk}.md",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "touch_zones": [],
+        "dependencies": [],
+        "parallel_tracks": 1,
+    }
+    p = tmp_path / "planning" / f"M99.3_three_{nk}.md"
+    p.write_text("# M99.3\n", encoding="utf-8")
+    append_node_to_chunk(tmp_path, "phases/T.json", node)
+    v = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(tmp_path)],
+        env=script_subprocess_env(),
+    )
+    assert v.returncode == 0, v.stderr
+
+
+def test_archive_node_unknown_id_message(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "archive-node",
+        "M404.1",
+        "--hard-remove",
+    )
+    assert r.returncode == 1
+    assert "no roadmap node" in r.stderr
+    assert "M404.1" in r.stderr
+
+
+def test_hard_remove_blocked_by_dependency(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "archive-node",
+        "M99.1",
+        "--hard-remove",
+    )
+    assert r.returncode == 1
+    assert "depends" in r.stderr
+
+
+def test_hard_remove_deletes_planning_file(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    nk992 = "10000000-0000-4000-8000-000000009903"
+    planning = tmp_path / "planning" / f"M99.2_two_{nk992}.md"
+    assert planning.is_file()
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "archive-node",
+        "M99.2",
+        "--hard-remove",
+    )
+    assert r.returncode == 0, r.stderr
+    assert not planning.exists()
+    v = run_script(
+        "validate_roadmap.py",
+        ["--repo-root", str(tmp_path)],
+        env=script_subprocess_env(),
+    )
+    assert v.returncode == 0, v.stderr
+
+
+def test_edit_node_cli_rejects_invalid_status(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "edit-node",
+        "M99.1",
+        "--set",
+        "status=Bad",
+    )
+    assert r.returncode == 1
+    assert "status must be one of" in r.stderr
+
+
+def test_list_nodes_cli(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes")
+    assert r.returncode == 0
+    assert "M99.1" in r.stdout
+
+
+def test_list_nodes_marks_a_claimed_leaf_in_the_table_and_json(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    write_registry_claim(
+        tmp_path,
+        "M99.1",
+        "one",
+        "feature/rm-one",
+        "Pat Example",
+    )
+    table = run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes")
+    assert table.returncode == 0, table.stderr
+    assert "Not Started (claimed)" in table.stdout
+
+    listed = json.loads(
+        run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes", "--json").stdout
+    )
+    claimed = next(n for n in listed if n["id"] == "M99.1")
+    assert claimed["claimed"] is True
+    assert claimed["branch"] == "feature/rm-one"
+    unclaimed = next(n for n in listed if n["id"] == "M99.2")
+    assert unclaimed["claimed"] is False
+    assert "branch" not in unclaimed
+
+
+def test_list_nodes_json_is_the_full_untruncated_list(tmp_path: Path) -> None:
+    """The table cuts titles at 60 characters; --json is for scripts and keeps every field."""
+    crud_fixture_repo(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    long_title = "A title well past the sixty characters the table keeps, kept whole"
+    nodes[1]["title"] = long_title
+    nodes[1]["status"] = "Complete"
+    write_json_chunk(chunk, nodes)
+
+    r = run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes", "--json")
+
+    assert r.returncode == 0, r.stderr
+    listed = json.loads(r.stdout)
+    assert [n["id"] for n in listed] == ["M99", "M99.1", "M99.2"]
+    one = listed[1]
+    assert one["title"] == long_title
+    assert one["chunk"] == "roadmap/phases/T.json"
+    assert one["node_key"] == nodes[1]["node_key"] and one["rollup_status"] == "Complete"
+    assert one["claimed"] is False
+    done = run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes", "--json", "--status", "Complete")
+    assert [n["id"] for n in json.loads(done.stdout)] == ["M99.1"]
+
+
+def test_show_node_cli(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert r.returncode == 0
+    # stdout is pure JSON so the output pipes into a parser; the chunk
+    # provenance line goes to stderr.
+    assert "# chunk: roadmap/phases/T.json" in r.stderr
+    assert "# chunk:" not in r.stdout
+    assert json.loads(r.stdout)["id"] == "M99.1"
+
+
+def test_archive_node_without_hard_remove_is_rejected(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(tmp_path, "--repo-root", str(tmp_path), "archive-node", "M99.1")
+    assert r.returncode == 1, r.stderr
+    assert "hard-remove" in (r.stderr + r.stdout).lower()
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    node = next(n for n in nodes if n["id"] == "M99.1")
+    assert node["status"] != "Cancelled"
+
+
+def test_hard_remove_leaf_node_succeeds(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "archive-node",
+        "M99.2",
+        "--hard-remove",
+    )
+    assert r.returncode == 0, r.stderr
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    ids = {n["id"] for n in nodes}
+    assert "M99.2" not in ids
+    assert "M99.1" in ids
+
+
+def test_edit_node_cli_rejects_non_key_value_set(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "edit-node",
+        "M99.1",
+        "--set",
+        "status",
+    )
+    assert r.returncode == 1
+    assert "expected key=value" in r.stderr
+
+
+def test_add_node_cli_rejects_unknown_parent(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--chunk",
+        "phases/T.json",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "Three",
+        "--parent-id",
+        "M404",
+        "--codename",
+        "three",
+    )
+    assert r.returncode == 1
+    assert "parent_id 'M404' not found in roadmap" in r.stderr
+
+
+def test_add_node_rejects_removed_execution_subtask_flag(tmp_path: Path) -> None:
+    """Per F-003/F-007 the --execution-subtask flag was removed."""
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--chunk",
+        "phases/T.json",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "Three",
+        "--parent-id",
+        "M99",
+        "--codename",
+        "three",
+        "--execution-subtask",
+        "agentic",
+    )
+    assert r.returncode != 0
+    assert "unrecognized arguments" in r.stderr or "--execution-subtask" in r.stderr
+
+
+def test_add_node_chunk_arg_optional(tmp_path: Path) -> None:
+    """F-AUTO: ``--chunk`` is no longer required; the router auto-routes."""
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "No chunk arg",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode == 0, r.stderr
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    assert any(n["id"] == "M99.3" for n in nodes)
+
+
+def test_add_node_auto_creates_chunk_when_target_full(tmp_path: Path) -> None:
+    """F-AUTO: when the hint chunk is full the router auto-creates a new chunk."""
+    crud_fixture_repo(tmp_path)
+    # Tighten the cap so the existing 3-node chunk fits but adding any
+    # non-trivial node would push it over the limit.
+    cur = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    from specy_road.roadmap_chunk_router_pick import simulate_chunk_lines
+
+    current_lines = simulate_chunk_lines(cur)
+    cap = current_lines + 5  # tight: another node won't fit
+    (tmp_path / "constraints" / "file-limits.yaml").write_text(
+        f"roadmap_json_chunk_max_lines: {cap}\n", encoding="utf-8"
+    )
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--id",
+        "M99.5",
+        "--type",
+        "task",
+        "--title",
+        "Overflow",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode == 0, r.stderr
+    # The new node landed in a new chunk; the original chunk is unchanged.
+    src = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    assert all(n["id"] != "M99.5" for n in src)
+    new_chunks = sorted(
+        p for p in (tmp_path / "roadmap" / "phases").iterdir()
+        if p.suffix == ".json" and p.name != "T.json"
+    )
+    assert len(new_chunks) == 1
+    new_nodes = load_json_chunk(new_chunks[0])
+    assert any(n["id"] == "M99.5" for n in new_nodes)
+
+
+def test_add_node_no_codename_auto_derives(tmp_path: Path) -> None:
+    """F-006: when --codename is omitted on a task, it's auto-derived from --title."""
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--chunk",
+        "phases/T.json",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "Three Slug",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode == 0, r.stderr
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    node = next(n for n in nodes if n["id"] == "M99.3")
+    assert node["codename"] == "three-slug"
+
+
+def test_add_node_refuses_when_parent_in_locked_milestone(tmp_path: Path) -> None:
+    """v0.1.1 gap fix: cmd_add must refuse adding a child under an active milestone parent.
+
+    Mirrors the cmd_edit / cmd_set_gate_status milestone-lock guards. Without
+    this check, a PM could silently expand the scope of an in-flight milestone
+    by adding new tasks under the locked parent. The API path
+    (POST /api/nodes/add) already enforces this via _pm_milestone_lock_guard;
+    this test pins the same behavior on the CLI path.
+    """
+    crud_fixture_repo(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n.get("id") == "M99":
+            n["milestone_execution"] = {
+                "state": "active",
+                "rollup_branch": "feature/rm-tmp",
+                "integration_branch": "dev",
+                "remote": "origin",
+            }
+    write_json_chunk(chunk, nodes)
+    r = run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--id",
+        "M99.4",
+        "--type",
+        "task",
+        "--title",
+        "Locked Add",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode != 0
+    err = (r.stderr or "") + (r.stdout or "")
+    assert "milestone subtree" in err
+    assert "M99" in err
+    assert "Traceback" not in err
+    # Node was NOT added.
+    nodes_after = load_json_chunk(chunk)
+    assert all(n["id"] != "M99.4" for n in nodes_after)
+
+
+def test_edit_node_cli_keeps_a_hand_picked_codename(tmp_path: Path) -> None:
+    """A retitle must not silently move the node off feature/rm-<codename>."""
+    crud_fixture_repo(tmp_path)
+    assert edit_m99_1(tmp_path, "--set", "codename=custom-slug").returncode == 0
+
+    r = edit_m99_1(tmp_path, "--set", "title=Renamed One Task")
+
+    assert r.returncode == 0, r.stderr
+    assert "codename kept: 'custom-slug'" in r.stderr
+    assert "--sync-codename" in r.stderr
+    shown = run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert '"codename": "custom-slug"' in shown.stdout
+
+
+def test_edit_node_cli_sync_codename_rewrites_it(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    assert edit_m99_1(tmp_path, "--set", "codename=custom-slug").returncode == 0
+
+    r = edit_m99_1(tmp_path, "--sync-codename", "--set", "title=Renamed One Task")
+
+    assert r.returncode == 0, r.stderr
+    shown = run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert '"codename": "renamed-one-task"' in shown.stdout
+
+
+def test_edit_node_cli_still_derives_a_title_derived_codename(tmp_path: Path) -> None:
+    """M99.1 ships codename 'one' for title 'One' — derived, so it follows along."""
+    crud_fixture_repo(tmp_path)
+
+    r = edit_m99_1(tmp_path, "--set", "title=Renamed One Task")
+
+    assert r.returncode == 0, r.stderr
+    assert "codename kept" not in r.stderr
+    shown = run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert '"codename": "renamed-one-task"' in shown.stdout
+
+
+def test_edit_node_cli_repeated_list_key_appends_items(tmp_path: Path) -> None:
+    """rc1 feedback: `acceptance=a|b` was believed to set two criteria; it sets one."""
+    crud_fixture_repo(tmp_path)
+
+    r = edit_m99_1(
+        tmp_path, "--set", "acceptance=Saves offline", "--set", "acceptance=Syncs | merges"
+    )
+
+    assert r.returncode == 0, r.stderr
+    shown = run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert json.loads(shown.stdout[shown.stdout.index("{"):])["acceptance"] == ["Saves offline", "Syncs | merges"]
+
+
+def test_edit_node_cli_refuses_a_repeated_scalar_key(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+
+    r = edit_m99_1(tmp_path, "--set", "title=One", "--set", "title=Two")
+
+    assert r.returncode == 1
+    assert "given twice" in r.stderr

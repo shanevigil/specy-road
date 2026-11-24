@@ -7,8 +7,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_crud_ops import edit_node_set_pairs
+from specy_road.roadmap_load import load_roadmap
 from specy_road.git_milestone_delivery import rollup_merged_into_integration
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.milestone_chunk_io import (
@@ -18,7 +18,8 @@ from specy_road.milestone_chunk_io import (
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road milestone status`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Milestone delivery: default is MR-first (rollup branch merged into "
@@ -41,7 +42,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "milestones whose rollup_status is Complete (backup / integration-via-merge path)."
         ),
     )
-    return p.parse_args(argv)
+    return p
 
 
 def _node_milestone_fields(
@@ -116,7 +117,7 @@ def _plan_open_state(
         out.append(
             f"pending: {pid!r}: rollup complete but {rollup_branch!r} not merged "
             f"into {integration_branch!r} on {remote!r} "
-            "(open MR via `specy-road open-milestone-pr`, merge, then re-run; "
+            "(open MR via `specy-road milestone pr`, merge, then re-run; "
             "or use --fallback-head-delivery if appropriate)."
         )
     elif merged is None and rollup_ok and not fallback_head_delivery:
@@ -138,9 +139,10 @@ def _plan_open_state(
     return out
 
 
-def _plan_for_node(
+def plan_for_node(
     root: Path, n: dict, *, default_remote: str, args: argparse.Namespace
 ) -> list[str]:
+    """The reconcile actions for one milestone node, open or closed."""
     parsed = _node_milestone_fields(n, default_remote)
     if parsed is None:
         return []
@@ -171,7 +173,7 @@ def _emit_planned(planned: list[str], *, apply: bool) -> None:
         print("\n(dry-run: re-run with --apply to write changes)")
     else:
         print(
-            "\n[ok] reconcile-milestone-status: applied changes "
+            "\n[ok] milestone status: applied changes "
             "(each step re-validated)."
         )
 
@@ -186,7 +188,7 @@ def _node_pid(n: object) -> str:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     nodes = load_roadmap(root)["nodes"]
     _, default_remote, warns = resolve_integration_defaults(
@@ -200,7 +202,7 @@ def main(argv: list[str] | None = None) -> None:
     for n in nodes:
         try:
             planned.extend(
-                _plan_for_node(root, n, default_remote=default_remote, args=args)
+                plan_for_node(root, n, default_remote=default_remote, args=args)
             )
         except Exception as exc:  # noqa: BLE001 — per-node isolation is the point
             failures += 1

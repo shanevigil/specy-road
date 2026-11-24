@@ -7,7 +7,7 @@ caller's own record (``SPECY_ROAD_AGENT_ID``, else the derived id) or an
 expired one; ``<id>`` and ``--agent`` pick the target, never the caller.
 Another agent's live record is ended only with ``--force`` from a terminal
 (stdin a TTY). ``list`` is what the
-others read; ``handoff status`` shows the same. ``check`` is the commit guard:
+others read; ``review status`` shows the same. ``check`` is the commit guard:
 exit 1 when the staged paths (or ``--path`` ones) overlap another live
 session's, so a pre-commit hook can refuse a commit that would land on
 someone else's work. All of it is advisory past that one exit code.
@@ -20,25 +20,127 @@ import json
 import sys
 from pathlib import Path
 
-from specy_road.git_subprocess import git_stdout
-from specy_road.session_presence import (
+from specy_road.cli_args import add_json_arg
+from specy_road.finish_implementation_check import base_ref, zone_matches
+from specy_road.git_changed_paths import diff_paths
+from specy_road.git_subprocess import git_root, git_stdout
+from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.orchestration import (
     DEFAULT_TTL_HOURS,
+    Session,
     conflicts,
     current_user,
+    decide,
     default_agent_id,
     end_session,
     env_agent_id,
     list_sessions,
     load_session,
     own_session_here,
+    print_answer,
+    read_payload,
     session_path,
     start_session,
+    tool_call_guard_adapters,
     warn_lines,
 )
-from specy_road.session_overlap import overlap_warning_lines
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.tool_call_guard import ADAPTERS, decide, read_payload
-from specy_road.tool_call_guard_adapters import print_answer
+from specy_road.runtime_paths import (
+    add_repo_root_arg,
+    project_prefix,
+    rebase_to_project,
+    resolve_repo_root,
+)
+
+
+# Overlap warnings: what a ``start`` / ``touch`` overlap warning says about the other copy.
+#
+# :func:`warn_lines` names the other session and its branch. An adopter found that warning was
+# the useful signal that a later merge would conflict, and then had to go and look for the rest:
+# which worktree the other session is in, and whether that copy has actually changed the
+# overlapping paths. So the start/touch warning adds, per overlapping session, its worktree and
+# branch, whether it is yours (the same ``$USER``, typically another worktree of your own), and the
+# edit state there: uncommitted edits to the overlap, commits touching it not yet merged into the
+# integration branch, or neither.
+#
+# Session paths are written as their author typed them, git-root- or project-relative, so a
+# changed file counts when either form of its path falls inside the overlap. Git cannot always
+# answer (a removed worktree, no integration branch); that piece is then reported as unknown,
+# never as clean.
+
+_SHOWN = 4
+
+
+def _in_overlap(path: str, hits: list[tuple[str, str]], prefix: str) -> bool:
+    """Whether ``path`` (git-root-relative) lies inside both sides of some overlapping pair."""
+    forms = {path, rebase_to_project(path, prefix) or path}
+    return any(zone_matches(a, f) and zone_matches(b, f) for a, b in hits for f in forms)
+
+
+def _uncommitted(top: Path) -> list[str] | None:
+    """Staged changes, unstaged changes and untracked, non-ignored files.
+
+    Staged and unstaged are separate comparisons: a single ``git diff HEAD``
+    misses a staged edit whose working file was put back to ``HEAD``'s content.
+    """
+    staged = diff_paths(top, "--cached", "HEAD")
+    unstaged = diff_paths(top)
+    untracked = git_stdout(["ls-files", "--others", "--exclude-standard", "-z"], top)
+    if staged is None or unstaged is None or untracked is None:
+        return None
+    return sorted(set(staged) | set(unstaged) | {p for p in untracked.split("\0") if p})
+
+
+def _few(paths: list[str]) -> str:
+    more = f" (+{len(paths) - _SHOWN} more)" if len(paths) > _SHOWN else ""
+    return ", ".join(paths[:_SHOWN]) + more
+
+
+def edit_state(worktree: str | None, hits: list[tuple[str, str]], *, base: str, remote: str,
+               prefix: str) -> str:
+    """One line: the other worktree's uncommitted and unmerged edits inside the overlap."""
+    wt = Path(worktree) if worktree else None
+    top = git_root(wt) if wt and wt.is_dir() else None
+    if top is None:
+        return f"edits there: unknown (no git checkout at {worktree or 'an unrecorded worktree'})"
+    ref = base_ref(top, remote, base)
+    unmerged = diff_paths(top, f"{ref}...HEAD") if ref else None
+    found, unknown = [], []
+    for label, files in (("uncommitted", _uncommitted(top)),
+                         (f"committed, not merged into {base}", unmerged)):
+        if files is None:
+            unknown.append(label)
+            continue
+        inside = [f for f in files if _in_overlap(f, hits, prefix)]
+        if inside:
+            found.append(f"{label}: {_few(inside)}")
+    found += [f"{label}: unknown" for label in unknown]
+    neither = f"neither uncommitted nor unmerged into {base} on the overlapping paths"
+    return "edits there: " + ("; ".join(found) if found else neither)
+
+
+def _owner(s: Session) -> str:
+    if s.user and s.user == current_user():
+        return "yours"
+    return f"user {s.user!r}" if s.user else "user not recorded"
+
+
+def overlap_warning_lines(repo_root: Path, found: list[tuple[Session, list[tuple[str, str]]]], *,
+                          what: str) -> list[str]:
+    """:func:`warn_lines` for each overlapping session, each followed by where it is and what it
+    changed."""
+    if not found:
+        return []
+    base, remote, _ = resolve_integration_defaults(
+        repo_root, explicit_base=None, explicit_remote=None
+    )
+    prefix = project_prefix(repo_root)
+    lines: list[str] = []
+    for s, hits in found:
+        lines += warn_lines([(s, hits)], what=what)
+        lines.append(f"  {_owner(s)}: worktree {s.worktree or '(not recorded)'}, "
+                     f"branch {s.branch or '(none recorded)'}")
+        lines.append("  " + edit_state(s.worktree, hits, base=base, remote=remote, prefix=prefix))
+    return lines
 
 
 def _agent(ns: argparse.Namespace) -> str:
@@ -46,7 +148,8 @@ def _agent(ns: argparse.Namespace) -> str:
 
 
 def _presence_agent(root: Path, ns: argparse.Namespace) -> str:
-    """``start``/``touch`` id: explicit flag or env, else derived, else the record here when ``touch``."""
+    """``start``/``touch`` id: explicit flag or env, else derived, else the record here when
+    ``touch``."""
     agent = _agent(ns)
     if ns.session_cmd != "touch" or ns.agent or env_agent_id():
         return agent
@@ -68,15 +171,18 @@ def cmd_start(ns: argparse.Namespace) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
     print(f"session {s.agent}: {len(s.paths)} path(s), until {s.expires} ({s.path})")
-    # A harness may run each command in a new POSIX session; exporting the id keeps `end` on this record.
+    # A harness may run each command in a new POSIX session; exporting the id keeps `end` on this
+    # record.
     print(f"export SPECY_ROAD_AGENT_ID={s.agent}")
-    for line in overlap_warning_lines(root, conflicts(root, s.paths, exclude=s.agent), what="your paths"):
+    found = conflicts(root, s.paths, exclude=s.agent)
+    for line in overlap_warning_lines(root, found, what="your paths"):
         print(line, file=sys.stderr)
     return 0
 
 
 def cmd_end(ns: argparse.Namespace) -> int:
-    """Remove the target's record when it is the caller's own or has expired; another agent's live one needs ``--force`` from a terminal."""
+    """Remove the target's record when it is the caller's own or has expired; another agent's live
+    one needs ``--force`` from a terminal."""
     root = resolve_repo_root(ns)
     me = default_agent_id()
     agent = ns.session_id or ns.agent or me   # the target; the caller is always ``me``
@@ -94,17 +200,19 @@ def cmd_end(ns: argparse.Namespace) -> int:
         s = load_session(path)
         if s is None or s.user != current_user():
             owner = f"user {s.user!r}" if s and s.user else "an unrecorded user"
-            print(f"error: session {agent} was started by {owner}, not {current_user()!r}; only its owner may end it "
-                  f"(`specy-road session list` shows its branch and worktree)", file=sys.stderr)
+            print(f"error: session {agent} was started by {owner}, not {current_user()!r}; "
+                  "only its owner may end it "
+                  "(`specy-road session list` shows its branch and worktree)", file=sys.stderr)
             return 1
         if s.is_live() and not ns.force:
-            print(f"error: session {agent} is live until {s.expires} and is not yours (you are {me}); never end or "
-                  "override another agent's session (AGENTS.md, Shared checkouts): ask its owner, or wait for it "
-                  "to expire", file=sys.stderr)
+            print(f"error: session {agent} is live until {s.expires} and is not yours "
+                  f"(you are {me}); never end or override another agent's session "
+                  "(AGENTS.md, Shared checkouts): ask its owner, or wait for it to expire",
+                  file=sys.stderr)
             return 1
         if s.is_live() and not sys.stdin.isatty():
-            print("error: a human ends another agent's live session from a terminal; nothing was removed",
-                  file=sys.stderr)
+            print("error: a human ends another agent's live session from a terminal; "
+                  "nothing was removed", file=sys.stderr)
             return 1
     end_session(root, agent)
     print(f"session {agent}: ended")
@@ -120,8 +228,9 @@ def cmd_list(ns: argparse.Namespace) -> int:
     if not sessions:
         print("No live sessions under work/.sessions/.")
     for s in sessions:
-        state = "" if s.is_live() else "  (expired)"
-        print(f"{s.agent:<28} {s.branch or '-':<32} until {s.expires}{state}")
+        stale = s.stale_reason()
+        state = "  (expired)" if not s.is_live() else f"  (stale: {stale})" if stale else ""
+        print(f"{s.agent:<28} {str(s.branch or '-'):<32} until {s.expires}{state}")
         print(f"  {s.worktree}")
         print(f"  paths: {', '.join(s.paths) or '-'}" + (f"  — {s.note}" if s.note else ""))
     return 0
@@ -158,7 +267,7 @@ def cmd_guard(ns: argparse.Namespace) -> int:
     plain allow. An internal error is answered as a deny: a guard must not
     fail open quietly.
     """
-    adapter = ADAPTERS[ns.format]
+    adapter = tool_call_guard_adapters.ADAPTERS[ns.format]
     if ns.print_config:
         print(adapter.config)   # stdout stays pure JSON, safe to paste whole
         print(f"# {adapter.notes}", file=sys.stderr)
@@ -170,7 +279,9 @@ def cmd_guard(ns: argparse.Namespace) -> int:
             return print_answer(adapter.on_allow(None))
         v = decide(root, command, agent=_agent(ns), always=ns.always)
     except Exception as e:  # noqa: BLE001 — fail closed, loudly
-        return print_answer(adapter.on_deny(f"internal error ({e}); refusing rather than failing open"))
+        return print_answer(
+            adapter.on_deny(f"internal error ({e}); refusing rather than failing open")
+        )
     if v.allowed:
         return print_answer(adapter.on_allow(v.reason or None))
     return print_answer(adapter.on_deny(v.reason))
@@ -183,45 +294,55 @@ def build_parser() -> argparse.ArgumentParser:
     ssub = sess.add_subparsers(dest="session_cmd", required=True)
 
     def common(sp: argparse.ArgumentParser) -> None:
-        sp.add_argument("--agent", help="Session id (default: $SPECY_ROAD_AGENT_ID, else <user>-s<POSIX session id>)")
+        sp.add_argument("--agent", help="Session id (default: $SPECY_ROAD_AGENT_ID, "
+                                        "else <user>-s<POSIX session id>)")
         add_repo_root_arg(sp)
 
-    for name, help_ in (("start", "Announce this session and the paths it will edit (renews an existing record)"),
+    for name, help_ in (("start", "Announce this session and the paths it will edit "
+                                  "(renews an existing record)"),
                         ("touch", "Renew this session's expiry (same as start)")):
         sp = ssub.add_parser(name, help=help_)
         sp.add_argument("--path", action="extend", nargs="+", default=[], metavar="PATH",
-                        help="Repo-relative paths or globs (several after one --path, or repeat the flag)")
+                        help="Repo-relative paths or globs "
+                             "(several after one --path, or repeat the flag)")
         sp.add_argument("--note", help="One line on what you are doing")
         sp.add_argument("--ttl-hours", type=float, default=DEFAULT_TTL_HOURS)
         common(sp)
         sp.set_defaults(func=cmd_start)
 
-    sp = ssub.add_parser("end", help="Remove this session's record, or an expired <id>'s; never another agent's live one")
+    sp = ssub.add_parser("end", help="Remove this session's record, or an expired <id>'s; "
+                                     "never another agent's live one")
     sp.add_argument("session_id", nargs="?", metavar="ID",
-                    help="End this record instead (or pass --agent): yours, or an expired one the same user "
-                         "started; another agent's live record is refused")
+                    help="End this record instead (or pass --agent): yours, or an expired one "
+                         "the same user started; another agent's live record is refused")
     sp.add_argument("--force", action="store_true",
-                    help="A human at a terminal (stdin a TTY) ends another agent's live record of the same user")
+                    help="A human at a terminal (stdin a TTY) ends another agent's live record "
+                         "of the same user")
     common(sp)
     sp.set_defaults(func=cmd_end)
 
     sp = ssub.add_parser("list", help="Live sessions (--all includes expired)")
     sp.add_argument("--all", action="store_true")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_list)
 
-    sp = ssub.add_parser("check", help="Exit 1 if staged paths (or --path) overlap another live session; a pre-commit guard")
+    sp = ssub.add_parser("check", help="Exit 1 if staged paths (or --path) overlap another live "
+                                       "session; a pre-commit guard")
     sp.add_argument("--path", action="extend", nargs="+", default=[], metavar="PATH")
     common(sp)
     sp.set_defaults(func=cmd_check)
 
-    sp = ssub.add_parser("guard", help="Deny a shell command that is destructive in a shared checkout; the harness hook body")
-    sp.add_argument("--command", metavar="CMD", help="Judge this command (default: read the harness payload from stdin)")
-    sp.add_argument("--format", choices=sorted(ADAPTERS), default="generic",
+    sp = ssub.add_parser("guard", help="Deny a shell command that is destructive in a shared "
+                                       "checkout; the harness hook body")
+    sp.add_argument("--command", metavar="CMD",
+                    help="Judge this command (default: read the harness payload from stdin)")
+    sp.add_argument("--format", choices=sorted(tool_call_guard_adapters.ADAPTERS),
+                    default="generic",
                     help="Which harness's stdin payload and exit codes to use (default: generic)")
     sp.add_argument("--always", action="store_true", help="Deny even when no other session is live")
-    sp.add_argument("--print-config", action="store_true", help="Print the snippet that wires this guard into --format's harness")
+    sp.add_argument("--print-config", action="store_true",
+                    help="Print the snippet that wires this guard into --format's harness")
     common(sp)
     sp.set_defaults(func=cmd_guard)
     return p

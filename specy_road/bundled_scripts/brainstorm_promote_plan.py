@@ -15,15 +15,15 @@ from typing import Any
 
 import yaml
 
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     Idea,
     PROMOTABLE_STATUSES,
 )
 from specy_road.bundled_scripts.roadmap_crud_dependency_ops import resolve_dependency_refs
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
+from specy_road.roadmap_load import load_roadmap
+from specy_road.roadmap_node_keys import new_node_key
 
 #: Higher is stronger; an idea with no verdict ranks below ``park``.
 RECOMMENDATION_RANK = {"strong": 3, "consider": 2, "park": 1}

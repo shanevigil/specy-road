@@ -1,0 +1,48 @@
+$ specy-road slots_max_workers
+exit: 0
+--- stdout ---
+{"argv": ["delegate", "M1.2", "--model", "opus"], "exit": 1, "out": "", "err": "error: 1 workers active, policy max_workers is 1; 1 idle: w-0001; `specy-road worker terminate w-0001` frees it, or wait for a running one to finish or raise the limit\n"}
+{"argv": ["delegate", "M1.1", "--model", "opus", "--json"], "exit": 0, "out": "{\n  \"worker_id\": \"w-0001\",\n  \"created\": false,\n  \"state\": \"idle\",\n  \"worktree\": \"<REPO>\",\n  \"harness\": \"generic\",\n  \"model\": \"x\",\n  \"pid\": null\n}\n", "err": ""}
+=== .lock
+<present>
+=== FLAG
+<present>
+=== w-0001.events.jsonl
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 1, "source": "broker", "summary": "delegated M1.1 to generic/x (attempt 1)", "type": "started", "worker_id": "w-0001"}
+=== w-0001.yaml
+{
+  "attempt": 1,
+  "billing_route": null,
+  "branch": null,
+  "checkpoint": null,
+  "contract_hash": null,
+  "created": "<MASKED>",
+  "descendants_unchecked": null,
+  "flags": [],
+  "harness": "generic",
+  "harness_pid": null,
+  "harness_start": null,
+  "instruction_epoch": 0,
+  "last_event_seq": 1,
+  "last_output_at": null,
+  "lease": {
+    "holder": "broker",
+    "since": "<TIME>"
+  },
+  "limit_reset_at": null,
+  "model": "x",
+  "node_id": "M1.1",
+  "pgid": null,
+  "pid": null,
+  "provider_session_id": null,
+  "queued_message": null,
+  "recoveries": null,
+  "started_head": "<MASKED>",
+  "state": "idle",
+  "toolkit_version": "<MASKED>",
+  "updated": "<MASKED>",
+  "worker_id": "w-0001",
+  "worktree": "<REPO>",
+  "wrapper_token": null
+}
+--- stderr ---

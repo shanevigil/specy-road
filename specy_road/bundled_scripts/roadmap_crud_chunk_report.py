@@ -33,7 +33,7 @@ def _unique_commit_paths(*groups: list[str]) -> tuple[str, ...]:
 
 
 def _manifest_rel(root: Path) -> str:
-    from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
+    from specy_road.roadmap_chunk_utils import discover_manifest_path
 
     return repo_rel(root, discover_manifest_path(root))
 
@@ -73,7 +73,7 @@ def plan_edit_chunk_writes(
     renames: list[tuple[Path, Path]] | None,
 ) -> NodeChunkWriteReport:
     from specy_road.bundled_scripts.roadmap_chunk_router import chunk_max_lines
-    from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
+    from specy_road.roadmap_chunk_router_pick import (
         pick_target_chunk,
         simulate_chunk_lines,
     )
@@ -133,7 +133,7 @@ def plan_add_chunk_writes(
     planned_sheet: tuple[Path, str] | None,
     extra_paths: list[str] | None = None,
 ) -> NodeChunkWriteReport:
-    from specy_road.bundled_scripts.roadmap_chunk_router_pick import pick_target_chunk
+    from specy_road.roadmap_chunk_router_pick import pick_target_chunk
 
     decision = pick_target_chunk(root, parent_id, chunk_arg, node)
     written = [repo_rel(root, decision.chunk_path)]

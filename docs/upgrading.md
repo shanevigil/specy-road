@@ -14,7 +14,7 @@
 
 ## Migrating to the split rules files
 
-Since the split, specy-road writes its full rule set to `.specyrd/AGENTS.md` (rewritten whole by every `upgrade`), keeps a short managed stub in your `AGENTS.md`, and creates `.specyrd/AGENTS.team.md` once for your team's own specy-road instructions ([agent rules](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)). `upgrade` touches only the text inside the markers. Text you wrote outside them stays where it is until you move it. Sort it like this:
+Since the split, specy-road writes its full rule set to `.specyrd/AGENTS.md` (rewritten whole by every `upgrade`), keeps a short managed stub in your `AGENTS.md`, and creates `.specyrd/AGENTS.team.md` once for your team's own specy-road instructions ([agent rules](install-and-usage.md#agent-rules-agentsmd-and-specyrd)). `upgrade` touches only the text inside the markers. Text you wrote outside them stays where it is until you move it. Sort it like this:
 
 | Kind of text in your `AGENTS.md` | Where it goes | Example |
 | -------------------------------- | ------------- | ------- |
@@ -31,22 +31,28 @@ Since the split, specy-road writes its full rule set to `.specyrd/AGENTS.md` (re
 
 ## Preview a version you have not installed
 
-To see what a version would change in your repo without replacing the specy-road you use, install it into a scratch virtualenv and run that venv's `upgrade --dry-run`. Install it the same way as an RC ([install a release candidate](install-release-candidates.md)): the exact wheel with `--no-deps`, its sha256 checked, then its dependencies from PyPI only. Drop `--index-url` for a final release, which is on PyPI.
+To see what a version would change in your repo without replacing the specy-road you use, install it into a scratch virtualenv and run that venv's `upgrade --dry-run`. Install it the same way as an RC ([install a release candidate](install-and-usage.md#install-a-release-candidate-testpypi)): the exact wheel with `--no-deps`, its sha256 checked, then its dependencies from PyPI only. Drop `--index-url` for a final release, which is on PyPI.
 
 ```bash
-python3 -m venv /tmp/sr-preview
+python3 -m venv /tmp/sr-preview   # X.Y.ZrcN: the version from the RC announcement
 /tmp/sr-preview/bin/pip download --no-deps --only-binary :all: -d /tmp/sr-preview/rc/ \
-    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
-sha256sum /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
-/tmp/sr-preview/bin/pip install --no-deps /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl
-/tmp/sr-preview/bin/pip install /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl  # its dependencies, from PyPI only
+    --index-url https://test.pypi.org/simple/ "specy-road==X.Y.ZrcN"
+sha256sum /tmp/sr-preview/rc/specy_road-X.Y.ZrcN-py3-none-any.whl   # must equal the announced sha256
+/tmp/sr-preview/bin/pip install --no-deps /tmp/sr-preview/rc/specy_road-X.Y.ZrcN-py3-none-any.whl
+/tmp/sr-preview/bin/pip install /tmp/sr-preview/rc/specy_road-X.Y.ZrcN-py3-none-any.whl  # its dependencies, from PyPI only
 
 /tmp/sr-preview/bin/specy-road upgrade --dry-run --repo-root /path/to/your/repo
 
 rm -rf /tmp/sr-preview
 ```
 
-Call the venv's `specy-road` by its full path: a bare `specy-road` runs whichever launcher is first on `PATH`, which is your usual install, not the preview. `--dry-run` writes nothing to the repo.
+Call the venv's `specy-road` by its full path: a bare `specy-road` runs whichever launcher is first on `PATH`, which is your usual install, not the preview. `--dry-run` writes nothing to the repo. It prints one line before copying the checkout into a temporary directory, and it builds that copy once. The copy, like the one a real upgrade uses to decide what to write, holds tracked files, untracked files git does not ignore, and files the refreshes read. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, and a symlink to one of them does not copy it either. A directory that cannot be searched is left out, so the upgrade does not stop on it. A global excludes file applies to that choice on a dry run the same way it does on a real run. The refreshes print one report in four fixed sections, `== files added or changed`, `== schema refreshes`, `== profile refreshes` and `== notices`, then the copy is validated. An ignored `roadmap-context.md` that is already current is still read, so the preview does not report a rewrite the real run skips.
+
+---
+
+## Your file-limits values stay
+
+`upgrade` never rewrites `constraints/file-limits.yaml`. New projects get a 1,000-line file cap with a warning at 750 lines; when your file's `max_lines_per_file` or `hard_alerts.max_lines_per_file` differs, `upgrade` prints one notice under `== notices` naming that default and leaves the file as it is. Edit it yourself to adopt the default ([file limits](file-limits.md#template-default)).
 
 ---
 

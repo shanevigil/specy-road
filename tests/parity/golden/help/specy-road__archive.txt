@@ -1,0 +1,21 @@
+$ specy-road archive --help
+exit: 0
+--- stdout ---
+usage: specy-road archive [-h] [--auto] [--older-than-days N] [--force] [--deep] [--dry-run]
+                          [--repo-root DIR]
+                          [NODE_ID]
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help           show this help message and exit
+  --auto               Archive every subtree complete for longer than --older-than-days.
+  --older-than-days N  Age threshold for --auto (default: 90).
+  --force              Archive even when the subtree does not roll up as Complete.
+  --deep               Fold the archive into one capsule file, leaving only a reference.
+  --dry-run            Show the plan; write nothing.
+  --repo-root DIR      Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                       .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                       root, else the current directory).
+--- stderr ---

@@ -11,6 +11,7 @@ import yaml
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import reviews_dir
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
 
 ROSTER = """version: 1
 roster:
@@ -21,10 +22,6 @@ roster:
 """
 
 
-def run_review_cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def rca_record(round_: int, instructions: str, action: str = "continue_with_class_fix") -> dict[str, Any]:

@@ -1,0 +1,16 @@
+$ specy-road init --help
+exit: 0
+--- stdout ---
+usage: specy-road init [-h] {project,gui} ...
+
+Initialize a consumer project layout or optional PM GUI tooling.
+
+positional arguments:
+  {project,gui}
+    project      Scaffold constitution/, roadmap/, shared/, constraints/, schemas/, planning/,
+                 work/, AGENTS.md
+    gui          Install FastAPI/uvicorn (gui-next) and optionally build the Vite SPA
+
+options:
+  -h, --help     show this help message and exit
+--- stderr ---

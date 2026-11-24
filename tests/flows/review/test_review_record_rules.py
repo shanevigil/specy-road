@@ -1,0 +1,536 @@
+"""M11.75: the reviewer prompt asks for independent probes; `review record` refuses an approve that excuses a defect."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+import yaml
+
+from tests.support.review import make_review_repo, review_text, git
+from tests.support.profiles import make_profile_repo
+from tests.support.extracted.review_cli import ONE_AI
+
+from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
+from specy_road.review_record_write import file_review, snapshot
+from specy_road.review_record_rules import (
+    NOTES_RULES_LINES,
+    clause_problem,
+    explained,
+    note_problem,
+    unexplained_defects,
+)
+from tests.support.same.run_651387813ee4 import run
+from specy_road.review_record_rules import approve_defect_problem
+
+
+def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
+    repo = make_profile_repo(tmp_path)
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / PACKET_NAME).write_text("# Review packet: `M1.1`\n")
+    text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
+    assert err is None
+    assert ("1. Run the tests that import each changed module, not only the executor's selection or the READY's "
+            "verifiers") in text
+    assert ("2. For each changed public function, try at least one input that the diff's tests do not use, and "
+            "report it, with what it returned, under `commands_rerun`.") in text
+    assert ("3. Fail an acceptance item whose observed behaviour differs from its text, even when the difference "
+            "looks minor") in text
+    assert ("If the sandbox prevents a test from running, name the command and its error as not run in the notes; "
+            "on an approve, include the existing 'not a defect because <reason>' explanation. Do not put the "
+            "command in `commands_rerun`; the absence of that run alone is no block.") in text
+    assert ("4. List every defect your notes or findings describe under `required_changes` (and block), or "
+            "explain on that same line why it is not one, starting `not a defect because`.") in text
+    executor, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")
+    assert err is None and "Run the tests that import each changed module" not in executor
+
+
+
+
+def _record(repo: Path, verdict: str = "approve", findings: dict | None = None, notes: str = "notes\n",
+            required: list[str] | None = None) -> int:
+    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict=verdict)
+    data = yaml.safe_load(text.split("---")[1])
+    data["findings"].update(findings or {})
+    if required is not None:
+        data["required_changes"] = required
+    p = repo.parent / "notes-opus.md"
+    p.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\n" + notes)
+    return run("review", "record", "M1.1", "--model", "opus", "--verdict", verdict, "--file", str(p),
+                "--repo-root", str(repo))
+
+
+def test_record_refuses_an_approve_whose_finding_names_a_defect(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": ["Checked the lock order.", "Advisory: x drops an empty y"]}) == 1
+    err = capsys.readouterr().err
+    assert 'findings.correctness[1] says "Advisory"' in err and 'findings.correctness[0] is a finding' in err
+    assert "no required_changes entry and no 'not a defect because' line" in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+def test_record_refuses_an_approve_whose_notes_name_a_defect(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes="A1 pass.\n\nNon-blocking nit: the comment is stale.\n") == 1
+    assert 'notes line 3 says "Non-blocking"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+def test_record_refuses_an_approve_whose_finding_describes_a_crash(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    finding = "The command crashes on empty input and drops the review."
+    assert _record(repo, findings={"correctness": [finding]}) == 1
+    assert 'findings.correctness[0] says "crashes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+def test_record_refuses_an_approve_where_no_workaround_does_not_negate_the_bug(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes="A1 pass.\nThere is no workaround for this bug: empty input loses the review.\n") == 1
+    assert 'notes line 2 says "bug"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+def test_record_names_every_offending_finding_and_line(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    findings = {"correctness": ["Checked the lock order.", "A queued message is lost when the wrapper dies."],
+                "regression": ["The sync silently drops unreadable events."]}
+    notes = "No other correctness defect proved.\nIt hangs on a closed pipe.\nNo crash on empty input.\n"
+    assert _record(repo, findings=findings, notes=notes) == 1
+    err = capsys.readouterr().err
+    for where in ('findings.correctness[1] says "is lost"', 'findings.regression[0] says "silently drops"',
+                  'notes line 2 says "hangs"'):
+        assert where in err
+    assert 'findings.correctness[0] is a finding' in err
+    # negated lines name no defect word, but they are still observations without a reason (round 5)
+    assert "notes line 1 is an observation" in err and "notes line 3 is an observation" in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+SOL_WORDING = "Valid input raises ValueError, so the command exits 1 instead of filing the review."
+
+
+def test_record_refuses_an_approve_whose_finding_says_valid_input_raises(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [SOL_WORDING]}) == 1
+    err = capsys.readouterr().err
+    assert 'findings.correctness[0] says "Valid input raises"' in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_refuses_an_approve_with_any_finding_that_does_not_say_why_it_is_not_a_defect(
+        tmp_path: Path, capsys) -> None:
+    """A word list cannot catch every way of describing a defect, so on an approve every finding needs the line."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"boundary": ["The cache key ignores the branch name."]}) == 1
+    err = capsys.readouterr().err
+    assert "findings.boundary[0] is a finding" in err
+    assert "on an approve every findings entry and every observation line of the notes needs that line" in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_refuses_an_approve_whose_notes_say_valid_input_raises(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"A1 pass.\n{SOL_WORDING}\n") == 1
+    assert 'notes line 2 says "Valid input raises"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+ORDER_WORDING = "The second call reads the registry before the first writes it."
+
+
+def test_record_refuses_an_approve_whose_notes_describe_a_write_order_race(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"A1 pass.\n\n{ORDER_WORDING}\n") == 1
+    assert 'notes line 3 says "reads the registry before the first writes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    notes = f"{ORDER_WORDING} Not a defect because both calls hold the registry lock.\n"
+    assert _record(repo, notes=notes) == 0
+    assert review_path(repo, "M1.1", "opus").is_file()
+
+
+MALFORMED_WORDING = "The parser accepts malformed input, so invalid configuration reaches execution."
+
+
+def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation(tmp_path: Path, capsys) -> None:
+    """No word in the sentence names a defect: every observation line of approve notes needs a reason (round 5)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"## Acceptance\n\n- **A1:** pass\n\n{MALFORMED_WORDING}\n") == 1
+    err = capsys.readouterr().err
+    assert "notes line 5 is an observation" in err
+    assert "every observation line of the notes needs that line" in err
+    assert "notes line 1" not in err and "notes line 3" not in err   # the heading and the bare result
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+# Every clause break the notes rules name: a second clause beside a reasoned one is refused, and accepted once it
+# has its own reason. The '! ' row is "Ship it! The suite passed, ...", refused by a break the rules once left out.
+SEPARATORS = (". ", "! ", "? ", "; ")
+CONJUNCTIONS = ("and", "but", "while", "whereas", "although", "though", "yet", "plus")
+SUITE_REASONED = "The suite passed, not a defect because it ran every test."
+COLD_REASONED = "the cache is cold, not a defect because the fallback warms it."
+CLAUSE_BREAK_ROWS = [
+    *[(f"Ship it{s}{SUITE_REASONED}", "is an observation") for s in SEPARATORS],
+    *[(f"Ship it, not a defect because the diff is ready{s}{SUITE_REASONED}", None) for s in SEPARATORS],
+    *[(f"The lock crashes {c} {COLD_REASONED}",
+       f'says "crashes", two observations joined by "{c}": "The lock crashes" {c} "the cache is cold"')
+      for c in CONJUNCTIONS],
+    *[(f"The lock crashes, not a defect because no caller reaches it {c} {COLD_REASONED}", None)
+      for c in CONJUNCTIONS],
+]
+
+
+def test_notes_rules_name_every_clause_break() -> None:
+    line = next(text for text in NOTES_RULES_LINES if text.startswith("- Each clause"))
+    assert all(f"'{s}'" in line for s in SEPARATORS)
+    assert f"({', '.join(CONJUNCTIONS)})" in line
+    assert any(text.startswith("- A comma list") for text in NOTES_RULES_LINES)
+
+
+@pytest.mark.parametrize("line, why", [
+    *CLAUSE_BREAK_ROWS,
+    (MALFORMED_WORDING, "is an observation"),
+    ("The cache key ignores the branch name.", "is an observation"),
+    ("No defect found.", "is an observation"),
+    ("- A2 — pass. The prompt renders all four rules.", "is an observation"),
+    ("Crashes.", 'says "Crashes"'),
+    (f"{MALFORMED_WORDING} Not a defect because the parser is outside this leaf.", None),
+    ("notes", None),
+    ("- **A1:** pass", None),
+    ("| A1 | pass |", None),
+    ("|---|---|", None),
+    ("## Acceptance", None),
+    ("> The parser accepts malformed input.", None),
+    ("`pytest -q` -> 41", None),
+    ("No internal imports, mock assertions or defensive branches were added; not a defect because the change uses "
+     "the existing exclusion mechanism.", None),
+    ("The test drives the CLI and checks both the pass case and the fail case, which is not a defect because it is "
+     "the exact scenario A2 describes.", None),
+    ("X fails and Y crashes; not a defect because the fallback handles both.",
+     'says "crashes", two observations joined by "and": "X fails" and "Y crashes"'),
+    ("X fails, Y crashes; not a defect because the fallback handles both.",
+     'says "crashes", two observations joined by ",": "X fails", "Y crashes"'),
+])
+def test_note_problem(line: str, why: str | None) -> None:
+    assert note_problem(line) == why
+
+
+BOUNDARY_WORDING = "The parser accepts malformed input; xnot a defect becausey is only a marker."
+
+
+def test_record_refuses_an_approve_whose_marker_is_only_a_substring(tmp_path: Path, capsys) -> None:
+    """The marker must stand on its own with a reason after it; a substring inside other words is not one (round 6)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [BOUNDARY_WORDING]}) == 1
+    assert "findings.correctness[0] " in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+MULTILINE_WORDING = "The parser accepts malformed input; not a defect because\nthe parser is unreachable."
+
+
+def test_record_refuses_an_approve_whose_reason_is_on_the_next_line(tmp_path: Path, capsys) -> None:
+    """The reason must follow the marker on the same line; a line break after 'because' is not one (round 7)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [MULTILINE_WORDING]}) == 1
+    assert "findings.correctness[0] " in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+@pytest.mark.parametrize("text, ok", [
+    (BOUNDARY_WORDING, False),
+    (MULTILINE_WORDING, False),
+    ("x; not a defect because \r\ny", False),
+    ("x; not a\ndefect because y", False),
+    ("x; not a defect because\u2028y", False),
+    ("x; not a defect because - \ny", False),
+    ("x; not a defect because\ty", True),
+    ("x; not a defect because \u2014 y", True),
+    ("x; anot a defect because y", False),
+    ("x; not a defect becausey", False),
+    ("x; not-a defect because y", False),
+    ("x; not a defect because", False),
+    ("x; not a defect because.", False),
+    ("x; `not a defect because y`", False),
+    ("x; not a defect because y.", True),
+    ("x (not a defect because y)", True),
+    ("x;not a defect because y", True),
+    ("x. Not  a defect because the CLI never passes it", True),
+    ("x; NOT A DEFECT BECAUSE it is intended", True),
+])
+def test_explained(text: str, ok: bool) -> None:
+    assert explained(text) is ok
+
+
+TWO_OBSERVATIONS = ("The cache miss is expected; not a defect because the cache fallback handles that miss. "
+                    "Separately, valid input crashes and loses the review.")
+
+
+def test_record_refuses_an_approve_whose_explanation_covers_only_one_observation(tmp_path: Path, capsys) -> None:
+    """One explanation covers one observation; a second defect on the same line needs its own (round 8)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"## Acceptance\n\n- **A1:** pass\n\n{TWO_OBSERVATIONS}\n") == 1
+    err = capsys.readouterr().err
+    assert 'notes line 5 says "valid input crashes"' in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_files_an_approve_with_one_explanation_per_observation(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    notes = ("The cache miss is expected; not a defect because the cache fallback handles that miss. "
+             "Empty input is refused; not a defect because the brief asks for that.\n")
+    assert _record(repo, notes=notes) == 0
+    assert review_path(repo, "M1.1", "opus").is_file()
+
+
+CONJUNCTION_WORDING = ("The cache miss is expected and valid input crashes, not a defect because the fallback "
+                       "handles the cache miss.")
+
+
+def test_record_refuses_an_approve_whose_explained_clause_joins_a_second_defect(tmp_path: Path, capsys) -> None:
+    """The text one explanation covers may not join a second observation with a conjunction (round 9)."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, notes=f"## Acceptance\n\n- **A1:** pass\n\n{CONJUNCTION_WORDING}\n") == 1
+    assert 'notes line 5 says "valid input crashes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+def test_record_refuses_an_approve_whose_explained_finding_joins_a_second_defect(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, findings={"correctness": [CONJUNCTION_WORDING]}) == 1
+    assert 'findings.correctness[0] says "valid input crashes"' in capsys.readouterr().err
+    assert not review_path(repo, "M1.1", "opus").exists()
+    assert not (reviews_dir(repo, "M1.1") / "history").exists()
+
+
+JOIN_ROWS = [(f"{a}{j}{b}, not a defect because both are expected.",
+              f'says "crashes", two observations joined by "{j.strip()}": "{a}"{j}"{b}"'
+              if "crashes" in a + b else None)
+             for j in (", ", " and ", " but ", " while ", " whereas ", " although ", " though ", " yet ", " plus ")
+             for a, b in (("The cache is cold", "the lock is held"), ("The cache is cold", "the lock crashes"),
+                          ("The lock crashes", "the cache is cold"))]
+
+
+@pytest.mark.parametrize("text, why", [
+    *CLAUSE_BREAK_ROWS,
+    *JOIN_ROWS,
+    ("Changed paths are tests/flows/worker/test_worker_queue_message.py plus sr/work/implementation-summary-M21.8.md, not a defect "
+     "because the summary is the leaf hand-off.", None),
+    ("The cache is cold, the lock is held plus the queue is empty, not a defect because all three are expected.", None),
+    (CONJUNCTION_WORDING, 'says "valid input crashes", two observations joined by "and": '
+     '"The cache miss is expected" and "valid input crashes"'),
+    ("The cache miss is expected and valid input crashes; not a defect because the fallback handles it.",
+     'says "valid input crashes", two observations joined by "and": "The cache miss is expected" and '
+     '"valid input crashes"'),
+    ("The cache miss is expected, valid input crashes, not a defect because the fallback handles it.",
+     'says "valid input crashes", two observations joined by ",": "The cache miss is expected", '
+     '"valid input crashes"'),
+    ("The cache miss is expected and the cache key ignores the branch name, not a defect because it is handled.",
+     None),
+    ("The cache key ignores the branch and valid input crashes, not a defect because it is handled.",
+     'says "valid input crashes", two observations joined by "and": "The cache key ignores the branch" and '
+     '"valid input crashes"'),
+    ("x y; not a defect because the fallback handles it, so the message is lost.", 'says "is lost" in its reason'),
+    ("The parser accepts malformed input, so invalid configuration reaches execution. Not a defect because the "
+     "parser is outside this leaf.", None),
+    ("The lock and the registry are both held, not a defect because both calls take the lock.", None),
+    ("It returns 0, 1 or 2; not a defect because the brief lists them.", None),
+    ("Malformed values are treated as missing, rather than crashing the gate; not a defect because the brief asks "
+     "for it.", None),
+    (TWO_OBSERVATIONS, 'says "valid input crashes"'),
+    ("Valid input crashes. The cache miss is expected, not a defect because the fallback handles it.",
+     'says "Valid input crashes"'),
+    ("The cache miss is expected; not a defect because the fallback handles it, and valid input crashes.",
+     'says "valid input crashes" in its reason'),
+    ("The lock is held; the cache is cold; not a defect because both are expected.", "is an observation"),
+    ("The cache miss is expected; not a defect because the fallback handles it.", None),
+    ("The cache miss is expected, not a defect because the fallback handles it.", None),
+    ("Advisory: x. Not a defect because no caller reaches it.", None),
+    ("x y; not a defect because e.g. the lock is held.", None),
+    ("- **A1:** pass; the prompt renders; not a defect because it matches.", None),
+    ("The cache miss is expected; not a defect because it is handled. Empty input is refused; not a defect "
+     "because the brief asks for that.", None),
+])
+def test_clause_problem(text: str, why: str | None) -> None:
+    assert clause_problem(text) == why
+
+
+def test_record_files_an_approve_with_no_findings(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    notes = ("## Acceptance\n\n- **A1:** pass\n- **A2:** pass\n\n"
+             "Re-ran the record tests; not a defect because all of them passed.\n")
+    assert _record(repo, notes=notes) == 0
+    assert review_path(repo, "M1.1", "opus").is_file()
+
+
+def test_record_files_an_approve_that_says_why_it_is_not_a_defect(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    finding = "Advisory: y is dropped; not a defect because no caller passes an empty y."
+    assert _record(repo, findings={"regression": [finding]}) == 0
+    assert review_path(repo, "M1.1", "opus").is_file()
+
+
+def test_record_files_a_block_that_lists_the_defect(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _record(repo, verdict="block", findings={"correctness": ["bug: y is dropped"]},
+                   required=["keep an empty y"]) == 0
+
+
+def test_fenced_code_in_the_notes_is_not_checked() -> None:
+    body = "Ran it:\n```\nFAILED test_bug - minor\n```\nadvisory: z\n"
+    assert unexplained_defects({"findings": {}}, body) == ["notes line 1 is an observation",
+                                                           'notes line 5 says "advisory"']
+
+
+# --- M22.64: a test the sandbox could not run is a notes line, never a rerun -------------------------------------
+
+NOT_RUN = ("`pytest tests/test_x.py` not run: `OSError: [Errno 30] Read-only file system`; not a defect because the "
+           "sandbox is read-only and the executor's READY shows it passing.")
+
+
+@pytest.mark.parametrize(("rerun", "state"), [([], "rerun"), (["pytest tests/flows/review/test_review_record_rules.py"], "recorded")])
+def test_a_not_run_test_does_not_meet_the_rerun_policy(tmp_path: Path, rerun: list[str], state: str) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI + "policy:\n  reviewer_reruns_required: true\n")
+    reviews = reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True, exist_ok=True)
+    answer = {**yaml.safe_load(review_text(git(repo, "rev-parse", "HEAD"), model="opus").split("---")[1]),
+              "commands_rerun": rerun, "notes": "## Acceptance\n\n- **A1:** pass\n- **A2:** pass\n\n" + NOT_RUN}
+    before = snapshot(repo, reviews, "opus")
+    out = file_review(repo, "M1.1", "opus", reviews, answer=answer, before=before,
+                      after=snapshot(repo, reviews, "opus", before))
+    assert out.state == state, out.reason
+    assert review_path(repo, "M1.1", "opus").is_file() == (state == "recorded")
+    if state == "rerun":
+        assert "approved without re-running a command" in out.reason
+
+
+
+# A4 — the refusal quotes each offending line and states the rule in one sentence
+
+
+def _record_folded(repo: Path, notes: str) -> int:
+    p = repo.parent / "notes-opus.md"
+    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus")
+    front, _body = text.rsplit("---\n", 1)
+    p.write_text(front + "---\n" + notes)
+    return run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(p),
+                "--repo-root", str(repo))
+
+
+
+ONE_AI_folded = (
+    "version: 1\nroster:\n"
+    "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+    "  - {id: opus, family: anthropic, roles: [reviewer]}\n"
+)
+
+
+
+# Delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions at
+# the commit, refusals quote the line, and superseded failed runs say so.
+
+def test_refusal_quotes_a_two_clause_line_and_the_rule(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI_folded)
+    line = "The cache is cold and the lock leaks, not a defect because both are expected."
+    assert _record_folded(repo, f"## Acceptance\n\n- **A1:** pass\n\n{line}\n") == 1
+    err = capsys.readouterr().err
+    assert "verdict: approve refused: each line below has no required_changes entry and no 'not a defect because'" \
+           " line" in err
+    assert (f'notes line 5 says "leaks", two observations joined by "and": "The cache is cold" and '
+            f'"the lock leaks": {line}') in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+
+def test_refusal_quotes_a_line_with_no_marker(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI_folded)
+    assert _record_folded(
+        repo, "## Acceptance\n\n- **A1:** pass\n\nRe-ran the record tests.\n",
+    ) == 1
+    err = capsys.readouterr().err
+    assert "  notes line 5 is an observation: Re-ran the record tests." in err
+    assert "say on it why it is not a defect ('not a defect because <reason>'" in err
+
+
+
+def test_refusal_text_has_the_rule_once_then_one_line_per_offence() -> None:
+    why = approve_defect_problem({"verdict": "approve", "findings": {"correctness": ["Minor: x"]}},
+                                 "Line one is here.\nok\nLine three is here.\n")
+    rule, *rest = why.split("\n")
+    assert rule.count(".") == 1 and rule.endswith("and block.")
+    assert rest == ['  findings.correctness[0] says "Minor": Minor: x',
+                    "  notes line 1 is an observation: Line one is here.",
+                    "  notes line 3 is an observation: Line three is here."]
+
+
+
+# A6 — the joining word and both parts are named; quoted spans are not split
+
+
+@pytest.mark.parametrize("line", [
+    'The packet compares "base and HEAD" of the leaf branch, not a defect because that is the brief\'s range.',
+    "The packet compares 'base and HEAD' of the leaf branch, not a defect because that is the brief's range.",
+    "The packet compares `base and HEAD` of the leaf branch, not a defect because that is the brief's range.",
+    "The diff is empty; not a defect because base and HEAD are the same commit.",
+])
+def test_a_conjunction_inside_quotes_is_not_a_split_point(line: str) -> None:
+    assert clause_problem(line) is None
+
+
+
+def test_the_reported_shape_is_refused_with_the_word_and_both_parts() -> None:
+    line = "The packet compares base and HEAD of the leaf branch crashes, not a defect because that is the brief's range."
+    assert clause_problem(line) == ('says "crashes", two observations joined by "and": "The packet compares '
+                                    'base" and "HEAD of the leaf branch crashes"')
+
+
+
+# A4/A6 on refusals reviewers really hit after M8.3 (from RUN-*.log final answers, 2026-11-05): a line still refused
+# names its trigger and quotes the line; a line whose joined parts name no defect is accepted (M15.37, M21.12).
+
+_REAL = [
+    # M14.1 cursor-grok-4.6-high, findings.boundary[0]: joined by "plus", which names no defect, so one observation
+    ({"boundary": ["Changed paths are the touch zones plus sr/work/implementation-summary-M14.1.md, not a defect "
+                   "because that summary is the leaf hand-off."]}, "",
+     None),
+    # M14.1 grok-4.7-low, findings.boundary[0]: the same
+    ({"boundary": ["The diff stays inside the listed touch zones plus the required implementation summary not a "
+                   "defect because no other product module is edited."]}, "",
+     None),
+    # M13.12 grok-4.7-low, findings.test_integrity[0]: the reason names a defect word
+    ({"test_integrity": ["The packet's test-integrity section lists no removals not a defect because no test was "
+                         "dropped."]}, "",
+     'findings.test_integrity[0] says "was dropped" in its reason: The packet\'s test-integrity section lists no '
+     'removals not a defect because no test was dropped.'),
+    # M12.5 grok-4.7-low, notes line 3: joined by "and", which names no defect, so one observation (M15.37)
+    ({}, "## Acceptance\nA1: pass.\nA2: pass. Refusals print one reason line and leave the worktree in place not a "
+         "defect because `test_cleanup_refuses_and_removes_nothing` covers unmerged files.\n",
+     None),
+]
+
+
+
+@pytest.mark.parametrize("findings, notes, want", _REAL)
+def test_a_real_refusal_names_its_trigger_and_quotes_the_line(findings: dict, notes: str, want: str | None) -> None:
+    why = approve_defect_problem({"verdict": "approve", "findings": findings}, notes)
+    if want is None:   # a line whose joined parts name no defect
+        assert why is None
+        return
+    assert why is not None and why.startswith("verdict: approve refused: each line below has no required_changes")
+    assert f"\n  {want}" in why

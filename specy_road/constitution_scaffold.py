@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
+from specy_road.errors import SpecyError
+
 
 PURPOSE_REL = "constitution/purpose.md"
 PRINCIPLES_REL = "constitution/principles.md"
@@ -19,7 +21,7 @@ class ConstitutionScaffoldResult:
     skipped_existing: tuple[str, ...]
 
 
-class ConstitutionExistsError(Exception):
+class ConstitutionExistsError(SpecyError):
     """Both constitution files already exist and ``force`` is false."""
 
     def __init__(self, existing: tuple[str, ...]) -> None:
@@ -27,7 +29,8 @@ class ConstitutionExistsError(Exception):
         super().__init__(
             "constitution files already exist: "
             + ", ".join(existing)
-            + ". Use --force to overwrite, or edit the files in place."
+            + ". Use --force to overwrite, or edit the files in place.",
+            1,
         )
 
 

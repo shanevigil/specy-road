@@ -3,7 +3,7 @@
 ## Agent quickstart
 
 **Use this doc when:** running `specy-road brainstorm` as the agent, or deciding which pass a session is in.
-**Not for:** the browser panel and its search providers — [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md).
+**Not for:** the browser panel and its search providers — [`pm-gui.md`](pm-gui.md#brainstorm-panel).
 
 **Must know without reading on:**
 - Run `specy-road brainstorm start` before reading anything else — the digest and the roadmap anchor round 1 — then open the prompt it writes. Every command prints the next step.
@@ -23,7 +23,7 @@
 - what promotion writes → "5. Promote"
 - `--slug` with several sessions → "Several sessions at once"
 
-**Related:** [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md), [`pm-workflow.md`](pm-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`orchestration.md`](orchestration.md).
+**Related:** [`pm-gui.md`](pm-gui.md#brainstorm-panel), [`pm-workflow.md`](pm-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`orchestration.md`](orchestration.md).
 
 For **product managers** and **developers** who want to widen the option space before committing to a roadmap, with an agent doing the generating and the research.
 
@@ -36,7 +36,7 @@ The command is `specy-road brainstorm`. It runs in four passes, and keeping them
 | Evidence | `brainstorm evidence` | Sources for the shortlist `recommend` produced: a verbatim quote, URL, date and tool per claim, with at least one disconfirming search. |
 | Triage, promote | `accept` / `reject` / `park`, `promote` | Nothing. These are the human's. |
 
-The design rests on what the research found about today's models (design note: [`design-notes/v0-3-1-brainstorm-v2.md`](design-notes/v0-3-1-brainstorm-v2.md)): model-generated idea pools are **homogeneous** — one long pass mostly buys duplicates after the first few dozen — and the cheap mechanics that measurably widen them are regeneration against the visible pool, planned allocation across directions, personas and constraints, and concept cards in prose before any form. Named methods (SCAMPER, TRIZ) add little on their own, so the lenses stay as coverage scaffolding. Agent citations are right 40–80% of the time, so a URL is not evidence until a quote on the page backs it.
+The design rests on what the research found about today's models: model-generated idea pools are **homogeneous** — one long pass mostly buys duplicates after the first few dozen — and the cheap mechanics that measurably widen them are regeneration against the visible pool, planned allocation across directions, personas and constraints, and concept cards in prose before any form. Named methods (SCAMPER, TRIZ) add little on their own, so the lenses stay as coverage scaffolding. Agent citations are right 40–80% of the time, so a URL is not evidence until a quote on the page backs it.
 
 ### What the agent may write
 
@@ -52,7 +52,7 @@ network call the CLI can make is `brainstorm verify`, and it asks first.
 
 The **PM GUI** panel runs the same prompt text against its own **configured
 LLM** and **configured search provider** (see
-[pm-gui-brainstorm.md](pm-gui-brainstorm.md)), because a browser panel has no
+[pm-gui.md](pm-gui.md#brainstorm-panel)), because a browser panel has no
 IDE agent to lean on. Same session file, same triage, same promotion.
 
 ---
@@ -286,7 +286,7 @@ Then check them:
 specy-road brainstorm verify
 ```
 
-`verify` lists the URLs and **asks before fetching** (`--yes` for scripts; without a terminal and without `--yes` it fetches nothing). It fetches public `https` pages only, with a timeout and a size cap (a larger page is `blocked`, not read in part), and records `matched` (quote found on the page, compared ignoring case, whitespace, tags, citation markers such as `[43]`, and quote, dash, space, soft-hyphen and zero-width variants), `not-found` (page read, quote absent — or no quote was given; `add-evidence` requires one), or `blocked` (paywall, robots, transport error — never "fabricated"). Sources it did not fetch stay `unverified`. Session files written before the rename say `retrieved`; they read as `matched` and are saved that way. This is the only network call the CLI makes. Repo sources are not fetched and need no answer: `verify` reads the cited file at the recorded commit with `git show` and records `matched` when the quote (whitespace collapsed only: the fetched-page comparison above does not apply) appears on a span covering the cited line — anywhere in the file when no line was given — `not-found` when it does not or that commit holds no file at the path (a directory is not one), and `blocked` when the commit itself is no longer in the repository or the file there cannot be read as UTF-8 text. Declining the fetch still checks them. Other brainstorm commands (CLI or GUI) are not blocked while it asks or fetches; it records its results into the session as it then stands, so ideas added meanwhile are kept.
+`verify` lists the URLs and **asks before fetching** (`--yes` for scripts; without a terminal and without `--yes` it fetches nothing). It fetches public `https` pages only, with a timeout and a size cap (a larger page is `blocked`, not read in part), and records `matched` (quote found on the page, compared ignoring case, whitespace, tags, and quote, dash, space, soft-hyphen and zero-width variants; a citation marker such as `[43]` on the page is ignored where the quote leaves it out, and a bracket the quote keeps must be on the page as written, so `[44]` does not match `[43]`), `not-found` (page read, quote absent — or no quote was given; `add-evidence` requires one), or `blocked` (paywall, robots, transport error, or a host that answers verify with 404 at its root — never "fabricated"). Sources it did not fetch stay `unverified`. Session files written before the rename say `retrieved`; they read as `matched` and are saved that way. This is the only network call the CLI makes. Repo sources are not fetched and need no answer: `verify` reads the cited file at the recorded commit with `git show` and records `matched` when the quote (whitespace collapsed only: the fetched-page comparison above does not apply) appears on a span covering the cited line — anywhere in the file when no line was given — `not-found` when it does not or that commit holds no file at the path (a directory is not one), and `blocked` when the commit itself is no longer in the repository or the file there cannot be read as UTF-8 text. Declining the fetch still checks them. Other brainstorm commands (CLI or GUI) are not blocked while it asks or fetches; it records its results into the session as it then stands, so ideas added meanwhile are kept.
 
 ## 4. Triage
 
@@ -337,7 +337,7 @@ about to promote on a `strong` verdict that no `matched` source backs — its
 sources are unverified, not found or blocked, or it has none — and names
 `verify` or `evidence` as the fix. It warns; the call is yours.
 
-The new sheet's `## Intent` is seeded from the idea's rationale; its `## Approach` holds the critics' objections and the verdict reasoning (`revise --critic`, `--why`) as constraints, above a placeholder line; its `## References` gains the overlaps with existing nodes (id and relation), the sources (with quote and verification state), the hypothesis and assumptions, and the cluster's rejected or parked siblings as "alternatives considered" with their reasons. When the session has a recorded frame, the anchor's sheet gains a `## Brainstorm frame` section with it (a later promote replaces it). The seed is a starting point, not a spec: write `## Approach` (constraints, steps, how to verify) before pickup, not at it — pickup skips the leaf while the placeholder is there, and `specy-road author-approach <ID>` prints the prompt that writes it.
+The new sheet's `## Intent` is seeded from the idea's rationale; its `## Approach` holds the critics' objections and the verdict reasoning (`revise --critic`, `--why`) as constraints, above a placeholder line; its `## References` gains the overlaps with existing nodes (id and relation), the sources (with quote and verification state), the hypothesis and assumptions, and the cluster's rejected or parked siblings as "alternatives considered" with their reasons. When the session has a recorded frame, the anchor's sheet gains a `## Brainstorm frame` section with it (a later promote replaces it). The seed is a starting point, not a spec: write `## Approach` (constraints, steps, how to verify) before pickup, not at it — pickup skips the leaf while the placeholder is there, and `specy-road planning approach <ID>` prints the prompt that writes it.
 
 Each `decided` idea becomes a bullet under the anchor sheet's `## Decided policies` (title, decision text, session slug and idea id), not a node; a later promote rewrites that session's bullets and leaves other sessions' alone, `--dry-run` only names the sheet, and with no anchor sheet (the roadmap root) stderr names the ideas left unwritten.
 
@@ -387,5 +387,5 @@ session file carries what they need: `origin` per idea, `cluster_id`, and
 
 - [pm-workflow.md](pm-workflow.md) — the rest of the PM day-to-day
 - [roadmap-authoring.md](roadmap-authoring.md) — what promotion is writing into
-- [pm-gui-brainstorm.md](pm-gui-brainstorm.md) — the same flow in the browser
+- [pm-gui.md](pm-gui.md#brainstorm-panel) — the same flow in the browser
 - [orchestration.md](orchestration.md) — the roster a panel can draw on

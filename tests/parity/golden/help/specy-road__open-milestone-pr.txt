@@ -1,0 +1,14 @@
+$ specy-road open-milestone-pr --help
+exit: 0
+--- stdout ---
+usage: specy-road open-milestone-pr [-h] [--repo-root DIR]
+
+Show commands to open a single PR/MR from feature/rm-<milestone-codename> to the integration
+branch (after subtree work is complete).
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

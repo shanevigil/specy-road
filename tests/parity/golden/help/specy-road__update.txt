@@ -1,0 +1,33 @@
+$ specy-road update --help
+exit: 0
+--- stdout ---
+usage: specy-road update [-h] [--path DIR] [--remote NAME] [--branch BRANCH] [--dry-run]
+                         [--allow-dirty] [--reset-to-origin] [--install-gui-stack]
+
+Fast-forward a git clone of specy-road to match the upstream branch.
+
+Uses the latest commit on the configured remote branch (default: main).
+A future mode may checkout the latest release tag instead; see --help.
+
+PyPI-only installs cannot use this command — use pip to upgrade.
+
+After a successful fast-forward, optional ``--install-gui-stack`` runs the same
+steps as ``specy-road init gui --install-gui`` (editable ``.[gui-next]`` pip
+install and ``gui/pm-gantt`` npm build when sources exist).
+
+options:
+  -h, --help           show this help message and exit
+  --path DIR           Root of the specy-road git clone (default: auto-discover).
+  --remote NAME        Remote to fetch and merge from (default: origin).
+  --branch BRANCH      Branch to fast-forward (default: main).
+  --dry-run            Print the git commands; do not run them.
+  --allow-dirty        Allow a dirty working tree (not recommended). Ignored with --reset-to-
+                       origin.
+  --reset-to-origin    Destructive: fetch and reset --hard to match the remote branch tip, then
+                       git clean known build dirs (e.g. specy_road/pm_gantt_static/). Discards
+                       local commits and uncommitted changes. Default update remains a fast-
+                       forward merge on a clean tree.
+  --install-gui-stack  After git: run pip install -e '.[gui-next]' and build gui/pm-gantt (same
+                       as: specy-road init gui --install-gui). Use with --dry-run to print what
+                       would run.
+--- stderr ---

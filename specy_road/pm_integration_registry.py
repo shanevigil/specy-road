@@ -16,9 +16,7 @@ from specy_road.git_subprocess import (
     working_tree_clean,
 )
 from specy_road.git_workflow_config import resolve_integration_defaults
-
-REGISTRY_REL = Path("roadmap") / "registry.yaml"
-
+from specy_road.registry_yaml import REGISTRY_REL
 
 def describe_integration_branch_auto_ff(
     repo_root: Path,

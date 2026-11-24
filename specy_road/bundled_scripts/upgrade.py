@@ -3,22 +3,33 @@
 
 After ``pip install -U specy-road``, ``pipx upgrade specy-road`` or
 ``uv tool upgrade specy-road`` the repo still carries what older versions
-copied into it. Four commands fix that, and adopters of 0.3.1rc1 ran them from
+copied into it. Adopters of 0.3.1rc1 ran the separate refresh commands from
 memory, in different orders, and stopped at different points: one kept
 duplicate ``/specyrd-…`` commands because the ``rm`` was buried in output,
-another never got the ``AGENTS.md`` block. This runs the same commands, in
-order, and nothing else:
+another never got the ``AGENTS.md`` block. This runs every refresh, in order,
+and nothing else:
 
-1. ``refresh-schemas``  — ``schemas/``
-2. ``refresh-profiles`` — missing ``model-profiles/`` files, never overwriting
+1. ``--only schemas``  — ``schemas/``
+2. ``--only profiles`` — missing ``model-profiles/`` files, never overwriting
 3. shipped docs and templates — missing ``docs/`` files the ``.specyrd/AGENTS.md`` load order names
    and missing ``work/*.template.md`` files prompts reference (never overwriting)
-4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
+4. ``--only stubs``    — IDE skills and the managed blocks (``--prune`` deletes
    the stubs this version no longer installs, and ``.cursor``/``.codex`` copies
    of the skills that are links or verbatim stubs)
 5. ``validate``, then ``digest --check``; in between, when validate passes, it
    writes ``roadmap-context.md`` (``specy-road digest``) when missing or drifted
    and ``roadmap.md`` (``specy-road export``) when tracked and drifted
+
+The refreshes print one report in four fixed sections: files added or changed,
+schema refreshes, profile refreshes, and notices.
+
+``--only stubs|schemas|profiles`` runs that one refresh on its own, in the
+checkout, with no mirror, validate or report: the step ``refresh-stubs``,
+``refresh-schemas`` and ``refresh-profiles`` ran, which are deprecated aliases
+of it. ``--diff`` belongs to ``--only stubs``; ``--force``, ``--profile``,
+``--profiles``, ``--check``, ``--render``, ``--capture``, ``--from`` and
+``--accept`` to ``--only profiles`` (``--profile API_ID`` is
+``refresh-profiles --only API_ID``).
 
 It first prints the running version, its ``sys.prefix`` and every
 ``specy-road``/``specyrd`` on PATH. After writing it names each file its own
@@ -28,54 +39,95 @@ managed files while sharing this install.
 
 Each step keeps its own narrow contract; the roadmap, planning sheets and
 anything outside a managed block are never touched. The refreshes run once, on
-a temporary mirror of the checkout that keeps its links; what they wrote there
+a temporary mirror of the checkout that keeps its links and leaves gitignored
+files out: tracked files, untracked files git does not ignore, and files the
+refreshes read. A symlink to an ignored file or directory does not copy that
+target. A directory that cannot be searched is left out, on a real run and a
+dry run. It prints a line before that copy. What they wrote there
 is the plan, which is then written into the checkout. ``--dry-run`` lists the
-same plan, writes it into a temporary copy instead and runs ``validate`` there;
+same plan, reuses that mirror for a temporary copy and runs ``validate`` there;
 the checkout is never written, and the generated files it would write are
-listed as ``would write``. Every git call in the copy runs with every ``GIT_``
-variable of the caller's removed and no global or system git config, no hook
-and a timeout, so it never reaches the checkout's repository or runs a command
-the caller's config names. A failed ``git init``, ``add`` or ``commit`` in either
-temporary copy, the plan's included, stops the run with exit 2: nothing is
-written or validated. A generated file whose path leads out of the project is refused, and ``digest``
-stays a next step, as it does when ``validate`` fails (nothing is regenerated
-from an invalid graph). The exit code is ``validate``'s. Read validate's
+listed as ``would write``, the digest rendered from the checkout's history,
+read-only. Choosing the files reads the caller's excludes file on a real run
+and a dry run, so a global ``core.excludesFile`` hides the same paths in both.
+Every git call runs with every ``GIT_`` variable of
+the caller's removed and a timeout; git commands inside the plan's mirror and
+the dry run's copy read no global or system config and run no hook. The exit
+code is 2 when a git
+call it depends on fails or times out, 1 when ``validate`` fails or a write
+is refused, and 0 otherwise. A generated file with a symlink on its path is
+refused, and ``digest`` stays a next step, as it does when ``validate`` fails
+(nothing is regenerated from an invalid graph). A refused stub, skill file,
+skill link or ignore file is printed ``error:``; that path is left as it is,
+the rest of the plan is applied. A refused ``AGENTS.md``, ``CLAUDE.md``,
+shipped doc, work template or profile stays a report line. Read validate's
 notices for what the new version reports (held milestones among them).
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
+import json
 import os
+import re
 import shlex
 import shutil
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
 
 from specy_road import __version__, git_subprocess
-from specy_road.agents_md_block import load_order_paths, print_migration, render_rules
+from specy_road.agent_guide_block import AGENT_GUIDE
+from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE
+from specy_road.agents_md_block import AGENTS_FILES, load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
-from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
-from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
-from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
-from specy_road.bundled_scripts.upgrade_generated import GitFailed, checked, regenerate, scratch_environ
-from specy_road.bundled_scripts.upgrade_plan import Mirror, apply_plan, conflicts, make_plan
-from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.digest import DEFAULT_OUTPUT
-from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
-from specy_road.git_subprocess import git_text
-from specy_road.ignore_report import scratch_git_env
-from specy_road.init_project import project_template_root
-from specy_road.managed_block import resolves_outside
-from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
-from specy_road.upgrade_templates import (
-    copy_missing_work_templates,
-    work_template_ship_plan,
-    work_template_skip_message,
+from specy_road.checks_config import Migration, _dump, _loads_to, _without_keys, migrate_text
+from specy_road.git_workflow_config import GIT_WORKFLOW_REL, GRIND_OLD_PREFIX, old_grind_keys
+from specy_road.bundled_scripts import refresh_profiles as refresh_profiles_cli
+from specy_road.bundled_scripts import refresh_schemas as refresh_schemas_cli
+from specy_road.bundled_scripts import refresh_stubs as refresh_stubs_cli
+from specy_road.bundled_scripts.refresh_profiles import (
+    add_profile_options, bundled_profiles_dir, refresh_profiles, selection_notice,
 )
+from specy_road.bundled_scripts.refresh_schemas import (
+    SCHEMAS_DIRNAME, bundled_schemas_dir, missing_schema_names, refresh_schemas,
+)
+from specy_road.bundled_scripts.refresh_stubs import _prefix, _resolve_root, refresh_stubs, report
+from specy_road.bundled_scripts.upgrade_generated import (
+    GitFailed, checked, regenerate, scratch_environ, use_live_history,
+)
+from specy_road.bundled_scripts.upgrade_plan import (
+    Entry, Mirror, Plan, apply_plan, check_changes, conflicts, make_plan, snapshot_outside,
+)
+from specy_road.validate_roadmap_runner import validate_at
+from specy_road.digest import DEFAULT_OUTPUT
+from specy_road.generated_files import GENERATED_COMMITTED
+from specy_road.file_limits_engine import (
+    build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits,
+)
+from specy_road.git_subprocess import git_root, git_text
+from specy_road.ignore_report import (
+    GITIGNORE, attempt, observe, observed, print_matches, scratch_git_env,
+)
+from specy_road import safe_write
+from specy_road.managed_block import refused_link, resolves_outside, rule_refusal
+from specy_road.safe_write import SafeWriteError
+from specy_road.orchestration import PROFILES_REL
+from specy_road.runtime_paths import (
+    add_repo_root_arg,
+    prefix_within,
+    project_root,
+    project_template_root,
+    source_scan_root,
+    specy_road_package_dir,
+)
+from specy_road.specyrd_init import COMMAND_FILES
+from specy_road.specyrd_skills import LINK_DEST, MIRROR_DIRS, link_rel, skill_rel, stem
+from specy_road.upgrade_report import FILES, NOTICES, PROFILES, SCHEMAS, Report
 from specy_road.version_skew import print_install_report
 
 CHECKLIST = (
@@ -89,13 +141,15 @@ def _section(title: str) -> None:
     print(f"\n== {title}", flush=True)   # the steps warn on stderr; keep a piped log in order
 
 
-def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[str] | None = None) -> list[str]:
+def copy_missing_docs(
+    project: Path, *, dry_run: bool = False, declined: list[str] | None = None,
+) -> list[str]:
     """Copy the ``docs/`` files this version's load order names and the project lacks.
 
     The load order sends every agent to them, and only ``init project`` copied
     them, so a repo scaffolded before a doc shipped has a load order pointing at
     nothing. An existing file (or link) is the project's and stays as it is.
-    A doc refused for a link out of the repository is appended to ``declined``.
+    A doc the safe-write rule refuses (a link on its path) is appended to ``declined``.
     """
     src_root = project_template_root()
     copied: list[str] = []
@@ -103,10 +157,162 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[st
         src, dst = src_root / rel, project / rel
         if not rel.startswith("docs/") or not src.is_file() or dst.exists() or dst.is_symlink():
             continue
-        if resolves_outside(project, dst):
-            print(f"skipped {rel} (a symlink leads outside the repository)")
+        if why := refused_link(project, dst):
+            print(f"skipped {rel} ({why})")
             if declined is not None:
                 declined.append(rel)
+            continue
+        if not dry_run:
+            safe_write.copy(project, src, dst)
+        copied.append(rel)
+    return copied
+
+
+# Outcome words with which the refreshes report a path they leave as it is (managed_block,
+# specyrd_skills). A ``refused: <why>`` of the safe-write rule (a stub, skill file, skill link or
+# ignore file) is an ``error`` instead (rule_refusal): it is printed as ``error:`` and the upgrade
+# exits 1.
+# --- Missing work/*.template.md files that prompts and command stubs reference --
+
+
+_WORK = Path("work")
+_TEMPLATE_SUFFIX = ".template.md"
+_REF_IN_SOURCE = re.compile(r"work/([A-Za-z0-9][A-Za-z0-9.-]*\.template\.md)")
+_README_SECTION = re.compile(
+    r"## Updating after `pip install -U specy-road`\s*\n\n(.*?)(?:\n## |\Z)",
+    re.DOTALL,
+)
+
+# Kept in sync with this module's docstring and ``.specyrd/README.md``.
+UPGRADE_STEP_LABELS: tuple[str, ...] = (
+    "--only schemas",
+    "--only profiles",
+    "shipped docs and templates",
+    "--only stubs",
+    "validate",
+    "digest --check",
+)
+
+
+def bundled_work_template_names() -> frozenset[str]:
+    """Basenames of every ``*.template.md`` under ``templates/project/work/``."""
+    root = project_template_root() / _WORK
+    if not root.is_dir():
+        return frozenset()
+    return frozenset(p.name for p in root.glob(f"*{_TEMPLATE_SUFFIX}"))
+
+
+def _prompt_builder_sources() -> list[Path]:
+    bundled = specy_road_package_dir() / "bundled_scripts"
+    paths = [bundled / "do_next_prompt.py"]
+    paths.extend(sorted(bundled.glob("role_prompt*.py")))
+    paths.extend(
+        sorted((specy_road_package_dir() / "templates" / "specyrd" / "commands").glob("*.md"))
+    )
+    return paths
+
+
+def referenced_work_template_names() -> frozenset[str]:
+    """Names of ``work/*.template.md`` cited in prompt builders and specyrd command stubs."""
+    found: set[str] = set()
+    for path in _prompt_builder_sources():
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in _REF_IN_SOURCE.finditer(text):
+            found.add(match.group(1))
+    return frozenset(found)
+
+
+def upgrade_help_step_labels(doc: str | None) -> tuple[str, ...]:
+    """Step labels in order, as ``upgrade --help`` lists them."""
+    if not doc:
+        return ()
+    labels: list[str] = []
+    for line in doc.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped[0] not in "123456789":
+            continue
+        if ". ``" in stripped:
+            head, _, rest = stripped.partition(". ``")
+            if not head.isdigit():
+                continue
+            name, _, tail = rest.partition("``")
+            labels.append(name.strip())
+            if ", then ``" in tail:
+                _, _, second = tail.partition(", then ``")
+                second_name, _, _ = second.partition("``")
+                labels.append(second_name.strip())
+        elif stripped[0].isdigit() and ". " in stripped:
+            head, _, rest = stripped.partition(". ")
+            if not head.isdigit():
+                continue
+            title, _, _ = rest.partition(" —")
+            labels.append(title.strip().rstrip(","))
+    return tuple(labels)
+
+
+def readme_upgrade_step_labels(readme_text: str) -> tuple[str, ...]:
+    """Parse the upgrade step labels from the ``Updating after pip install`` paragraph."""
+    section = _README_SECTION.search(readme_text)
+    if not section:
+        return ()
+    body = section.group(1)
+    positions = [body.find(label) for label in UPGRADE_STEP_LABELS]
+    if any(p < 0 for p in positions) or positions != sorted(positions):
+        return ()
+    return UPGRADE_STEP_LABELS
+
+
+def work_template_ship_plan(project_root: Path) -> tuple[list[str], list[str]]:
+    """Project-relative template paths to copy vs refused (symlink outside the repo).
+
+    Refusal is decided before any write or ``would write`` / ``wrote`` claim.
+    """
+    ship = bundled_work_template_names() & referenced_work_template_names()
+    to_copy: list[str] = []
+    refused: list[str] = []
+    for name in sorted(ship):
+        rel = f"{_WORK.as_posix()}/{name}"
+        path = project_root / rel
+        if path.exists() or path.is_symlink():
+            continue
+        src = project_template_root() / _WORK / name
+        if not src.is_file():
+            continue
+        if resolves_outside(project_root, path):
+            refused.append(rel)
+        else:
+            to_copy.append(rel)
+    return to_copy, refused
+
+
+def work_template_skip_message(rel: str) -> str:
+    """Same wording ``copy_missing_docs`` uses for an out-of-repo symlink."""
+    return f"skipped {rel} (a symlink leads outside the repository)"
+
+
+def copy_missing_work_templates(
+    project: Path,
+    *,
+    dry_run: bool = False,
+    existence_root: Path | None = None,
+) -> list[str]:
+    """Copy bundled work templates the prompts reference when the project lacks them.
+
+    Never overwrites an existing file or symlink. Returns project-relative paths
+    such as ``work/review-record.template.md``.
+
+    ``existence_root`` is where to test for an existing file; copies land under
+    ``project`` (defaults to the same root).
+    """
+    exists_at = existence_root or project
+    to_copy, _refused = work_template_ship_plan(exists_at)
+    copied: list[str] = []
+    for rel in to_copy:
+        src = project_template_root() / rel
+        dst = project / rel
+        if resolves_outside(project, dst):
             continue
         if not dry_run:
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -115,65 +321,74 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[st
     return copied
 
 
-# Outcome words with which the refreshes report a path they leave as it is (managed_block, specyrd_skills).
 _DECLINED = {"refused": "refuse", "skipped": "skip", "failed": "fail"}
 
 
-def _report_schemas(project: Path, verb: str) -> None:
-    _section("refresh-schemas")
+def _report_schemas(project: Path, verb: str, out: Report) -> None:
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(project)}
     schemas = refresh_schemas(project)
     for rel in schemas:
-        print(f"{verb} {rel}" + (" (new in this version)" if rel in new else ""))
+        out.add(SCHEMAS, f"{verb} {rel}" + (" (new in this version)" if rel in new else ""))
     if not schemas:
-        print("schemas/ already current")
+        out.add(SCHEMAS, "schemas/ already current")
 
 
-def _report_profiles(project: Path, verb: str) -> None:
-    _section("refresh-profiles")
+def _report_profiles(project: Path, verb: str, out: Report) -> None:
     profiles, kept = refresh_profiles(project)
     for rel in profiles:
-        print(f"{verb} {rel}")
+        out.add(PROFILES, f"{verb} {rel}")
     notice = selection_notice(profiles, kept, roster=True)
     if notice:
-        print(notice)
+        out.add(PROFILES, notice)
 
 
-def _report_shipped_docs(project: Path, verb: str, existence_root: Path) -> list[str]:
-    _section("shipped docs")
+def _report_shipped_docs(
+    project: Path, verb: str, existence_root: Path, out: Report,
+) -> list[str]:
     declined_docs: list[str] = []
-    docs = copy_missing_docs(project, declined=declined_docs)
+    with out.capture(NOTICES):   # a doc the rule refuses prints its ``skipped`` line
+        docs = copy_missing_docs(project, declined=declined_docs)
     to_copy, refused = work_template_ship_plan(existence_root)
     for rel in docs:
-        print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
+        out.add(FILES, f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
     for rel in to_copy:
-        print(f"{verb} {rel} (work template referenced by prompts)")
+        out.add(FILES, f"{verb} {rel} (work template referenced by prompts)")
     for rel in refused:
-        print(work_template_skip_message(rel))
+        out.add(NOTICES, work_template_skip_message(rel))
     if not docs:
-        print("every shipped doc the load order names is present")
+        out.add(FILES, "every shipped doc the load order names is present")
     if not to_copy and not refused:
-        print("every work template prompts reference is present")
+        out.add(FILES, "every work template prompts reference is present")
     return declined_docs
 
 
 def _report_stubs_declined(
     project: Path, checkout: Path, *, preview: bool, prune: bool, declined_docs: list[str],
+    out: Report,
 ) -> dict[str, str]:
-    _section("refresh-stubs")
-    print_migration(project, _prefix(checkout, project))
-    written, orphans = refresh_stubs(checkout, project=project, prune=prune)
-    if written or orphans:
-        _report(written, orphans, dry_run=preview, pruned=prune, footer=False)
-    else:
-        print("stubs and managed blocks already current")
+    with out.capture(NOTICES):   # the AGENTS.md migration, the ignore note
+        print_migration(project, _prefix(checkout, project))
+        written, orphans = refresh_stubs(checkout, project=project, prune=prune)
+    with out.capture(FILES):
+        if written or orphans:
+            report(written, orphans, dry_run=preview, pruned=prune, footer=False)
+        else:
+            print("stubs and managed blocks already current")
     prefix = _prefix(checkout, project)
     declined = {f"{prefix}{rel}": "refuse" for rel in declined_docs}
-    for rel, sep, outcome in (entry.partition(" (") for entry in written):
-        action = next((a for word, a in _DECLINED.items() if outcome.startswith(word)), None)
-        if sep and action:
-            declined[rel] = action
+    for entry in written:
+        if action := _declined(getattr(entry, "outcome", "")):
+            declined[entry.path] = action
     return declined
+
+
+def _declined(outcome: str) -> str | None:
+    """The plan action for an outcome that left its path as it was; a rule refusal is printed as
+    ``error:``."""
+    if why := rule_refusal(outcome):
+        print(f"error: {why}", file=sys.stderr)
+        return "error"
+    return next((a for word, a in _DECLINED.items() if outcome.startswith(word)), None)
 
 
 def _refresh(
@@ -184,25 +399,50 @@ def _refresh(
     prune: bool,
     existence_project: Path | None = None,
 ) -> dict[str, str]:
-    """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the wording.
+    """Run the refreshes for real on ``checkout`` (the plan's mirror) and print their one report;
+    ``preview`` changes only the wording.
 
-    Returns ``{checkout-relative path: refuse | skip | fail}`` for each path they left as it was.
+    Returns ``{checkout-relative path: refuse | error | skip | fail}`` for each path they left as it
+    was.
     """
     verb = "would write" if preview else "wrote"
-    _report_schemas(project, verb)
-    _report_profiles(project, verb)
-    declined_docs = _report_shipped_docs(project, verb, existence_project or project)
-    return _report_stubs_declined(project, checkout, preview=preview, prune=prune, declined_docs=declined_docs)
+    out = Report()
+    _report_schemas(project, verb, out)
+    _report_profiles(project, verb, out)
+    declined_docs = _report_shipped_docs(project, verb, existence_project or project, out)
+    declined = _report_stubs_declined(project, checkout, preview=preview, prune=prune,
+                                      declined_docs=declined_docs, out=out)
+    _migrate_git_workflow(project, verb, out, migrate_text,
+                          "baseline_cmd, land_check_cmd and verify_cmd become checks: entries")
+    _migrate_git_workflow(project, verb, out, migrate_grind_text,
+                          "grind_session_* keys move under grind:")
+    _report_file_limits_default(existence_project or project, out)
+    out.print()
+    return declined
+
+
+_VALIDATE_FAILED = "Fix the validate errors above; the refreshes are written either way."
+_REFUSED_STEP = ("Replace each path refused above (error:, refused) with a regular file: any"
+                 " symlink on its path is"
+                 " refused, except .claude/skills -> ../.agents/skills or .agents/skills ->"
+                 " ../.claude/skills."
+                 " Then run specy-road upgrade again.")
 
 
 def _check(
-    project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str],
-) -> tuple[bool, bool]:
-    """``(validate passed, generated files done)``; each step prints its own detail.
+    project: Path, tracked_in: Path, verb: str, refused: bool, caller_env: dict[str, str],
+    before_digest: Callable[[], None] = lambda: None,
+) -> tuple[str | None, bool]:
+    """``(what failed, as the first next step, or None; generated files done)``; each step prints
+    its own detail.
 
+    A failed ``validate``, a refused generated file, or ``refused`` (the plan
+    has an ``error`` entry: a stub, skill file, skill link or ignore file the
+    rule refused) fails the run (exit 1).
     The generated files are done only when validate passed (so they were
     regenerated), nothing was refused, and ``digest --check`` passes; otherwise
-    ``specy-road digest`` stays a next step.
+    ``specy-road digest`` stays a next step. ``before_digest`` runs once
+    validate has passed, before the digest is regenerated.
     """
     _section("validate")
     try:
@@ -210,16 +450,125 @@ def _check(
         valid = True
     except SystemExit as e:
         valid = not e.code
-    refused = False
+    generated_refused = False
     if valid:
+        before_digest()
         _section("generated files")
-        refused = regenerate(project, tracked_in, verb, caller_env)
+        generated_refused = regenerate(project, tracked_in, verb, caller_env)
     _section("digest --check")
     ns = argparse.Namespace(output=DEFAULT_OUTPUT, check=True, repo_root=project)
-    # A digest that is a link out is never read (regenerate printed its refusal): not current.
-    outside = resolves_outside(project, project / DEFAULT_OUTPUT)
-    current = not outside and cmd_digest(ns) == 0
-    return valid, valid and current and not refused
+    # A digest the rule refuses is never read (regenerate printed its refusal): not current.
+    current = not refused_link(project, project / DEFAULT_OUTPUT) and cmd_digest(ns) == 0
+    failed = (_VALIDATE_FAILED if not valid
+              else _REFUSED_STEP if refused or generated_refused else None)
+    return failed, valid and current and not generated_refused
+
+
+_DIGEST_STEP = ("Run specy-road digest (and specy-road export if roadmap.md is tracked), then"
+                " commit"
+                " them. Not specy-road sync: it also fast-forwards the integration branch.")
+
+
+def _migrate_git_workflow(project: Path, verb: str, out: Report,
+                          migrate: Callable[[str], Migration | None], what: str) -> None:
+    """Write one rewrite of ``roadmap/git-workflow.yaml`` and report ``what`` it did.
+
+    ``migrate`` is :func:`specy_road.checks_config.migrate_text` (``baseline_cmd``,
+    ``land_check_cmd`` and ``verify_cmd`` become ``checks:`` entries) or
+    :func:`migrate_grind_text`. Every other key,
+    ``require_implementation_review_before_finish`` among them, keeps its value; the report says
+    when the file's comments and layout could not be kept.
+    """
+    path = project / GIT_WORKFLOW_REL
+    if not path.is_file() or (done := migrate(path.read_text(encoding="utf-8"))) is None:
+        return
+    safe_write.write(project, GIT_WORKFLOW_REL, done.text)
+    layout = "" if done.layout_kept else "; written again in block style, without its comments"
+    out.add(FILES, f"{verb} {GIT_WORKFLOW_REL.as_posix()} ({what}{layout})")
+
+
+def migrate_grind_text(text: str) -> Migration | None:
+    """``upgrade``'s rewrite of ``git-workflow.yaml``: each old top-level ``grind_session_<name>``
+    key becomes ``<name>`` under ``grind:``.
+
+    An existing ``grind:`` block is kept and the moved keys are added to it; a key it already sets
+    wins and the old one is only removed, since it was ignored. ``None`` when there is nothing to
+    rewrite, so a second run changes nothing, or when the text is not YAML or ``grind:`` is not a
+    mapping (validate reports both). The layout rule is
+    :func:`specy_road.checks_config.migrate_text`'s: the line edit is kept when its text loads to
+    exactly the expected mapping, else the mapping is written again in block style.
+    """
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return None
+    old = old_grind_keys(data) if isinstance(data, dict) else []
+    if not old or not isinstance(data.get("grind", {}), dict):
+        return None
+    grind = data.get("grind") or {}
+    moved = {k.removeprefix(GRIND_OLD_PREFIX): data[k] for k in old
+             if k.removeprefix(GRIND_OLD_PREFIX) not in grind}
+    expected = {k: v for k, v in data.items() if k not in old}
+    expected["grind"] = {**grind, **moved}
+    out = _with_grind_keys(_without_keys(text, old), moved) if moved else _without_keys(text, old)
+    if _loads_to(out, expected):
+        return Migration(out, layout_kept=True)
+    return Migration(_dump(expected), layout_kept=False)
+
+
+def _with_grind_keys(text: str, moved: dict) -> str:
+    """``text`` with ``moved`` added at the end of its block ``grind:`` mapping, or appended as a
+    new ``grind:`` block when it has none on a line of its own."""
+    lines = text.splitlines(keepends=True)
+    start = next((i for i, line in enumerate(lines)
+                  if re.fullmatch(r"grind\s*:\s*(#.*)?", line.rstrip("\r\n"))), None)
+    if start is None:
+        return text.rstrip("\n") + "\n" + _dump({"grind": moved})
+    end = start + 1
+    while end < len(lines) and not re.match(r"\S", lines[end]):   # the block's indented lines
+        end += 1
+    while end > start + 1 and not lines[end - 1].strip():   # blank lines after it stay after it
+        end -= 1
+    children = [line for line in lines[start + 1:end] if line.strip()
+                and not line.lstrip().startswith("#")]
+    indent = re.match(r"\s*", children[0]).group() if children else "  "
+    head = "".join(lines[:end])
+    head += "" if head.endswith("\n") else "\n"
+    added = "".join(indent + line for line in _dump(moved).splitlines(keepends=True))
+    return head + added + "".join(lines[end:])
+
+
+FILE_LIMITS = "constraints/file-limits.yaml"
+
+
+def _file_limits_config(root: Path) -> dict | None:
+    """``root``'s ``constraints/file-limits.yaml`` as a mapping; None when absent or unreadable."""
+    cfg_path = root / FILE_LIMITS
+    try:
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) if cfg_path.is_file() else None
+    except (OSError, yaml.YAMLError):
+        cfg = None
+    return cfg if isinstance(cfg, dict) else None
+
+
+def _file_cap(cfg: dict) -> tuple[object, object]:
+    """``(max_lines_per_file, hard_alerts.max_lines_per_file)``, the values the template sets."""
+    alerts = cfg.get("hard_alerts")
+    warn = alerts.get("max_lines_per_file") if isinstance(alerts, dict) else None
+    return cfg.get("max_lines_per_file"), warn
+
+
+def _report_file_limits_default(project: Path, out: Report) -> None:
+    """One notice when the project's file cap differs from the template's; never a rewrite."""
+    cfg = _file_limits_config(project)
+    default = _file_limits_config(project_template_root())
+    if cfg is None or _file_cap(cfg) == _file_cap(default):
+        return
+    (cap, warn), (new_cap, new_warn) = _file_cap(cfg), _file_cap(default)
+    warning = "no warning" if warn is None else f"a warning at {warn}"
+    out.add(NOTICES, f"{FILE_LIMITS} caps files at {cap} lines with {warning}; the template"
+            f" default is now {new_cap} lines with a warning at {new_warn}. upgrade leaves this"
+            " file as it is; edit it to adopt the default.")
 
 
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
@@ -228,12 +577,8 @@ def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
     Read the way ``specy-road file-limits`` reads it: globs anchored at the
     source scan root, overlays applied, git-ignored files skipped.
     """
-    cfg_path = project / "constraints" / "file-limits.yaml"
-    try:
-        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) if cfg_path.is_file() else None
-    except (OSError, yaml.YAMLError):
-        cfg = None
-    if not isinstance(cfg, dict):
+    cfg = _file_limits_config(project)
+    if cfg is None:
         return {}
     root = source_scan_root(project)
     overlays = build_overlay_match_sets(root, cfg)
@@ -244,7 +589,9 @@ def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
     return out
 
 
-def _report_line_caps(before: dict[str, tuple[int, int]], after: dict[str, tuple[int, int]]) -> None:
+def _report_line_caps(
+    before: dict[str, tuple[int, int]], after: dict[str, tuple[int, int]],
+) -> None:
     """Name each file this run changed that is now over its cap; one already over is not blamed."""
     lines: list[str] = []
     for rel, (new, cap) in sorted(after.items()):
@@ -252,16 +599,79 @@ def _report_line_caps(before: dict[str, tuple[int, int]], after: dict[str, tuple
         if new <= cap or (rel in before and old == new):
             continue
         if old > cap:
-            lines.append(f"{rel}: already over its cap before this upgrade ({old} -> {new} lines, cap {cap})")
+            lines.append(f"{rel}: already over its cap before this upgrade"
+                         f" ({old} -> {new} lines, cap {cap})")
         else:
-            lines.append(f"{rel}: this upgrade pushed it over its cap: {old} -> {new} lines (cap {cap})")
+            lines.append(f"{rel}: this upgrade pushed it over its cap:"
+                         f" {old} -> {new} lines (cap {cap})")
     if lines:
         _section("file-limits on the files it wrote")
         for line in lines:
             print(line)
 
 
-def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool):
+def _present(checkout: Path, rels: set[str]) -> set[str]:
+    return {rel for rel in rels if (checkout / rel).exists() or (checkout / rel).is_symlink()}
+
+
+def _recorded_paths(checkout: Path) -> set[str]:
+    """Paths the manifest says a pack owns, which a refresh rewrites even when git ignores them."""
+    try:
+        data = json.loads((checkout / ".specyrd" / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return set()
+    agents = data.get("agents") if isinstance(data, dict) else None
+    if not isinstance(agents, dict):
+        return set()
+    return {p for paths in agents.values() if isinstance(paths, list)
+            for p in paths if isinstance(p, str)}
+
+
+def _skill_paths() -> set[str]:
+    """Stub, skill and skill-link paths a refresh stats, whether or not this checkout has them."""
+    paths = {skill_rel(name).as_posix() for name in COMMAND_FILES}
+    for agent in LINK_DEST:
+        paths.update(link.as_posix() for name in COMMAND_FILES if (link := link_rel(agent, name)))
+    for mirror_dir in MIRROR_DIRS:
+        for name in COMMAND_FILES:
+            rel = mirror_dir / name if mirror_dir.name == "commands" else mirror_dir / stem(name)
+            paths.add(rel.as_posix())
+            if mirror_dir.name != "commands":
+                paths.add((rel / "SKILL.md").as_posix())
+    return paths
+
+
+def _mirror_extras(project: Path, checkout: Path) -> set[str]:
+    """Paths copied even when git ignores them: what the refreshes read, and a generated file the
+    preview compares."""
+    prefix = prefix_within(checkout, project)
+
+    def under(rel: str) -> str:
+        return f"{prefix}{rel}"
+
+    rels = {
+        AGENT_GUIDE, GITIGNORE, CURSOR_INDEXING_IGNORE,
+        ".specyrd/manifest.json", ".specyrd/README.md",
+        under("roadmap/orchestration.yaml"), under(GIT_WORKFLOW_REL.as_posix()),
+        under("constraints/file-limits.yaml"),
+        *(under(name) for name in AGENTS_FILES),
+        *(under(name) for name in GENERATED_COMMITTED),
+    }
+    rels.update(under(rel) for rel in load_order_paths(render_rules().splitlines())
+                if rel.startswith("docs/"))
+    if bundled_schemas_dir().is_dir():
+        rels.update(under(f"{SCHEMAS_DIRNAME}/{src.name}")
+                    for src in bundled_schemas_dir().glob("*.json"))
+    if bundled_profiles_dir().is_dir():
+        rels.update(under(f"{PROFILES_REL.as_posix()}/"
+                          f"{src.relative_to(bundled_profiles_dir()).as_posix()}")
+                    for src in bundled_profiles_dir().rglob("*") if src.is_file())
+    return _present(checkout, rels | _recorded_paths(checkout) | _skill_paths())
+
+
+def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool,
+          defer_ignore: bool = False,
+          mirror: Mirror | None = None, git_env: dict[str, str] | None = None):
     real = project.resolve()
 
     def refresh(sandbox_project: Path, sandbox_checkout: Path) -> dict[str, str]:
@@ -273,19 +683,70 @@ def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool):
             existence_project=real,
         )
 
-    return make_plan(checkout, project, refresh)
+    return make_plan(checkout, project, refresh, defer_ignore=defer_ignore, mirror=mirror,
+                     git_env=git_env,
+                     extra=None if mirror is not None else _mirror_extras(project, checkout))
 
 
-def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
-    """Make the plan, write it into the checkout, then check its writes against the line caps."""
+def _gitignore_write(entry: Entry) -> bool:
+    """Whether ``entry`` replaces the checkout's top-level ``.gitignore``."""
+    return entry.action == "write" and entry.path == GITIGNORE
+
+
+def _writes_gitignore(plan: Plan) -> bool:
+    """Whether the plan replaces the checkout's top-level ``.gitignore``."""
+    return any(_gitignore_write(e) for e in plan.entries)
+
+
+def _aside(plan: Plan, *, gitignore: bool) -> Plan:
+    """The plan's top-level ``.gitignore`` write, or every other entry.
+
+    The ignore note brackets only that write. A removal, including one ``--prune`` makes,
+    is one of the other entries and is applied outside the note.
+    """
+    chosen = [e for e in plan.entries if _gitignore_write(e) is gitignore]
+    return Plan(plan.checkout, plan.skip, chosen, plan.states)
+
+
+@contextlib.contextmanager
+def _checkout_ignore_note(checkout: Path, plan: Plan):
+    """Print the ignore note from the checkout when ``plan`` writes the top-level ``.gitignore``.
+
+    Observed immediately before that write and read immediately after. ``plan`` holds only that
+    write: another change inside this window is a file that disappeared for some other reason,
+    and the note would call it hidden by the new rule.
+    """
+    before = attempt(lambda: observe(checkout)) if _writes_gitignore(plan) else None
+    try:
+        yield
+    finally:
+        if before is not None:
+            found = (before if isinstance(before, str)
+                     else attempt(lambda: observed(checkout, before)))
+            print_matches(found, estimated=False)
+
+
+def _apply(project: Path, checkout: Path, *, prune: bool) -> bool:
+    """Make the plan, write it into the checkout, then check its writes against the line caps.
+
+    Returns whether the plan has an ``error`` entry (applied as nothing, the rest applied).
+    The plan's mirror has an empty index, so the ignore note is taken here. Every change but
+    the top-level ``.gitignore`` write is applied first; the note brackets only that write.
+    """
     before = _capped_lines(project)
-    plan = _plan(project, checkout, preview=False, prune=prune)
+    plan = _plan(project, checkout, preview=False, prune=prune, defer_ignore=True)
     stale = conflicts(plan)
     if stale:
-        raise ValueError(f"{', '.join(stale)} changed while the upgrade ran; nothing was written, run it again")
-    apply_plan(plan)
+        raise ValueError(f"{', '.join(stale)} changed while the upgrade ran; nothing was written,"
+                         " run it again")
+    check_changes(plan)
+    other, ignore = _aside(plan, gitignore=False), _aside(plan, gitignore=True)
+    apply_plan(other)
+    with _checkout_ignore_note(checkout, ignore):
+        apply_plan(ignore)
     copy_missing_work_templates(project)
     _report_line_caps(before, _capped_lines(project))
+    return any(e.action == "error" for e in plan.entries)
 
 
 def _commit_copy(copy: Mirror) -> None:
@@ -300,44 +761,65 @@ def _commit_copy(copy: Mirror) -> None:
     hooks = ["-c", f"core.hooksPath={copy.hooks}"]
     skipped = [f":(exclude,literal){p.relative_to(copy.repo).as_posix()}"
                for p in copy.unreadable if p.is_relative_to(copy.repo)]
-    checked(git_subprocess.run([*hooks, "add", "-A", "--ignore-errors", "--", ".", *skipped], copy.repo), "add")
+    checked(git_subprocess.run([*hooks, "add", "-A", "--ignore-errors", "--", ".", *skipped],
+                               copy.repo), "add")
     checked(git_subprocess.run(
         [*hooks, "-c", "user.name=specy-road", "-c", "user.email=upgrade@specy-road.invalid",
-         "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "--allow-empty", "-m", "upgrade preview"],
+         "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "--allow-empty",
+         "-m", "upgrade preview"],
         copy.repo), "commit")
 
 
 def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
-    """Make the same plan, write it into a temporary copy of the checkout, and validate the copy."""
-    with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp, scratch_environ(Path(tmp)) as caller_env:
-        plan = _plan(project, checkout, preview=True, prune=prune)
+    """Make the same plan, write it into a temporary copy of the checkout, and validate the copy.
+
+    The checkout is copied once. The copy that is validated is that mirror reused, not a second
+    walk.
+    """
+    with (tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp,
+          scratch_environ(Path(tmp)) as caller_env):
+        root = Path(tmp)
+        mirror = Mirror(checkout, root / "plan", project / "work").build(
+            git_env=caller_env, extra=_mirror_extras(project, checkout))
+        if not (mirror.repo / ".git").is_dir():
+            raise GitFailed("git init failed in the temporary copy (no .git was created)")
+        staging = root / "staging"
+        snapshot_outside(mirror.outside, staging)
+        plan = _plan(project, checkout, preview=True, prune=prune, mirror=mirror)
         _section("applying the refreshes to a temporary copy, then validating it")
-        copy = Mirror(checkout, Path(tmp), project / "work").build()
+        copy = Mirror(checkout, root / "copy", project / "work").reuse(staging, mirror)
         _commit_copy(copy)
         copy_project = copy.to_sandbox(project.resolve())
         before = _capped_lines(copy_project)
         apply_plan(plan, copy.to_sandbox)
         copy_missing_work_templates(copy_project, existence_root=project)
         _report_line_caps(before, _capped_lines(copy_project))
-        valid, _digest_ok = _check(copy_project, project, "would write", caller_env)
+        failed, _digest_ok = _check(copy_project, project, "would write",
+                                    any(e.action == "error" for e in plan.entries), caller_env,
+                                    lambda: use_live_history(copy.repo, project, caller_env))
     changed = plan.changed_since()
     if changed:
-        print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"
+        print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in"
+              " specy-road upgrade,"
               " please report it", file=sys.stderr)
         return 2
-    print("\n(dry-run; no files written in the checkout. The exit code is validate's on the copy.)")
-    return 0 if valid else 1
+    print("\n(dry-run; no files written in the checkout. The exit code is 1 when validate fails on"
+          " the copy"
+          " or a write is refused.)")
+    return 0 if failed is None else 1
 
 
 def _other_worktrees(checkout: Path) -> list[tuple[str, str]]:
-    """``(path, branch)`` of every git worktree but this one (as ``doctor`` parses the porcelain list)."""
+    """``(path, branch)`` of every git worktree but this one (as ``doctor`` parses the porcelain
+    list)."""
     here = (git_root(checkout) or checkout).resolve()
     found: list[tuple[str, str]] = []
     for chunk in (git_text(["worktree", "list", "--porcelain"], checkout) or "").split("\n\n"):
         wt = dict(line.partition(" ")[::2] for line in chunk.splitlines())
         if "worktree" not in wt or "bare" in wt or Path(wt["worktree"]).resolve() == here:
             continue
-        branch = wt.get("branch", "").removeprefix("refs/heads/") or f"detached at {wt.get('HEAD', '')[:12]}"
+        branch = (wt.get("branch", "").removeprefix("refs/heads/")
+                  or f"detached at {wt.get('HEAD', '')[:12]}")
         found.append((wt["worktree"], branch))
     return found
 
@@ -348,14 +830,16 @@ def _print_other_worktrees(checkout: Path) -> None:
         return
     _section("other worktrees")
     for path, branch in others:
-        print(f"{path} ({branch}): not upgraded; it still has the old managed files while sharing this install."
+        print(f"{path} ({branch}): not upgraded; it still has the old managed files while sharing"
+              " this install."
               f" Run there: cd {shlex.quote(path)} && specy-road upgrade")
 
 
 def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = False) -> int:
     """The upgrade's exit code; a git call it depends on failing prints why and is 2."""
     try:
-        return _upgrade(repo_root, dry_run=dry_run, prune=prune)
+        with scratch_environ(None):
+            return _upgrade(repo_root, dry_run=dry_run, prune=prune)
     except GitFailed as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
@@ -369,41 +853,95 @@ def _upgrade(repo_root: Path | None, *, dry_run: bool, prune: bool) -> int:
     else:
         print(f"specy-road {__version__} upgrade: {project}")
     print_install_report()
-    if dry_run:
-        return _dry_run(project, checkout, prune=prune)
-    _apply(project, checkout, prune=prune)
-    valid, digest_ok = _check(project, project, "wrote", scratch_git_env())
+    try:
+        if dry_run:
+            return _dry_run(project, checkout, prune=prune)
+        refused = _apply(project, checkout, prune=prune)
+    except SafeWriteError as e:   # refused before the first write: nothing was applied
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    failed, digest_ok = _check(project, project, "wrote", refused, scratch_git_env())
     _section("next")
-    steps = list(CHECKLIST)
-    if not digest_ok:
-        steps.insert(1, "Run specy-road digest (and specy-road export if roadmap.md is tracked), then commit"
-                        " them. Not specy-road sync: it also fast-forwards the integration branch.")
-    if not valid:
-        steps.insert(0, "Fix the validate errors above; the refreshes are written either way.")
-    for step in steps:
+    steps = [failed, CHECKLIST[0], None if digest_ok else _DIGEST_STEP, *CHECKLIST[1:]]
+    for step in filter(None, steps):
         print(f"- {step}")
     _print_other_worktrees(checkout)
-    return 0 if valid else 1
+    return 0 if failed is None else 1
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road upgrade`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road upgrade",
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_repo_root_arg(p)
-    p.add_argument("--dry-run", action="store_true", help="Show what the refreshes would write and validate a temporary copy with them "
-                   "applied; change nothing in the checkout.")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Show what the refreshes would write and validate a temporary copy "
+                   "with them applied; change nothing in the checkout.")
     p.add_argument(
         "--prune",
         action="store_true",
-        help="Also delete stubs this version no longer installs (e.g. pre-0.3.0 .cursor/commands/specyrd-*.md) "
+        help="Also delete stubs this version no longer installs "
+        "(e.g. pre-0.3.0 .cursor/commands/specyrd-*.md) "
         "and .cursor/.codex copies of the skills in .agents/skills.",
     )
+    p.add_argument("--only", dest="component", choices=tuple(c for c in COMPONENT_OPTIONS if c),
+                   help="Run this one refresh on its own, in the checkout (no validate, no "
+                   "report).")
+    p.add_argument("--diff", action="store_true",
+                   help="With --only stubs: print a unified diff of every stub, skill and managed "
+                   "block that would change; implies --dry-run.")
+    add_profile_options(p, only_flag="--profile")
+    return p
+
+
+#: The options each ``--only`` component reads, by destination; ``None`` is the whole upgrade.
+COMPONENT_OPTIONS: dict[str | None, frozenset[str]] = {
+    None: frozenset({"prune"}),
+    "stubs": frozenset({"prune", "diff"}),
+    "schemas": frozenset(),
+    "profiles": frozenset({"force", "only", "profiles", "check", "render", "capture",
+                           "from_dir", "accept"}),
+}
+_FLAGS = {"prune": "--prune", "diff": "--diff", "force": "--force", "only": "--profile",
+          "profiles": "--profiles", "check": "--check", "render": "--render",
+          "capture": "--capture", "from_dir": "--from", "accept": "--accept"}
+
+
+def _refuse_other_components_options(p: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """``p.error`` (exit 2) for an option given that the chosen component does not read."""
+    where = f"--only {args.component}" if args.component else "the whole upgrade"
+    for dest, flag in _FLAGS.items():
+        if dest in COMPONENT_OPTIONS[args.component] or getattr(args, dest) == p.get_default(dest):
+            continue
+        owners = " or ".join(f"--only {c}" for c, opts in COMPONENT_OPTIONS.items()
+                             if c and dest in opts)
+        p.error(f"{flag} does not apply to {where}; it needs {owners}")
+
+
+def _run_component(p: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """``upgrade --only <component>``: the refresh step the old ``refresh-<component>`` ran."""
+    if args.component == "stubs":
+        refresh_stubs_cli.run(args)
+    elif args.component == "schemas":
+        refresh_schemas_cli.run(args)
+    else:
+        refresh_profiles_cli.check_args(p, args, only_flag="--profile")
+        refresh_profiles_cli.run(args)
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
+    _refuse_other_components_options(p, args)
+    if args.component:
+        _run_component(p, args)
+        return
     try:
-        code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)
+        with safe_write.exit_on_refusal():   # a refusal, or a symlink loop met before the rule
+            code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e

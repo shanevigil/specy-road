@@ -1,0 +1,590 @@
+"""M8.2: hardened launches per harness, the retry watchdog, paused_by_limit, and the post-run check.
+
+Fake harness binaries on PATH record the argv and environment the wrapper really ran them with and replay
+the streams in ``fixtures/worker_turn_check/streams.json`` (constructed from the documented shapes; see its note).
+"""
+
+from __future__ import annotations
+
+from tests.support import REPO
+import json
+import os
+import sys
+import time
+
+import yaml
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import pytest
+
+from tests.support.review import make_review_repo, git
+from tests.support.extracted.worker_repos import nested_project
+
+from specy_road.orchestration.workers import worker_adapter_codex as codex
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as wom
+from specy_road.orchestration.workers import worker_reconcile as wrc
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers import worker_turn_check as tc
+from specy_road.orchestration.workers.worker_adapter_base import file_instruction
+from specy_road.orchestration.workers.worker_adapters import (  # before conftest stubs it
+    EXECUTOR_TOOLS,
+    create_chat as real_create_chat,
+)
+from specy_road.orchestration.workers.worker_adapter_parsers import limit_detail
+
+STREAMS = json.loads((REPO / "tests" / "fixtures/worker_turn_check/streams.json").read_text())
+
+FAKE = '''
+import json, os, subprocess, sys, time
+spec_path = os.environ["FAKE_HARNESS_SPEC"]
+spec = json.load(open(spec_path))
+stdin = sys.stdin.read()
+with open(spec_path + ".calls", "a") as f:
+    f.write(json.dumps({"argv": sys.argv[1:], "codex_home": os.environ.get("CODEX_HOME"), "stdin": stdin}) + "\\n")
+if sys.argv[1:2] == ["create-chat"]:
+    print(spec.get("chat", ""), flush=True)
+    sys.exit(spec.get("chat_exit", 0))
+if spec.get("write"):   # a file the turn writes, such as the executor's READY
+    open(spec["write"]["path"], "w").write(spec["write"]["text"])
+for cmd in spec.get("run", []):
+    subprocess.run(cmd, shell=True, check=True, capture_output=True)
+for d in spec.get("lines", []):
+    print(json.dumps(d), flush=True)
+time.sleep(spec.get("sleep", 0))
+sys.exit(spec.get("exit", 0))
+'''
+
+
+def _harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, **spec) -> Path:
+    """Install a fake ``name`` binary first on PATH; returns its spec file (``.calls`` beside it records runs)."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    exe = bin_dir / name
+    exe.write_text(f"#!{sys.executable}\n{FAKE}")
+    exe.chmod(0o755)
+    path = tmp_path / f"{name}.spec.json"
+    path.write_text(json.dumps(spec))
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("FAKE_HARNESS_SPEC", str(path))
+    return path
+
+
+def _calls(spec: Path) -> list[dict]:
+    calls = Path(f"{spec}.calls")
+    return [json.loads(x) for x in calls.read_text().splitlines()] if calls.is_file() else []
+
+
+def _respec(spec: Path, **kw) -> None:
+    spec.write_text(json.dumps(kw))
+
+
+def _prompt(tmp_path: Path) -> Path:
+    p = tmp_path / "prompt.md"
+    p.write_text("do the leaf")
+    return p
+
+
+def _events(repo: Path, wid: str, type_: str) -> list[ws.WorkerEvent]:
+    return [e for e in ws.events_since(repo, wid) if e.type == type_]
+
+
+def _findings(repo: Path, wid: str) -> set[str]:
+    return {f["kind"] for f in _events(repo, wid, "post_run_check")[-1].detail["findings"]}
+
+
+# --- A1: Claude Code --------------------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_claude_launch_and_resume_pass_mode_tools_and_no_prompts_and_a_denial_flags_the_worker(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = make_review_repo(tmp_path)
+    spec = _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_denied"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    adapter = wa.adapter_for("claude-code")
+    assert wr.run(repo, rec.worker_id, adapter.launch(_prompt(tmp_path), repo, "claude-opus-5-5", None)) == 0
+    argv = _calls(spec)[0]["argv"]
+    resumed = adapter.resume("sid", _prompt(tmp_path), repo, "claude-opus-5-5", None).argv[1:]
+    for args in (argv, resumed):   # the resume keeps the launch's permissions
+        i = args.index("--allowedTools")
+        assert args[i + 1] == EXECUTOR_TOOLS == "Read,Edit,Write,Glob,Grep,Bash"
+        assert args[i + 2:i + 6] == ["--permission-prompts", "none", "--permission-mode", "acceptEdits"]
+        assert args[-1] == wa.STDIN_INSTRUCTION and "-w" not in args and "--worktree" not in args
+    assert _calls(spec)[0]["stdin"] == "do the leaf"
+    # Exit 0 and subtype success, yet the denial is an event and a finding that flags the worker.
+    rec = ws.load_record(repo, rec.worker_id)
+    [denied] = _events(repo, rec.worker_id, "permission_denied")
+    assert denied.detail == {"tool_name": "Bash", "tool_input": {"command": "git push origin HEAD"}, "tool_use_id": "toolu_01"}
+    assert rec.state == "idle" and tc.FLAG_POST_RUN in rec.flags and _findings(repo, rec.worker_id) == {"permission_denied"}
+    [shown] = [w for w in wrc.sync(repo, ack=True) if w["worker_id"] == rec.worker_id]
+    assert tc.FLAG_POST_RUN in shown["flags"] and "post_run_check" in [e["type"] for e in shown["events"]]
+    # The next clean turn clears the flag and adds exactly one clean check event: no findings, a summary saying so.
+    _respec(spec, lines=STREAMS["claude_clean"])
+    wr.run(repo, rec.worker_id, adapter.resume("sid", _prompt(tmp_path), repo, "m", None))
+    assert tc.FLAG_POST_RUN not in ws.load_record(repo, rec.worker_id).flags
+    first, clean = _events(repo, rec.worker_id, "post_run_check")
+    assert first.detail["findings"] and clean.detail == {"findings": []} and clean.summary == "post-run check: clean"
+
+
+@pytest.mark.slow
+def test_a_limit_reported_as_success_pauses_the_worker_and_resume_waits_for_the_reset(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = make_review_repo(tmp_path)
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_limit_as_success"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == tc.PAUSED_BY_LIMIT and rec.lease["holder"] == "broker"   # keeps its slot, like idle
+    reset = datetime.fromisoformat(rec.limit_reset_at)
+    assert reset.astimezone(timezone(timedelta(hours=1))).strftime("%H:%M") == "01:20"   # Europe/Amsterdam in November
+    [limited] = _events(repo, rec.worker_id, "usage_limited")
+    assert limited.detail["reset_at"] == rec.limit_reset_at and "session limit" in limited.detail["evidence"]
+    assert "usage_limit" in _findings(repo, rec.worker_id)
+    with pytest.raises(ws.WorkerError, match="paused by a usage limit until"):
+        wom.message(repo, rec.worker_id, "continue")
+    tc.limit_gate(rec, now=reset + timedelta(seconds=1))   # after the reset: no refusal
+    with pytest.raises(ws.WorkerError):
+        tc.limit_gate(rec, now=reset - timedelta(seconds=1))
+    assert ws.load_record(repo, rec.worker_id).state == tc.PAUSED_BY_LIMIT   # the refusal changed nothing
+
+
+@pytest.mark.slow
+def test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol R1: exit 0, a valid READY for this node at HEAD, and a timed limit: paused, not completed."""
+    repo = make_review_repo(tmp_path)
+    d = ws.reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git(repo, "rev-parse", "HEAD")
+    ready = {"path": str(d / "READY-opus.md"), "text": f"---\nnode_id: M1.1\nagent: opus\nbranch: feature/rm-thing\n"
+             f"commit: {head}\nbase: {head}\nchanged_paths: []\nverify: []\n---\n"}
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_limit_as_success"], write=ready)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    rec = ws.load_record(repo, rec.worker_id)
+    [done] = _events(repo, rec.worker_id, "completion")
+    assert done.detail == {"exit": 0, "ready": True}   # the READY is still on the record's log
+    assert rec.state == tc.PAUSED_BY_LIMIT and rec.limit_reset_at
+    with pytest.raises(ws.WorkerError, match="paused by a usage limit until"):
+        wom.resume(repo, rec.worker_id)
+
+
+def test_the_retry_watchdog_stops_a_harness_retrying_a_rate_limit_past_the_cap(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = make_review_repo(tmp_path)
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_rate_limit_retries"], sleep=60)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    started = time.monotonic()
+    code = wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None))
+    assert code != 0 and time.monotonic() - started < 30   # 900 s announced > the 600 s cap: stopped, not waited out
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == tc.PAUSED_BY_LIMIT and rec.limit_reset_at
+    assert len(_events(repo, rec.worker_id, "api_retry")) == 3
+    [stop] = [e for e in _events(repo, rec.worker_id, "usage_limited") if e.source == "system"]
+    assert stop.detail["source"] == "watchdog" and "600s cap" in stop.detail["evidence"]
+    assert {"api_retry", "usage_limit"} <= _findings(repo, rec.worker_id)
+
+
+def test_retries_a_finished_turn_followed_are_a_finding_not_a_pause(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    watch = tc.TurnWatch(repo, rec)
+    claude = wa.adapter_for("claude-code")
+    for line in (STREAMS["claude_rate_limit_retries"][1], STREAMS["claude_clean"][1]):
+        for parsed in claude.parse_events(json.dumps(line), wa.Launch(["claude"])):
+            watch.observe(parsed)
+    assert watch.pending is None and watch.limit is None and watch.rate_wait == 300
+    assert not tc.close_turn(repo, rec, watch)
+    assert _findings(repo, rec.worker_id) == {"api_retry"}
+
+
+# --- A2: Codex and Cursor ---------------------------------------------------------------------------------
+
+
+def test_codex_runs_exec_json_workspace_write_memories_off_in_a_profile_codex_home(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = make_review_repo(tmp_path)
+    user_home = tmp_path / "user-codex"
+    user_home.mkdir()
+    (user_home / "auth.json").write_text("{}")
+    monkeypatch.setenv("CODEX_HOME", str(user_home))   # the user's own home: only its auth.json is linked
+    spec = _harness(tmp_path, monkeypatch, "codex", lines=STREAMS["codex_try_again"], exit=1)
+    rec = ws.create_record(repo, "M1.1", "codex", "sol", repo, branch="feature/rm-thing")
+    before = datetime.now(timezone.utc)
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("codex").launch(_prompt(tmp_path), repo, "gpt-6.1-sol", None)) == 1
+    [call] = _calls(spec)
+    home = codex.codex_homes() / "gpt-6.1-sol"
+    assert call["argv"][:2] == ["exec", "--json"] and call["argv"][-1] == "-" and call["stdin"] == "do the leaf"
+    for pair in ("sandbox_mode=workspace-write", "approval_policy=never", "features.memories=false",
+                 "memories.use_memories=false", "memories.generate_memories=false"):
+        assert call["argv"][call["argv"].index(pair) - 1] == "-c"
+    assert call["codex_home"] == str(home) and (home / "auth.json").resolve() == (user_home / "auth.json").resolve()
+    # The failure's "try again in" time pauses the worker, exit 1 notwithstanding.
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == tc.PAUSED_BY_LIMIT
+    assert timedelta(minutes=89) < datetime.fromisoformat(rec.limit_reset_at) - before < timedelta(minutes=91)
+    # Resume and hand-off find the thread in the profile's home, with the same memory switches.
+    thread = STREAMS["codex_try_again"][0]["thread_id"]
+    rollout = home / "sessions/2026/11/03" / f"rollout-2026-11-03T01-00-00-{thread}.jsonl"
+    rollout.parent.mkdir(parents=True)
+    rollout.write_text("{}\n")
+    resumed = wa.adapter_for("codex").resume(thread, _prompt(tmp_path), repo, "other-model", None)
+    assert resumed.env == {"CODEX_HOME": str(home)} and "memories.generate_memories=false" in resumed.argv
+    assert wa.adapter_for("codex").human_resume(thread, repo) == ["env", f"CODEX_HOME={home}", "codex", "resume", thread]
+
+
+def test_cursor_creates_the_chat_first_passes_trust_sandbox_and_never_w(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(wa, "create_chat", real_create_chat)
+    spec = _harness(tmp_path, monkeypatch, "agent", chat="chat-7f3a")
+    launch = wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "composer-2.5", None)
+    assert _calls(spec)[0]["argv"] == ["create-chat"]
+    assert launch.session_id == "chat-7f3a" and launch.argv[:4] == ["agent", "-p", "--resume", "chat-7f3a"]
+    assert "--force" not in launch.argv and "--trust" in launch.argv and "enabled" in launch.argv
+    assert launch.argv[-1] == file_instruction(_prompt(tmp_path).resolve())   # M15.9 A1: the file, not its text
+    assert not {"-w", "--worktree"} & set(launch.argv)
+    for cli in ("agent -p -w --force {prompt}", "agent -p --worktree=x {prompt}"):
+        with pytest.raises(wa.Unsupported, match="never pass -w"):
+            wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "m", cli)
+    # The launched event records the permission flags passed: the default sandbox, or the roster's --force opt-in.
+    repo = make_review_repo(tmp_path / "repo")
+    for force, flags in ((False, ["--trust", "--sandbox", "enabled"]), (True, ["--trust", "--force"])):
+        rec = ws.create_record(repo, "M1.1", "cursor", "composer-2.5", repo, branch="feature/rm-thing")
+        launch = wa.adapter_for("cursor").launch(_prompt(tmp_path), repo, "composer-2.5", None, force=force)
+        assert wr.run(repo, rec.worker_id, launch) == 0
+        [launched] = _events(repo, rec.worker_id, "launched")
+        assert launched.detail["permissions"] == flags
+    _respec(spec, chat="", chat_exit=1)
+    with pytest.raises(wa.Unsupported, match="create-chat"):
+        wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "m", None)
+
+
+QUESTION_CAPTURE = REPO / "tests" / "fixtures/cursor_question_tool.jsonl"
+
+
+def _question_capture() -> list[dict]:
+    """Events from the coordinator-supplied Cursor capture.
+
+    That file carries no agent-build or date comment. Its first line is a ``system``/``init`` object
+    (model ``Grok 4.7 256K High``). A leading ``#`` line is skipped so a later build note still replays.
+    """
+    events = []
+    for raw in QUESTION_CAPTURE.read_text(encoding="utf-8").splitlines():
+        text = raw.strip()
+        if not text or text.startswith("#"):
+            continue
+        events.append(json.loads(text))
+    return events
+
+
+def _captured_question_tool(events: list[dict]) -> str:
+    """The tool key on the capture's ``tool_call`` lines (the dict key ending in ``ToolCall``)."""
+    names: list[str] = []
+    for event in events:
+        call = event.get("tool_call")
+        if event.get("type") != "tool_call" or not isinstance(call, dict):
+            continue
+        names.extend(key for key, body in call.items() if isinstance(body, dict) and key.endswith("ToolCall"))
+    unique = list(dict.fromkeys(names))
+    assert len(unique) == 1
+    return unique[0]
+
+
+def _question_calls(events: list[dict], tool: str) -> int:
+    return sum(1 for event in events if event.get("type") == "tool_call" and tool in (event.get("tool_call") or {}))
+
+
+def _keep_question_calls(events: list[dict], tool: str, keep: int) -> list[dict]:
+    seen = 0
+    out: list[dict] = []
+    for event in events:
+        call = event.get("tool_call")
+        if event.get("type") == "tool_call" and isinstance(call, dict) and tool in call:
+            seen += 1
+            if seen > keep:
+                continue
+        out.append(event)
+    return out
+
+
+def _run_stream(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, harness: str, binary: str, lines: list[dict],
+                model: str) -> tuple[Path, ws.WorkerRecord]:
+    """Replay ``lines`` through ``worker_runner.run`` with a fake harness binary, then the record after close."""
+    repo = make_review_repo(tmp_path)
+    _harness(tmp_path, monkeypatch, binary, lines=lines)
+    rec = ws.create_record(repo, "M1.1", harness, model, repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for(harness).launch(_prompt(tmp_path), repo, model, None)) == 0
+    return repo, ws.load_record(repo, rec.worker_id)
+
+
+@pytest.mark.parametrize("keep", [None, 1])
+def test_a_cursor_question_tool_is_one_interactive_finding_per_turn(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, keep: int | None) -> None:
+    """The capture names no agent build or date (no comment line; the first line is system/init)."""
+    events = _question_capture()
+    tool = _captured_question_tool(events)
+    assert _question_calls(events, tool) > 1   # started and completed are two lines of one call
+    replay = events if keep is None else _keep_question_calls(events, tool, keep)
+    repo, rec = _run_stream(tmp_path, monkeypatch, "cursor", "agent", replay, "composer-2.5")
+    logged = _events(repo, rec.worker_id, "interactive_tool")
+    assert len(logged) == _question_calls(replay, tool)
+    assert {event.detail["tool_name"] for event in logged} == {tool}
+    check = _events(repo, rec.worker_id, "post_run_check")[-1]
+    interactive = [f for f in check.detail["findings"] if f["kind"] == "interactive_tool"]
+    assert len(interactive) == 1
+    assert tool in interactive[0]["summary"] and "no person saw it" in interactive[0]["summary"]
+    assert check.summary != "post-run check: clean" and tc.FLAG_POST_RUN in rec.flags
+
+
+def test_cursor_shell_read_and_edit_calls_are_not_an_interactive_tool(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    lines: list[dict] = [{"type": "system", "subtype": "init", "session_id": "c-other", "model": "composer-2.5"}]
+    for key in ("shellToolCall", "readToolCall", "editToolCall"):
+        for subtype in ("started", "completed"):
+            lines.append({"type": "tool_call", "subtype": subtype, "session_id": "c-other",
+                          "tool_call": {key: {"args": {}}}})
+    lines.append({"type": "result", "subtype": "success", "is_error": False, "result": "done", "session_id": "c-other"})
+    repo, rec = _run_stream(tmp_path, monkeypatch, "cursor", "agent", lines, "composer-2.5")
+    assert _events(repo, rec.worker_id, "interactive_tool") == []
+    assert "interactive_tool" not in _findings(repo, rec.worker_id)
+
+
+def test_a_claude_denial_of_the_question_tool_is_not_an_interactive_tool(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tool = _captured_question_tool(_question_capture())
+    sid = "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50"
+    lines = [
+        {"type": "system", "subtype": "init", "session_id": sid, "model": "claude-opus-5-5"},
+        {"type": "result", "subtype": "success", "is_error": False, "result": "not asked", "session_id": sid,
+         "permission_denials": [{"tool_name": tool, "tool_use_id": "toolu_q", "tool_input": {}}]},
+    ]
+    repo, rec = _run_stream(tmp_path, monkeypatch, "claude-code", "claude", lines, "claude-opus-5-5")
+    denied = [f for f in _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"]
+              if f["kind"] == "permission_denied"]
+    assert len(denied) == 1 and tool in denied[0]["summary"]
+    assert _events(repo, rec.worker_id, "interactive_tool") == []
+    assert "interactive_tool" not in _findings(repo, rec.worker_id)
+
+
+# --- A3: the git half of the post-run check ---------------------------------------------------------------
+
+
+def _nested_touch_zones(project: Path, top: Path, zones: list[str]) -> None:
+    phases = json.loads((project / "roadmap" / "phases" / "M1.json").read_text(encoding="utf-8"))
+    phases["nodes"][0]["touch_zones"] = zones
+    (project / "roadmap" / "phases" / "M1.json").write_text(json.dumps(phases), encoding="utf-8")
+    reg = yaml.safe_load((project / "roadmap" / "registry.yaml").read_text(encoding="utf-8"))
+    reg["entries"][0]["touch_zones"] = zones
+    (project / "roadmap" / "registry.yaml").write_text(yaml.safe_dump(reg), encoding="utf-8")
+    git(top, "add", "sr/roadmap")
+    git(top, "commit", "-qm", "touch zones")
+
+
+def _close_turn_findings(project: Path, rec: ws.WorkerRecord, watch: tc.TurnWatch) -> list[dict[str, object]]:
+    tc.close_turn(project, rec, watch)
+    return _events(project, rec.worker_id, "post_run_check")[-1].detail["findings"]
+
+
+@pytest.mark.parametrize("zones", [["sr/src"], ["src"]])
+def test_nested_close_turn_accepts_a_commit_inside_either_zone_form(tmp_path: Path, zones: list[str]) -> None:
+    top, project = nested_project(tmp_path)
+    if zones != ["src"]:   # nested_project's graph already names the zone project-relative
+        _nested_touch_zones(project, top, zones)
+    rec = ws.create_record(project, "M1.1", "claude-code", "opus", top, branch="feature/rm-thing")
+    watch = tc.TurnWatch(project, rec)
+    rel = "sr/src/in_zone.py"
+    (project / "src").mkdir(exist_ok=True)
+    (project / "src" / "in_zone.py").write_text("ok\n", encoding="utf-8")
+    git(top, "add", rel)
+    git(top, "commit", "-qm", "in zone")
+    findings = _close_turn_findings(project, rec, watch)
+    assert not any(f["kind"] == "committed_outside_zones" for f in findings)
+
+
+def test_nested_close_turn_flags_a_commit_outside_git_root_and_project_zones(tmp_path: Path) -> None:
+    top, project = nested_project(tmp_path)
+    rec = ws.create_record(project, "M1.1", "claude-code", "opus", top, branch="feature/rm-thing")
+    watch = tc.TurnWatch(project, rec)
+    (top / "outside").mkdir()
+    (top / "outside" / "x.py").write_text("stray\n", encoding="utf-8")
+    git(top, "add", "outside/x.py")
+    git(top, "commit", "-qm", "outside")
+    findings = _close_turn_findings(project, rec, watch)
+    outside = [f for f in findings if f["kind"] == "committed_outside_zones"]
+    assert outside and outside[0]["paths"] == ["outside/x.py"]
+
+
+@pytest.mark.slow
+def test_post_run_check_reports_branch_stash_porcelain_and_commits_outside_the_zones(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = make_review_repo(tmp_path)
+    spec = _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"], run=[
+        "mkdir -p docs && echo y > docs/y.md && git add docs/y.md && git commit -qm outside",   # zone is src
+        "echo changed >> src/a.py && git stash push -q -m m82-test",
+        "git checkout -q -b elsewhere", "echo stray > stray.txt"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    assert _findings(repo, rec.worker_id) == {"branch", "stash", "porcelain", "committed_outside_zones"}
+    [check] = _events(repo, rec.worker_id, "post_run_check")
+    by_kind = {f["kind"]: f for f in check.detail["findings"]}
+    assert by_kind["porcelain"]["paths"] == ["stray.txt"] and by_kind["committed_outside_zones"]["paths"] == ["docs/y.md"]
+    assert tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
+    # A turn that rewinds HEAD is reported as such.
+    _respec(spec, lines=STREAMS["claude_clean"], run=["git reset -q --hard HEAD~1"])
+    wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").resume("sid", _prompt(tmp_path), repo, "m", None))
+    assert _findings(repo, rec.worker_id) == {"head"}
+    assert git(repo, "branch", "--show-current") == "elsewhere"
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("move", [
+    "local move", "remote-tracking move", "absent to present", "present to absent", "unchanged",
+])
+def test_an_integration_ref_move_is_a_finding_and_the_workers_own_branch_is_not(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, move: str) -> None:
+    """The public runner compares the config's local and remote-tracking integration refs (M22.45)."""
+    repo = make_review_repo(tmp_path)
+    dev, head = git(repo, "rev-parse", "refs/heads/dev"), git(repo, "rev-parse", "HEAD")
+    local, remote = "refs/heads/dev", "refs/remotes/origin/dev"
+    if move == "remote-tracking move":
+        git(repo, "update-ref", remote, dev)
+    script = {
+        "local move": f"git update-ref {local} {head}",
+        "remote-tracking move": f"git update-ref {remote} {head}",
+        "absent to present": f"git update-ref {remote} {head}",
+        "present to absent": f"git update-ref -d {local}",
+        "unchanged": "git commit --allow-empty -qm own-branch",
+    }[move]
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"], run=[script])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    findings = _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"]
+    flagged = tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
+    if move == "unchanged":
+        assert findings == [] and not flagged and git(repo, "rev-parse", "HEAD") != head
+        return
+    ref, before, after = {
+        "local move": (local, dev, head),
+        "remote-tracking move": (remote, dev, head),
+        "absent to present": (remote, None, head),
+        "present to absent": (local, dev, None),
+    }[move]
+    assert findings == [{"kind": "integration_ref", "ref": ref, "before": before, "after": after,
+                         "summary": f"integration ref {ref} {before or '(absent)'} -> {after or '(absent)'}"}]
+    assert flagged
+
+
+@pytest.mark.slow
+def test_a_failed_read_of_an_integration_ref_is_a_check_error(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A broken integration ref is a check error, not an absence and not a clean turn."""
+    repo = make_review_repo(tmp_path)
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"],
+             run=["echo not-a-sha > .git/refs/heads/dev"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    [found] = _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"]
+    assert found["kind"] == "check_error" and found["ref"] == "refs/heads/dev"
+    assert found["summary"].startswith("integration ref refs/heads/dev could not be read:")
+    assert tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
+
+
+# --- parsing ------------------------------------------------------------------------------------------------
+
+
+def test_limit_text_is_read_from_the_turn_never_the_exit_code() -> None:
+    now = datetime(2026, 11, 3, 12, 0, tzinfo=timezone.utc)
+    assert limit_detail("You've hit your usage limit. Try again in 2 days 3 hours.", failed=True, now=now)["reset_at"] \
+        == (now + timedelta(days=2, hours=3)).isoformat()
+    at = limit_detail("You've hit your usage limit. Try again at Nov 5th, 2026 3:05 PM.", failed=True, now=now)["reset_at"]
+    assert at == datetime(2026, 11, 5, 15, 5).astimezone().astimezone(timezone.utc).isoformat()   # Codex prints local time
+    assert limit_detail("Usage limit reached.", failed=True, now=now) == {"reset_at": None, "evidence": "Usage limit reached."}
+    # A successful turn counts only with a stated reset: a reply about rate limiting is not a limit.
+    assert limit_detail("I added rate limit handling to the client.", failed=False, now=now) is None
+    assert limit_detail("boom", failed=True, now=now) is None
+    out = wa.adapter_for("codex").parse_events(json.dumps(STREAMS["codex_try_again"][1]), wa.Launch(["codex"]))
+    assert [p.type for p in out] == ["error", "usage_limited"] and out[1].detail["source"] == "codex turn.failed"
+    claude = wa.adapter_for("claude-code").parse_events(json.dumps(STREAMS["claude_limit_as_success"][1]), wa.Launch(["claude"]))
+    assert [p.type for p in claude] == ["turn_completed", "usage_limited"]
+
+
+@pytest.mark.slow
+def test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol R2: the second turn edits docs/x.md (outside the src zone), dirty since the first: still a finding."""
+    repo = make_review_repo(tmp_path)
+    spec = _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"], run=["echo one > docs/x.md"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    claude = wa.adapter_for("claude-code")
+    wr.run(repo, rec.worker_id, claude.launch(_prompt(tmp_path), repo, "m", None))
+    assert _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"][0]["paths"] == ["docs/x.md"]
+    _respec(spec, lines=STREAMS["claude_clean"], run=["echo two > docs/x.md"])
+    wr.run(repo, rec.worker_id, claude.resume("sid", _prompt(tmp_path), repo, "m", None))
+    checks = _events(repo, rec.worker_id, "post_run_check")
+    assert len(checks) == 2 and checks[-1].detail["findings"][0]["paths"] == ["docs/x.md"]
+    assert tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
+
+
+@pytest.mark.slow
+def test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_terminated(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol (second review): the terminated return in _finish ran no check. The harness here marks its own record
+    terminated mid-turn (``worker terminate`` would signal this test's process group), leaves a stray file and
+    reports a limit: the finding is recorded and flags the worker, and nothing pauses it."""
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    package_parent = Path(ws.__file__).resolve().parents[3]
+    terminate = (f"{sys.executable} -c \"import sys; sys.path.insert(0, '{package_parent}'); from pathlib import Path; "
+                 f"from specy_road.orchestration.workers import worker_state as ws; r = Path('{repo}'); "
+                 f"ws.set_state(r, ws.load_record(r, '{rec.worker_id}'), 'terminated')\"")
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_limit_as_success"],
+             run=["echo stray > stray.txt", terminate])
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    after = ws.load_record(repo, rec.worker_id)
+    assert after.state == "terminated" and after.limit_reset_at is None and tc.FLAG_POST_RUN in after.flags
+    assert _findings(repo, rec.worker_id) == {"porcelain", "usage_limit"}
+    assert not _events(repo, rec.worker_id, "completion")   # the terminated path writes no exit record, as before
+
+
+@pytest.mark.slow
+def test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_finding(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sol (third review): a path dirty at the turn's start that is gone from porcelain at its end (a tracked edit
+    restored, an untracked file deleted) is pre-turn work lost, not a clean turn."""
+    repo = make_review_repo(tmp_path)
+    (repo / "docs/x.md").write_text("the human's edit\n")    # tracked, outside the src zone
+    (repo / "docs/notes.md").write_text("the human's notes\n")   # untracked, outside the zone
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"],
+             run=["git checkout -q -- docs/x.md", "rm docs/notes.md"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    [check] = _events(repo, rec.worker_id, "post_run_check")
+    assert [f["paths"] for f in check.detail["findings"] if f["kind"] == "porcelain"] == [["docs/notes.md", "docs/x.md"]]
+    assert "gone during the turn" in check.summary
+    after = ws.load_record(repo, rec.worker_id)
+    assert after.state == "idle" and tc.FLAG_POST_RUN in after.flags
+
+
+def test_a_paused_worker_frees_its_slot_once_its_leaf_is_over_like_an_idle_one(tmp_path: Path) -> None:
+    """Merging M11.57: paused_by_limit holds its leaf and slot like idle, so it is a held state there too. Otherwise a
+    worker paused at a limit whose leaf then ended elsewhere would hold a max_workers slot for good."""
+    from specy_road.orchestration.workers.worker_orphans import (
+        end_finished_workers,
+        holding_slots,
+        orphans,
+    )
+
+    repo = make_review_repo(tmp_path)
+    gone = tmp_path / "removed-worktree"
+    gone.mkdir()
+    live = ws.set_state(repo, ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing"),
+                        tc.PAUSED_BY_LIMIT, pid=None)
+    lost = ws.set_state(repo, ws.create_record(repo, "M1.2", "claude-code", "opus", gone, branch="feature/rm-other"),
+                        tc.PAUSED_BY_LIMIT, pid=None)
+    gone.rmdir()
+    assert orphans(repo) == {lost.worker_id: f"no claim on M1.2 on dev; worktree {lost.worktree} is gone"}
+    assert [r.worker_id for r in holding_slots(repo, ws.list_records(repo))] == [live.worker_id]
+    assert [r.worker_id for r, _why in end_finished_workers(repo, "M1.1")] == [live.worker_id]   # finish ends it
+    assert ws.load_record(repo, live.worker_id).state == "terminated"

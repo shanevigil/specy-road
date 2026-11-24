@@ -20,7 +20,9 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from specy_road.model_profiles import (
+from specy_road.cli_args import add_json_arg
+from specy_road.cli_entry import run_cli
+from specy_road.orchestration import (
     DEFAULT_MAX_AGE_DAYS,
     GUIDANCE_BYPASS_KEY,
     ROLES,
@@ -31,7 +33,12 @@ from specy_road.model_profiles import (
 )
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_diff, roster_source
-from specy_road.roster_generate import RosterError, format_entries, missing_profile_files, roster_entries, write_entries
+from specy_road.orchestration import (
+    format_entries,
+    missing_profile_files,
+    roster_entries,
+    write_entries,
+)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -189,7 +196,7 @@ def cmd_stale(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10
         for r in reasons:
             print(f"  - {r}")
     if stale and not ns.json:
-        print("\nRe-run the research prompt for that family (docs/design-notes/model-aware-orchestration-proposal.md §7).")
+        print("\nRe-run the research prompt for that family (orchestration proposal §7).")
     return 1 if any(p.path in rostered for p, _ in stale) else 0
 
 
@@ -199,17 +206,13 @@ def cmd_roster(ns: argparse.Namespace) -> int:
     if not requests:
         print("error: name at least one profile with --executor, --reviewer or --coordinator", file=sys.stderr)
         return 2
-    try:
-        entries = roster_entries(requests)
-        if not ns.write:
-            print(format_entries(entries), end="")
-        else:
-            added, skipped = write_entries(root, entries)
-            print(f"added to roadmap/orchestration.yaml: {', '.join(added) or 'none'}"
-                  + (f"; already rostered: {', '.join(skipped)}" if skipped else ""))
-    except RosterError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+    entries = roster_entries(requests)
+    if not ns.write:
+        print(format_entries(entries), end="")
+    else:
+        added, skipped = write_entries(root, entries)
+        print(f"added to roadmap/orchestration.yaml: {', '.join(added) or 'none'}"
+              + (f"; already rostered: {', '.join(skipped)}" if skipped else ""))
     for note in missing_profile_files(root, entries):
         print(f"note: {note}", file=sys.stderr)
     return 0
@@ -222,21 +225,21 @@ def build_parser() -> argparse.ArgumentParser:
     msub = models.add_subparsers(dest="models_cmd", required=True)
 
     ls = msub.add_parser("list", help="The roster with each model's profile, role scores, and staleness")
-    ls.add_argument("--json", action="store_true")
+    add_json_arg(ls)
     add_repo_root_arg(ls)
     ls.set_defaults(func=cmd_list)
 
     show = msub.add_parser("show", help="One model's profile: machine fields plus a body section")
     show.add_argument("model", help="Roster id or profile api_id")
     show.add_argument("--section", help="Body section to print (default: Prompting rules)")
-    show.add_argument("--json", action="store_true")
+    add_json_arg(show)
     add_repo_root_arg(show)
     show.set_defaults(func=cmd_show)
 
     st = msub.add_parser("stale", help="Profiles whose research is old, superseded, or alias-moved; exit 1 if any is rostered")
     st.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE_DAYS)
     st.add_argument("--today", help="YYYY-MM-DD, for reproducible checks")
-    st.add_argument("--json", action="store_true")
+    add_json_arg(st)
     add_repo_root_arg(st)
     st.set_defaults(func=cmd_stale)
 
@@ -251,9 +254,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    ns = build_parser().parse_args(argv)
-    raise SystemExit(ns.func(ns))
+    """Run a models command. A command error is printed once and becomes its exit code."""
+    run_cli(build_parser, argv)
 
 
 if __name__ == "__main__":

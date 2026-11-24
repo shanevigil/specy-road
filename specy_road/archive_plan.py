@@ -1,17 +1,19 @@
 """Decide *what* an archive would move, without touching disk.
 
-Split from :mod:`specy_road.archive_ops` so ``--dry-run`` and the PM GUI's
+Kept apart from :mod:`specy_road.archive_ops` so ``--dry-run`` and the PM GUI's
 eligibility check can reuse the exact reasoning the real archive runs, instead
-of a second approximation of it that can drift.
+of a second approximation of it that can drift. The plan also records the
+archived subtree's git provenance (:func:`capture_provenance`), read-only.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from specy_road.clock import utc_now_iso
+from specy_road.git_subprocess import git_text
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import find_record, load_archive_index, node_summary
 from specy_road.milestone_subtree import subtree_node_ids
@@ -56,10 +58,6 @@ class ArchivePlan:
         return [n["id"] for n in self.nodes if isinstance(n.get("id"), str)]
 
 
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def build_archive_id(node: dict[str, Any], archived_at: str) -> str:
     """``<node_id>-<node_key[:8]>-<YYYYMMDD>`` — stable, readable, path-safe."""
     nid = str(node.get("id") or "node")
@@ -84,7 +82,7 @@ def assert_archivable(
     nodes: list[dict[str, Any]], node_id: str, *, force: bool = False
 ) -> dict[str, Any]:
     """Return the root node, or raise ``ValueError`` explaining why it can't archive."""
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+    from specy_road.roadmap_load import compute_rollup_status
 
     from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 
@@ -138,14 +136,12 @@ def plan_archive(
     way — pull the subtree's nodes into one archive chunk and rewrite whatever
     remains back to each source.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import (
+    from specy_road.roadmap_chunk_utils import (
         build_node_chunk_map,
         load_json_chunk,
         roadmap_dir,
     )
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
-
-    from specy_road.archive_git import capture_provenance
+    from specy_road.roadmap_load import load_roadmap
 
     nodes = load_roadmap(root)["nodes"]
     root_node = assert_archivable(nodes, node_id, force=force)
@@ -236,7 +232,7 @@ def _refuse_if_manifest_would_empty(root: Path, edits: list[ChunkEdit]) -> None:
     that empty means no chunks, so the guard stands on its own terms -- a
     roadmap with nothing live in it is not a state to archive a repo into.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
+    from specy_road.roadmap_chunk_utils import load_manifest_mapping
 
     includes = [
         rel for rel in (load_manifest_mapping(root).get("includes") or [])
@@ -339,4 +335,97 @@ def build_record(plan: ArchivePlan, *, chunk_rel: str) -> dict[str, Any]:
         "planning": planning_moves(plan),
         "bundle": None,
         "git": plan.git or None,
+    }
+
+# --- Git provenance for an archived subtree ----------------------------------
+#
+# Answers "what was this work delivered on?" by reading ``milestone_execution``
+# off the archived root node and resolving what git still knows: the rollup
+# tip, the merge commit that carried it into the integration branch, and the
+# nearest tag reachable from there.
+#
+# Every lookup is best-effort and returns ``None`` rather than raising. A repo
+# with no rollup history, deleted branches, or no tags at all still archives
+# cleanly — it simply records less. Nothing here creates git objects.
+
+
+def resolve_ref(repo: Path, branch: str | None, remote: str | None = None) -> str | None:
+    """SHA for ``branch``, trying the local ref then ``<remote>/<branch>``.
+
+    Rollup branches are routinely deleted locally once merged, so the remote
+    ref is often the only one left.
+    """
+    if not branch:
+        return None
+    candidates = [branch, f"refs/heads/{branch}"]
+    if remote:
+        candidates.append(f"{remote}/{branch}")
+        candidates.append(f"refs/remotes/{remote}/{branch}")
+    for ref in candidates:
+        sha = git_text(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], repo)
+        if sha:
+            return sha
+    return None
+
+
+def merge_commit_for(repo: Path, rollup_tip: str, integration_sha: str) -> str | None:
+    """The merge that first brought ``rollup_tip`` into the integration branch.
+
+    ``--ancestry-path`` restricts the walk to commits that actually descend from
+    the rollup tip, so unrelated merges on the integration branch are excluded.
+    ``rev-list`` emits newest-first, so the **last** line is the earliest such
+    merge — the one that landed the work.
+    """
+    out = git_text(
+        [
+            "rev-list",
+            "--ancestry-path",
+            "--merges",
+            f"{rollup_tip}..{integration_sha}",
+        ],
+        repo,
+    )
+    if not out:
+        return None
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    return lines[-1] if lines else None
+
+
+def nearest_tag(repo: Path, ref: str | None) -> str | None:
+    """Closest tag reachable from ``ref`` (``git describe --tags --abbrev=0``)."""
+    if not ref:
+        return None
+    return git_text(["describe", "--tags", "--abbrev=0", ref], repo) or None
+
+
+def capture_provenance(root: Path, root_node: dict[str, Any]) -> dict[str, Any]:
+    """Provenance block for the archive record, from ``milestone_execution`` + git.
+
+    Returns a dict with every key present (``None`` where unknown) so the record
+    shape stays stable and readers never have to distinguish "absent" from
+    "unresolvable".
+    """
+    me = root_node.get("milestone_execution")
+    me = me if isinstance(me, dict) else {}
+    rollup_branch = me.get("rollup_branch")
+    integration_branch = me.get("integration_branch")
+    remote = me.get("remote")
+    closed_at = me.get("closed_at")
+
+    rollup_tip = resolve_ref(root, rollup_branch, remote)
+    integration_sha = resolve_ref(root, integration_branch, remote)
+    merge_commit = (
+        merge_commit_for(root, rollup_tip, integration_sha)
+        if rollup_tip and integration_sha
+        else None
+    )
+    return {
+        "rollup_branch": rollup_branch if isinstance(rollup_branch, str) else None,
+        "integration_branch": (
+            integration_branch if isinstance(integration_branch, str) else None
+        ),
+        "rollup_tip": rollup_tip,
+        "merge_commit": merge_commit,
+        "nearest_tag": nearest_tag(root, merge_commit or rollup_tip),
+        "closed_at": closed_at if isinstance(closed_at, str) else None,
     }

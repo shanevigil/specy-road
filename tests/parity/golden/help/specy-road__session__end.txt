@@ -1,0 +1,18 @@
+$ specy-road session end --help
+exit: 0
+--- stdout ---
+usage: specy-road session end [-h] [--force] [--agent AGENT] [--repo-root DIR] [ID]
+
+positional arguments:
+  ID               End this record instead (or pass --agent): yours, or an expired one the same
+                   user started; another agent's live record is refused
+
+options:
+  -h, --help       show this help message and exit
+  --force          A human at a terminal (stdin a TTY) ends another agent's live record of the
+                   same user
+  --agent AGENT    Session id (default: $SPECY_ROAD_AGENT_ID, else <user>-s<POSIX session id>)
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

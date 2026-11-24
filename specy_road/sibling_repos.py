@@ -13,8 +13,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.git_subprocess import git_code, git_text
-from specy_road.nested_repos import in_nested, is_repo_top, nested_prefixes
+from specy_road.git_subprocess import git_code, git_root, git_text, is_worktree_root
+from specy_road.nested_repos import in_nested, nested_prefixes
 from specy_road.runtime_paths import project_prefix
 
 #: Directories never searched: git's own, specy-road's runtime state (worktrees live there), dependencies.
@@ -47,7 +47,7 @@ def _untracked_by_root(project_root: Path, rel: str) -> bool:
 
 def sibling_repos(project_root: Path) -> list[Sibling]:
     """Each sibling repository under ``project_root``, sorted by path; none outside a git checkout."""
-    if git_text(["rev-parse", "--show-toplevel"], project_root) is None:
+    if git_root(project_root) is None:
         return []
     prefix, configured = project_prefix(project_root), nested_prefixes(project_root)
     found: list[Sibling] = []
@@ -61,7 +61,11 @@ def sibling_repos(project_root: Path) -> list[Sibling]:
             rel = c.relative_to(project_root).as_posix()
             if in_nested(f"{prefix}{rel}", configured):
                 continue
-            if (c / ".git").exists() and is_repo_top(c):
+            try:
+                has_git = (c / ".git").exists()
+            except OSError:
+                continue   # a directory that cannot be searched holds nothing walk can read
+            if has_git and is_worktree_root(c):
                 if _untracked_by_root(project_root, rel):
                     status = git_text(["status", "--porcelain"], c)
                     found.append(Sibling(rel, git_text(["rev-parse", "HEAD"], c), bool(status) or status is None))

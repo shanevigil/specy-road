@@ -50,7 +50,7 @@ specy-road export --check --repo-root playground
 specy-road brief M1.1 -o playground/work/brief-M1.1.md --repo-root playground
 ```
 
-Add other subcommands the same way (`sync`, `scaffold-planning`, registry-aware flows, etc.). If you omit `--repo-root`, the default is the **git worktree root** (the specy-road clone), which is usually wrong for this workflow.
+Add other subcommands the same way (`sync`, `planning scaffold`, registry-aware flows, etc.). If you omit `--repo-root`, the default is the **git worktree root** (the specy-road clone), which is usually wrong for this workflow.
 
 ---
 
@@ -74,7 +74,7 @@ Open the Gantt UI at the URL printed on startup (by default **`http://127.0.0.1:
 
 **Settings sanity check:** In the GUI sidebar → **Settings**, confirm **Open repository:** points at your **`…/playground`** path (not only the parent specy-road clone). File-backed credentials (LLM, Git remote) and browser-only chart options are both scoped to that resolved path; if the path is wrong, restart with `specy-road gui --repo-root playground` (see [docs/pm-workflow.md](../docs/pm-workflow.md) for global vs per-repo inheritance).
 
-After you **pull** changes to this clone, you can refresh the editable install and GUI build with **`specy-road update --install-gui-stack`** (same idea as `init gui --install-gui`; see "Updating an editable clone" in [`docs/contributor-guide.md`](../docs/contributor-guide.md)).
+After you **pull** changes to this clone, you can refresh the editable install and GUI build with **`specy-road self-update --install-gui-stack`** (same idea as `init gui --install-gui`; see "Updating an editable clone" in [`docs/contributor-guide.md`](../docs/contributor-guide.md)).
 
 After you change sources under **`gui/pm-gantt/`**, rebuild bundled assets, then restart the GUI:
 

@@ -8,18 +8,18 @@
 **Must know without reading on:**
 - The executor never reviews its own leaf, and the coordinator's own session is never a reviewer; every review record attests this and the gate checks it. The one exception is the default interactive human approval in `mark-implementation-reviewed`, which writes `REVIEW-human.md` with `is_coordinator: true` by design.
 - A review is a file under `work/reviews/<NODE_ID>/` bound to one commit; any later commit (other than one touching only `roadmap/registry.yaml`) makes it stale.
-- Order: `specy-road review-packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review). The packet header and `handoff status` report a trial merge (`git merge-tree`, nothing checked out) of the integration branch into the leaf's branch: a conflict on any path outside `work/`, `roadmap/`, `planning/`, `roadmap.md` and `roadmap-context.md` means the executor merges and resolves before reviewers run, and `mark-implementation-reviewed` and `finish-this-task` refuse, before any bookkeeping commit, until it is resolved. The integration ref is the remote-tracking one as last fetched, else the local branch.
+- Order: `specy-road review packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review). The packet header and `review status` report a trial merge (`git merge-tree`, nothing checked out) of the integration branch into the leaf's branch: a conflict on any path outside `work/`, `roadmap/`, `planning/`, `roadmap.md` and `roadmap-context.md` means the executor merges and resolves before reviewers run, and `mark-implementation-reviewed` and `finish-this-task` refuse, before any bookkeeping commit, until it is resolved. The integration ref is the remote-tracking one as last fetched, else the local branch.
 - The policy is `roadmap/orchestration.yaml` as read from the integration branch; a feature branch cannot lower its own bar.
 
 **Read further for:**
 - the step sequence from pickup to finish → "The flow"
 - roster, policy keys, substitutions, model choice → "`roadmap/orchestration.yaml`", "Choosing and prompting models"
 - READY, PACKET and REVIEW file shapes and what `review record` rejects → "Hand-off files: `work/reviews/<NODE_ID>/`"
-- what counts, `Reviewed-by` trailers, signed reviews, `handoff status` → [orchestration-review.md](orchestration-review.md)
+- what counts, `Reviewed-by` trailers, signed reviews, `review status` → [orchestration-review.md](orchestration-review.md)
 - grind-session hooks and step mode → "Unattended loops"
 - `session start|guard`, the harness hook adapters, several agents in one tree, migrating → "Presence: `specy-road session`", "Working in one shared checkout", "Upgrading from 0.2.x"
 
-**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`orchestration-review.md`](orchestration-review.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
+**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`orchestration-review.md`](orchestration-review.md), [`grind-session.md`](grind-session.md).
 
 specy-road separates three roles around a roadmap leaf and prescribes how work passes
 between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit. Other tools also drive those CLIs as workers; what is specy-road's is the governance around them, set out in [Where specy-road sits](philosophy-and-scope.md#where-specy-road-sits).
@@ -34,9 +34,9 @@ between them — not **which** agent, IDE or vendor fills a role; a human, Claud
 coordinator  do-next-available-task            → work/brief-<ID>.md, feature/rm-<codename>
 executor     implement, commit, commit summary → work/implementation-summary-<ID>.md
 executor     write READY-<agent>.md            → work/reviews/<ID>/READY-<agent>.md
-coordinator  specy-road review-packet <ID>     → work/reviews/<ID>/PACKET.md
+coordinator  specy-road review packet <ID>     → work/reviews/<ID>/PACKET.md
 reviewer(s)  read PACKET.md, write notes       → specy-road review record <ID> …
-coordinator  specy-road handoff status <ID>    → approved?
+coordinator  specy-road review status <ID>     → approved?
 coordinator  specy-road mark-implementation-reviewed
 coordinator  specy-road finish-this-task
 ```
@@ -113,7 +113,9 @@ one, else the local branch — not from the branch under review, so a feature br
 own bar; the gate is also on when either that branch or the working tree sets
 `require_implementation_review_before_finish`. In a repo with remotes, the branch's name comes from
 `roadmap/git-workflow.yaml` as committed on the remote's default branch (`refs/remotes/<remote>/HEAD`,
-which `git clone` sets and `git remote set-head <remote> --auto` restores; it must exist), whose copy
+which the gate needs. `git clone` sets it; `git remote set-head <remote> <name>` restores it, and
+`<name>` is that remote's real default branch. `git remote set-head <remote> --auto` fails when the
+remote's HEAD is unborn), whose copy
 must also name the same remote as `HEAD`'s; in a repo with no remote, from the copy at `HEAD`. The
 working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are ignored. The named branch
 must name itself in its own committed copy, and with remotes only `refs/remotes/<remote>/<branch>` is
@@ -125,7 +127,7 @@ a feature branch is ignored by the gate, flagged in the review packet, and, like
 ## Choosing and prompting models
 
 Profiles, `models`, `prompt` and `orchestrate plan`: [orchestration-models.md](orchestration-models.md);
-`specy-road worker` (a leaf on another harness): [orchestration-workers.md](orchestration-workers.md); a roster in one command (`models roster`), a model coordinator and `orchestrate plan --spread`: [orchestration-roster.md](orchestration-roster.md).
+`specy-road worker` (a leaf or a chore on another harness), a roster in one command (`models roster`), a model coordinator and `orchestrate plan --spread`: [orchestration-workers.md](orchestration-workers.md).
 
 **One readiness rule.** `do-next-available-task`, `grind-session --plan` and `orchestrate plan` agree on
 which leaves are ready: the same dependency, claim and status check, minus leaves already Complete on an
@@ -143,7 +145,19 @@ a `senior` executor.
 ## Human decisions ledger (`roadmap/decisions.yaml`)
 
 Open questions for a person live in **`roadmap/decisions.yaml`** beside `registry.yaml`. The file is
-schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road refresh-schemas`).
+schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road upgrade --only schemas`).
+An id-changing move rewrites `node` here for every entry whose `node` is an old id (any kind and
+status, one lookup of the node it had when loaded, so a chain, a swap, or a YAML alias of the
+same entry stays correct), in the same transaction as the chunks,
+planning sheets and registry. The file is written only when an entry changed; an absent file stays
+absent; a file that does not parse, is not UTF-8, cannot be opened, or fails the schema refuses
+the move before any write. A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`) fails that
+schema and is not treated as an empty ledger.
+`specy-road validate` prints one stdout notice listing each open decision or human-action and each
+active preference whose `node` is a non-empty string naming no live node. Closed entries, expired
+preferences and entries with no `node` are omitted, and `--strict` does not count the notice. A
+missing ledger, one that is not valid UTF-8 or cannot be opened, or a schema-invalid ledger adds
+nothing.
 Each **open** entry carries:
 
 | Field | Meaning |
@@ -159,16 +173,20 @@ Each **open** entry carries:
 | `asked` | ISO date when opened |
 | `needed_by` | Optional ISO date by which an answer is needed |
 
-**CLI:** `specy-road decisions add|list|close`. Schema validation runs before `add` writes the file
+**CLI:** `specy-road decisions add`, `specy-road decisions list` and `specy-road decisions close`. Schema validation runs before `add` writes the file
 and before `list` prints it. `list` prints every open entry, those with `needed_by` first in ascending
-date order and those without a deadline last. `close` records the answer and the closed time only
-after the same line appears in the planning-sheet **decision block** (optional list marker or
-checkbox in front). That block is the first level-2 section whose heading normalises to
-`decisions and notes` or `decisions`, chosen only after CommonMark fences (a backtick or tilde run of
-at least 3, closed by a later run of the same character at least that long) are removed from the
-whole sheet. A heading or matching line that exists only inside a fence does not count, and neither
-does a matching line in another section. Indented code, HTML comments, and blockquotes are left as
-written. `asked` and `needed_by` are calendar dates `YYYY-MM-DD`; `add` rejects any other string
+date order and those without a deadline last. `close <ID> --answer ...` records the answer and the
+closed time in the ledger; no planning-sheet line is needed. A person's decision on a leaf's `human:`
+acceptance criterion is a `human-action` entry opened with `add <NODE> --kind human-action --criterion
+A#` (any caller may open it; `add` refuses another kind, an `A#` that is not a `human:` criterion of
+the node, and a second open entry for the same node and criterion). Only a person closes it: `close`
+on such an entry refuses, writing nothing, when stdin is not a terminal, when
+`SPECY_ROAD_ORCHESTRATION_ROLE` is set to anything but exactly `coordinator`, or when git `user.name`
+or `user.email` is unset, and there is no `--yes`; otherwise it shows the node, the criterion and the
+answer and asks `y/N`, and `y` closes it with `decided_by: operator`, `channel: terminal` and the
+answer ending `(recorded by <name> <email>)`. The PM GUI's answer closes it too (`channel: pm-gui`).
+`finish-this-task` reads it ([roadmap-authoring.md](roadmap-authoring.md), the `acceptance` row).
+`asked` and `needed_by` are calendar dates `YYYY-MM-DD`; `add` rejects any other string
 before writing, and `list` rejects a file whose date is not a real calendar day (for example
 `2026-99-99` or `2026-02-30`). Datetimes are out of scope for those two fields.
 
@@ -187,10 +205,10 @@ agent's context, so they survive a context reset, an account switch or a differe
 They are **not roster config**: availability and pauses come only from the roster (`available`,
 `paused_until`), and `orchestrate plan` flags a preferred model the roster lacks or marks unavailable.
 `list` shows active preferences first and drops expired ones. `--supersedes <id>` closes the old rule as
-it records the new; `close <id> --answer "<why>"` needs no sheet record. `orchestrate plan` never
+it records the new; `close <id> --answer "<why>"` drops it. `orchestrate plan` never
 applies them: it prints them (JSON `preferences_not_applied`); the coordinator reads them each session
 and before each delegate or review launch. A project with its own `schemas/decisions.schema.json` runs
-`refresh-schemas` first.
+`specy-road upgrade --only schemas` first.
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
@@ -198,7 +216,7 @@ Plain files work across every harness, including IDE chats that cannot see each 
 The directory always resolves to the **main** worktree: an executor in a linked worktree writes its hand-off there by absolute path, and every command — including the gate run from that worktree — reads the same files. Executors write READY with `specy-road ready <NODE_ID> --model <id> --run '<cmd>'`, which runs each verifier and records its exit and output `tail` ([orchestration-review.md](orchestration-review.md)); new scaffolds also ship `work/handoff-ready.template.md` (for `blocked_on`) and `work/review-record.template.md`.
 
 Records are read from the working tree and are untracked by design (`work/reviews/` is gitignored), so they never travel with a push; the review policy, by contrast, comes from `roadmap/orchestration.yaml` on the integration branch. What persists is the outcome: the gate writes one `Reviewed-by:` trailer per approval into git history.
-A repository that never pushes claims still sees its records: `handoff status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only. Every read-only review command takes the same `--ref <branch or commit>` in place of a claim: `review-packet`, `prompt` (so a second-family reviewer prompt for a Complete node needs no claim; the prompt passes the `--ref` on to the reviewer's `review record`), `handoff status`, and `review list <NODE_ID>`, which prints each filed record's verdict, model, family and commit, then the gate evaluation, and writes nothing.
+A repository that never pushes claims still sees its records: `review status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only. Every read-only review command takes the same `--ref <branch or commit>` in place of a claim: `review packet`, `prompt` (so a second-family reviewer prompt for a Complete node needs no claim; the prompt passes the `--ref` on to the reviewer's `review record`), and `review status`, which for one `<NODE_ID>` also prints each filed record's verdict, model, family and commit, then the gate evaluation, and writes nothing.
 
 ### `READY-<agent>.md` — the executor's hand-off
 
@@ -220,12 +238,12 @@ Quote SHAs: `commit` and `base` are read exactly as written, so YAML cannot turn
 `0123456` into an octal number here, but quoting keeps other tools reading the file from doing so.
 
 A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
-`handoff status` and marked in the packet; a reviewer, not the gate, judges it.
+`review status` and marked in the packet; a reviewer, not the gate, judges it.
 A READY naming another node or branch is misfiled: listed as invalid, never read by the packet or a worker.
 
 ### `PACKET.md` — what a reviewer reads
 
-`specy-road review-packet <NODE_ID>` assembles:
+`specy-road review packet <NODE_ID>` assembles:
 
 1. the brief, with the node's goal and acceptance criteria numbered `A1..An`;
 2. the implementation summary;
@@ -294,13 +312,13 @@ specy-road review record M1.2 --model claude-opus-5-5 --verdict block --file not
   `mark-implementation-reviewed`, so an agent cannot file one.
 
 It sets `family` from the roster; a `family` written in the file is ignored. When policy
-requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from. A filing (`review record`, and the human approval of `mark-implementation-reviewed`) takes the leaf's review lock: it waits up to 10 seconds for another filing, and while a `review delegate` or `prompt --channel cli --run` on the same leaf holds the lock it exits 1, writing nothing, so it never voids that reviewer's run; file again when the run ends (`review list <ID>`).
+requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from. A filing (`review record`, and the human approval of `mark-implementation-reviewed`) takes the leaf's review lock: it waits up to 10 seconds for another filing, and while a `review delegate` or `prompt --channel cli --run` on the same leaf holds the lock it exits 1, writing nothing, so it never voids that reviewer's run; file again when the run ends (`review status <ID>`).
 
-`handoff status` and `review list` report, per leaf, its review rounds (distinct reviewed commits) and the time from its first review to the latest (`n/a` with a single review). Two or more review rounds per leaf are normal under a two-family policy: the second family often blocks on something the first passed, and each fix is a new commit to review. Escalation (`escalate_review_rounds`, default 5) is what marks a loop that is not converging.
+`review status` reports, per leaf, its review rounds (distinct reviewed commits) and the time from its first review to the latest (`n/a` with a single review). Two or more review rounds per leaf are normal under a two-family policy: the second family often blocks on something the first passed, and each fix is a new commit to review. Escalation (`escalate_review_rounds`, default 5) is what marks a loop that is not converging.
 
 ## The review gate
 
-How records count, `Reviewed-by` trailers, signed reviews, `handoff status`, and review-loop escalation: [orchestration-review.md](orchestration-review.md). The gate never counts a record, approval or block, signed or not, from a model id that filed a valid `READY-<agent>.md` on the leaf (the executor or a fix author), and `review delegate` refuses that model before it writes anything. Another model of the same family still counts, judged against the other reviewers by `reviewers_distinct_families`. A READY is an unsigned file its writer creates, so this check is cooperative attestation, not enforcement, unless signing keys are out of the executor's reach.
+How records count, `Reviewed-by` trailers, signed reviews, `review status`, and review-loop escalation: [orchestration-review.md](orchestration-review.md). The gate never counts a record, approval or block, signed or not, from a model id that filed a valid `READY-<agent>.md` on the leaf (the executor or a fix author), and `review delegate` refuses that model before it writes anything. Another model of the same family still counts, judged against the other reviewers by `reviewers_distinct_families`. A READY is an unsigned file its writer creates, so this check is cooperative attestation, not enforcement, unless signing keys are out of the executor's reach.
 
 ## Unattended loops
 
@@ -310,10 +328,10 @@ loop has to record an independent review each cycle. One way is a pre-finish hoo
 ```bash
 specy-road grind-session --on-complete merge --implement-mode hook \
   --implement-cmd 'executor-cli "$SPECY_ROAD_PROMPT"' \
-  --pre-finish-cmd 'ID="$SPECY_ROAD_NODE_ID"; specy-road review-packet "$ID" &&
+  --pre-finish-cmd 'ID="$SPECY_ROAD_NODE_ID"; specy-road review packet "$ID" &&
     specy-road prompt "$ID" --role reviewer --model <reviewer-id> --channel paste &&
     reviewer-cli "$(cat work/prompt-"$ID"-reviewer-<reviewer-id>.md)" &&
-    specy-road handoff status "$ID" &&
+    specy-road review status "$ID" &&
     specy-road mark-implementation-reviewed --yes'
 ```
 
@@ -326,6 +344,69 @@ fresh executor sub-agent, has a **different** fresh sub-agent of a rostered revi
 `PACKET.md` and file `review record`, runs `mark-implementation-reviewed --yes` (its shell is not a
 TTY), then `grind-session --step finish`. Anything that modifies files runs before the review, since a
 later commit makes it stale. Under the default human-only roster the agent cannot close the gate; it stops and asks the human to approve in a terminal.
+
+## Orchestration state: the read-only snapshot
+
+`specy_road.orchestration.snapshot(repo_root)` is the one read of orchestration state for any
+consumer outside the orchestration code: the PM GUI's orchestration view (phase M17) reads it, and
+so may a script. It writes nothing: no worker record, registry row, review file, git object or git
+index change. For the duration of that call, every list-form `git` subprocess on the calling
+thread — its own and the review package's readers — is `git -c core.fsmonitor=false -c core.hooksPath=/dev/null`
+with `GIT_OPTIONAL_LOCKS=0`. A shell-string git command is not rewritten. It runs no stall sweep,
+ack, fetch, check or harness command.
+`worker list` and doctor's claim report read the same state (`specy_road.orchestration.read_state`).
+`orchestrate plan` and every other reader of the session plan take their claimed leaves from its claim
+read (`read_claims`), and refuse a registry it reads as `unknown` rather than plan as if nothing were
+claimed.
+Writes stay in the modules that make them (`worker`, `pickup`, `finish`, `review record`). Import
+from `specy_road.orchestration` only; `scripts/check_import_layers.py` lists any gate, CLI or
+`gui_app` module that imports a module inside it.
+
+The fields are fixed by [`tests/fixtures/orchestration_snapshot_v2.json`](../tests/fixtures/orchestration_snapshot_v2.json)
+(`schema: 2`). Schema 1 ([`tests/fixtures/orchestration_snapshot_v1.json`](../tests/fixtures/orchestration_snapshot_v1.json))
+keeps every name, type and value; schema 2 only adds fields. A field is added or renamed only under a new schema number.
+
+| Field | What it holds |
+| --- | --- |
+| `schema` | `2` |
+| `leaves.<node id>.claim` | The registry row: `codename`, `branch`, `registered_at` (its `started` date or `null`); `null` for a leaf with workers and no claim |
+| `leaves.<node id>.workers[]` | `id`, `harness`, `model`, `status` (the record's state), `pid_alive` (its wrapper is running), `started_at`, `ended_at` (`null` until completed, failed or terminated); schema 2 also `account`, `last_activity`, `flags` |
+| `leaves.<node id>.worktrees[]` | `path`, `branch` (`null` when detached), `dirty`: every worktree on the claim's branch and every one a worker of the leaf names; schema 2 also `ahead`, `behind` |
+| `leaves.<node id>.reviews[]` | Each `REVIEW-*.md`: `model`, `verdict`, `commit`, `fresh_for_head` (the commit is the branch tip) |
+| `leaves.<node id>.status` | `claimed`, `running`, `exited_ok`, `exited_failed`, `abandoned` or `unknown` |
+| `leaves.<node id>.ready` | The READY `latest_ready` selects for the registered branch: `commit`, `model` (its `agent`), `at` (the file's mtime, ISO UTC), and `blocked_on` while that READY is current at the commit under review (`null` when there is no READY) |
+| `leaves.<node id>.gate` | `state` (the label `review status` reports, from the review gate's public `review_state`, without a trial merge), `approvals` and `blocks` (counted records), `fresh_for_head` (the commit under review is the branch tip) |
+| `leaves.<node id>.holds` | `{source: "hold_list", id, reason}` when the leaf is listed in the main checkout's `work/grind-hold.txt` (one id per line, `#` starts a reason), plus `{source: "gate", id, reason}` for each open gate the leaf depends on, as `list-gates` reports |
+| `leafless_workers[]` | Workers on a chore, and each worker record that cannot be read |
+
+`account` is the Claude profile name when the worker record (its `claude-config-dir` file) or its roster
+entry names the `CLAUDE_CONFIG_DIR` it ran with: that directory's name, or its parent's when the directory
+is named `claude` or `.claude`. A quoted roster value keeps its spaces (`CLAUDE_CONFIG_DIR="<dir with spaces>/work/claude"`
+is `work`). An unquoted value ends at whitespace. Otherwise `null`. It is never a path, credential or
+environment value.
+`last_activity` is the newer of the last event time and `last_output_at`. `flags` are the record's flags,
+plus `paused_by_limit` while the record's state is `paused_by_limit` (a usage-limit pause is a worker
+flag, not a hold). `ahead` and `behind` are integers against the local integration ref, or `unknown`
+when that ref or the worktree's branch cannot be read. A non-UTF-8, non-mapping or schema-invalid READY,
+review or worker record sets only that source's fields to `unknown`. An unreadable registry leaves
+`ready` and `gate` `unknown` as well as `claim`. An unreadable `grind-hold.txt` (it is read only as a
+regular file), or a roadmap that cannot be loaded, sets `holds` to `unknown`.
+
+A leaf's status is the first rule that holds:
+
+1. a worker on the leaf is `starting`, `running`, `idle` or `paused_by_limit` (one is enough when there are several): `running`;
+2. the registry cannot be read: `unknown`;
+3. the claim has no live worker, no live `session` on its branch and no valid READY at the branch tip: `abandoned`, the claims doctor reports under "Claims with no live worker" (a fresh manual claim included);
+4. the latest worker (highest attempt) is `completed`: `exited_ok`;
+5. the latest worker is `failed` or `terminated`: `exited_failed`;
+6. otherwise (a claim kept by a live session or a READY at its tip): `claimed`.
+
+A source that cannot be read sets only its own fields to `unknown`: an unreadable worker record is
+listed under `leafless_workers` with its id and every other field `unknown`, and statuses are judged
+from the readable records; a registry is known only when it is absent, or is UTF-8 YAML whose top level is empty or a mapping
+whose `entries`, if present, is a list (absent, empty and `entries: []` mean no claims); any other
+registry makes each `claim` `unknown`; a worker record that is not UTF-8 is unreadable like one that
+is not YAML; a worktree git cannot read has `dirty: unknown`.
 
 ## Presence: `specy-road session`
 
@@ -355,19 +436,88 @@ what the guard cannot see is refused, not waved through: a shell function, a git
 that could be git (`$X`, `git${IFS}…`, `G=git; $G`; not `$HOME/bin/pytest`), `GIT_CONFIG*` in env, `--config-env=alias.*`, an interpreter one-liner.
 Working-tree commands count only sessions in the caller's worktree (`git -C`, `stash`, `rebase`,
 force-push count every session). The adapters (`--format`) know each harness's stdin shape;
-`docs/optional-ai-tooling-patterns.md` wires them. A non-denial never sets a harness permission
+[Wiring the guard into a harness](#wiring-the-guard-into-a-harness) wires them. A non-denial never sets a harness permission
 decision (Claude Code gets context only; Codex nothing), so the harness's own prompt policy still applies.
 
 Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry. The id is
 `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one terminal or harness process, so
 `start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
-out; one that will not load counts as live to the guard until fixed or deleted. `session end` removes only the caller's own record (`$SPECY_ROAD_AGENT_ID`, else the derived id) or an expired one: `<id>` and `--agent` pick the target, never the caller. Another agent's live record is refused (it is kept, exit 1) unless a human passes `--force` from a terminal (stdin a TTY), so a closed terminal's record counts as a live peer to the guard until it expires; with no record for the caller's id, `end` names the id `session start` printed and ends nothing. A record keeps the `$USER` that started it, and one another user started is always refused. `handoff status` lists live sessions first,
+out; one that will not load counts as live to the guard until fixed or deleted. `session end` removes only the caller's own record (`$SPECY_ROAD_AGENT_ID`, else the derived id) or an expired one: `<id>` and `--agent` pick the target, never the caller. Another agent's live record is refused (it is kept, exit 1) unless a human passes `--force` from a terminal (stdin a TTY), so a closed terminal's record counts as a live peer to the guard until it expires; with no record for the caller's id, `end` names the id `session start` printed and ends nothing. A record keeps the `$USER` that started it, and one another user started is always refused. `review status` lists live sessions first,
 `do-next-available-task` warns on touch-zone overlap, `grind-session --plan` and `orchestrate plan` never put two ready leaves sharing a zone in one parallel batch, and `session check` refuses a commit on another live session's paths.
+
+### Wiring the guard into a harness
+
+When more than one agent session works in one checkout, `specy-road session
+guard` denies the git commands that move or discard another session's work
+(above). Wire it into the harness's
+"before a shell command runs" hook. `specy-road session guard --format <harness>
+--print-config` prints the snippet on stdout, pure JSON you can paste whole,
+and the harness's caveats on stderr.
+
+**Claude Code** (verified against the hooks docs, 2026-10): a `PreToolUse` hook
+matched to `Bash` in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "command": "specy-road session guard --format claude-code", "timeout": 30}
+        ]
+      }
+    ]
+  }
+}
+```
+
+The hook reads `tool_input.command` from stdin; exit 2 blocks the call and the
+reason on stderr reaches the model; on a non-denial the guard emits context
+only (an `additionalContext` note, which is how it warns when a command
+would be refused if another session were live) and never an `allow`, so
+Claude's own permission policy still applies to the call. Any other exit code lets the
+call proceed, so the guard exits 2 on an internal error rather than fail
+open. Hooks run in `claude -p`; `claude --bare` skips every hook; a sandbox
+run (2026-10-28) saw the hook fire and block under
+`claude -p --dangerously-skip-permissions` (`bypassPermissions`). Export
+`SPECY_ROAD_AGENT_ID` in the session so the guard knows which presence record
+is its own.
+
+**Codex** (verified against the hooks docs, 2026-10): the same stdin shape,
+as a `PreToolUse` hook on `Bash` in `.codex/hooks.json` (or `[hooks]` in
+`.codex/config.toml`). Exit 2 with stderr denies; exit 0 with no output is
+the documented allow, and Codex marks a hook failed on keys it does not
+support, so the guard's allows are silent there. Project hooks load only
+when the project's `.codex/` layer is trusted, and each hook definition
+must be trusted in `/hooks` (or run with `--dangerously-bypass-hook-trust`).
+Codex skips an untrusted hook silently, with nothing in the output, so a
+headless run looks guarded when it is not. Hooks fire under `codex exec`; a
+sandbox run (2026-10-28) saw the guard block under
+`--dangerously-bypass-approvals-and-sandbox` too. The IDE extension is
+unverified.
+
+**Cursor** (verified against the hooks docs, 2026-10): a
+`beforeShellExecution` hook in `.cursor/hooks.json`. The command arrives as
+top-level `command` on stdin; the answer is JSON on stdout,
+`{"permission": "allow" | "deny", "agent_message": "…"}`. Empty output on exit
+0 counts as a hook *failure*, which fails open unless `failClosed: true`, so
+the guard answers every event explicitly and the printed snippet sets
+`failClosed: true`. Observed on Cursor CLI 2026.10.22 (sandbox run,
+2026-10-28): the hook fires under `agent -p`, with and without `--force`, and
+`deny` holds; the model saw the short `user_message`, not `agent_message`.
+Cursor also runs `.claude/settings.json` hooks, naming its shell tool `Shell`;
+the `claude-code` format judges those too, so either snippet guards Cursor.
+
+Get each snippet with `specy-road session guard --format cursor --print-config`
+(or `codex`). The repo's own test suite runs every adapter as a subprocess
+with its harness's documented payload (`tests/unit/test_hook_adapters.py`), so an
+adapter that drifts from its contract fails in CI, not in someone's IDE.
 
 ## Working in one shared checkout
 
 When several agents share one working tree, with or without a roadmap claim (the
-scaffold `AGENTS.md` repeats these rules; [design-notes/agent-guidance-and-shared-checkouts.md](design-notes/agent-guidance-and-shared-checkouts.md) records why):
+scaffold `AGENTS.md` repeats these rules):
 
 - Commit by explicit path (`git commit --only <paths>`); never `git add -A`,
   `git commit -a`, or a bare commit.

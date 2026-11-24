@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING
 
 from specy_road.bundled_scripts import planning_rename
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_crud_ops import (
     _refuse_if_milestone_locked,
     repo_root,
     run_validate_raise,
@@ -54,12 +54,14 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
 )
 from specy_road.bundled_scripts.roadmap_id_rewrite_staging import (
     _rewrite_touch_zones,
+    _stage_decision_ids,
     _stage_merged_nodes,
     _stage_planning_moves,
     _stage_registry_ids,
+    sheet_path_map,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.roadmap_outline_ops import (
+from specy_road.roadmap_load import load_roadmap
+from specy_road.roadmap_outline_ops import (
     _attach_at_index,
     _detach_reindex_old_parent,
     _validate_reparent_target,
@@ -70,7 +72,7 @@ from specy_road.bundled_scripts.roadmap_move_id_forms import (
     _moved_node_id,
     _refuse_id_form_combinations,
 )
-from specy_road.bundled_scripts.roadmap_outline_renumber import (
+from specy_road.roadmap_outline_renumber import (
     assign_subtree_ids_inplace,
     renumber_display_ids_inplace,
 )
@@ -106,23 +108,27 @@ def stage_id_rewrite(
     new_parent: NewParent | None = None,
     rewrite_refs: bool = False,
 ) -> None:
-    """Stage ``nodes`` plus the zone, sheet and claim rewrites an id map implies; commit.
+    """Stage ``nodes`` plus the zone, sheet, claim and decision-ledger rewrites an id map implies; commit.
 
     ``scope`` is every node a rewrite may touch. Shared by ``move_nodes`` and the
     PM GUI's ``reorder_siblings``; nothing reaches disk until the whole
     prospective graph validates. ``new_parent`` joins the same plan.
     ``rewrite_refs`` also rewrites the map's ids in prose (``rename-refs``).
+    The tracked decision ledger's ``node`` fields are rewritten on every
+    id-changing move, before anything else is staged.
     """
     renamed = {o: n for o, n in old_to_new.items() if o != n}
-    _rewrite_touch_zones(scope, renamed)
     sheet_moves = plan_planning_artifact_moves(scope)
+    sheets = sheet_path_map(root, sheet_moves)
+    _rewrite_touch_zones(scope, renamed, sheets)
 
     plan = AtomicWritePlan(root)
+    _stage_decision_ids(plan, root, renamed)
     _stage_planning_moves(plan, root, sheet_moves, nodes, renamed if rewrite_refs else None)
     _stage_merged_nodes(plan, root, nodes)
     if new_parent is not None:
         new_parent.stage(plan, nodes)
-    _stage_registry_ids(plan, root, renamed, claims_in_map_only=claims_in_map_only)
+    _stage_registry_ids(plan, root, renamed, sheets, claims_in_map_only=claims_in_map_only)
     plan.commit(lambda: run_validate_raise(root))
 
 
@@ -180,7 +186,8 @@ def move_nodes(
     in one ``AtomicWritePlan`` and the graph validates once, so nothing reaches
     disk unless the whole batch is good. A later move's ``new_parent_id`` is the
     id after the earlier moves. ``new_parent`` is created before the first move,
-    so moves can name it; it is not in the map, which covers moved nodes only.
+    so moves can name it, and finished (its final ids) after the last; it is
+    not in the map, which covers moved nodes only.
     ``rewrite_refs`` rewrites the map's ids in prose too (``stage_id_rewrite``).
     """
     nodes = list(load_roadmap(root)["nodes"])
@@ -193,6 +200,8 @@ def move_nodes(
             _apply_move(nodes, move, renumber_outline=renumber_outline).values()
         )
         moved_keys |= {n["node_key"] for n in nodes if n["id"] in new_ids}
+    if new_parent is not None:
+        new_parent.finish(nodes)
     # ``scope`` is every node a rewrite may touch. A subtree move scopes it to
     # the subtree, so no node, sheet or claim outside it changes, even where
     # its text names a moved id.

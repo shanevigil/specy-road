@@ -6,7 +6,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.session_plan_render import PLAN_FIELDS
+from specy_road.cli import DeprecatedFlag
+from specy_road.cli_args import add_base_arg, add_json_arg, add_remote_arg
+from specy_road.orchestration.grind.session_plan_render import PLAN_FIELDS
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg
 
@@ -17,6 +19,24 @@ def _add_mode_and_stop_args(p: argparse.ArgumentParser) -> None:
         help=(
             "Read-only: print the session plan (ready/blocked/active + dependency "
             "waves + parallel batches) and exit 0. No git, no pickup."
+        ),
+    )
+    p.add_argument(
+        "--status", action="store_true",
+        help=(
+            "Read-only: the scope's leaves by state (held, active, ready, waiting,\n"
+            "finished awaiting merge, not pickable), a completion range from\n"
+            "history, the decisions and held leaves waiting on a person, and open\n"
+            "sessions. Scope: --until, --under, both, or the parent in\n"
+            "work/.milestone-session.yaml. No fetch, no git writes."
+        ),
+    )
+    p.add_argument(
+        "--watch", nargs="?", const=True, default=None, type=int, metavar="MINUTES",
+        help=(
+            "With --status: print the report again every MINUTES (default:\n"
+            "grind.status_interval_minutes in roadmap/git-workflow.yaml,\n"
+            "else 30) until Ctrl+C."
         ),
     )
     p.add_argument(
@@ -99,35 +119,33 @@ def _add_implement_limit_args(p: argparse.ArgumentParser) -> None:
         "--max-limit-waits", type=int, default=None, metavar="N",
         help="Claude hook: how many times one leaf may wait out a usage limit "
              "before the run stops (default 3; yaml "
-             "grind_session_max_limit_waits).",
+             "grind.max_limit_waits).",
     )
     p.add_argument(
         "--max-limit-wait-hours", type=float, default=None, metavar="H",
         help="Claude hook: longest single wait for a stated reset (default 6). "
              "A reset further out stops the run rather than waiting "
-             "unattended (yaml grind_session_max_limit_wait_hours).",
+             "unattended (yaml grind.max_limit_wait_hours).",
     )
     p.add_argument(
         "--limit-wait-grace-seconds", type=int, default=None, metavar="S",
         help="Claude hook: slack added after the stated reset, because clocks "
              "disagree (default 120; yaml "
-             "grind_session_limit_wait_grace_seconds).",
+             "grind.limit_wait_grace_seconds).",
     )
     p.add_argument(
         "--max-empty-retries", type=int, default=None, metavar="N",
         help="Claude hook: re-runs when the command dies without printing "
              "anything at all — killed from outside, not a failed "
              "implementation (default 2; yaml "
-             "grind_session_max_empty_retries).",
+             "grind.max_empty_retries).",
     )
 
 
 def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
     add_repo_root_arg(p)
-    p.add_argument("--base", default=None, metavar="BRANCH",
-                   help="Integration branch (default: roadmap/git-workflow.yaml).")
-    p.add_argument("--remote", default=None, metavar="NAME",
-                   help="Git remote (default: roadmap/git-workflow.yaml).")
+    add_base_arg(p, help="Integration branch (default: roadmap/git-workflow.yaml).")
+    add_remote_arg(p, help="Git remote (default: roadmap/git-workflow.yaml).")
     p.add_argument("--on-complete", choices=sorted(ON_COMPLETE_MODES), default=None,
                    metavar="MODE",
                    help="Completion workflow per leaf: pr|merge|auto. Loop needs merge/auto.")
@@ -147,20 +165,16 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--baseline-cmd", default=None, metavar="CMD",
                    help="Passed through to pickup: run on the integration branch before "
                         "each claim; a non-zero exit refuses the pickup (exit 5). "
-                        "Default: baseline_cmd in roadmap/git-workflow.yaml.")
+                        "Default: the checks: entries with when: baseline in "
+                        "roadmap/git-workflow.yaml.")
     p.add_argument("--baseline-warn", action="store_true",
                    help="Passed through to pickup: a failing baseline only warns.")
     p.add_argument("--push", action="store_true",
                    help="Pass --push through to finish-this-task.")
-    p.add_argument("--delete-merged-branches", action="store_true",
-                   help="When the session ends cleanly, delete the feature/rm-* "
-                        "branches it finished: locally with 'git branch -d', and "
-                        "on the remote too when --push was given. Only branches "
-                        "the integration branch already contains are touched. "
-                        "Off by default; the loop prints the command instead.")
-    p.add_argument("--json", action="store_true",
-                   help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
-                        "stdout carries only JSON; sub-command output goes to stderr.")
+    p.add_argument("--delete-merged-branches", action=DeprecatedFlag, command="grind-session",
+                   new="doctor --prune --kind branches")
+    add_json_arg(p, help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
+                      "stdout carries only JSON; sub-command output goes to stderr.")
     p.add_argument("--fields", default=None, metavar="KEY,...",
                    help="With --plan --json: print only these top-level plan keys (no event or "
                         f"ts). Valid: {', '.join(PLAN_FIELDS)}.")
@@ -178,6 +192,16 @@ def _reject_step_conflicts(p: argparse.ArgumentParser, ns) -> None:
             p.error(f"--step cannot be combined with {flag}")
 
 
+def _reject_status_conflicts(p: argparse.ArgumentParser, ns) -> None:
+    """``--status`` is its own read-only mode; ``--watch`` only repeats it."""
+    if ns.status and (ns.plan or ns.step):
+        p.error(f"--status cannot be combined with {'--plan' if ns.plan else '--step'}")
+    if ns.watch is not None and not ns.status:
+        p.error("--watch requires --status")
+    if ns.watch is not True and ns.watch is not None and ns.watch < 1:
+        p.error("--watch MINUTES must be a positive integer")
+
+
 def _plan_fields(p: argparse.ArgumentParser, ns) -> list[str] | None:
     """``--fields`` as a list of valid plan keys; an unknown key is an error naming the valid ones."""
     if ns.fields is None:
@@ -192,24 +216,32 @@ def _plan_fields(p: argparse.ArgumentParser, ns) -> list[str] | None:
     return keys
 
 
-def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road grind-session`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road grind-session",
         description=(
             "Orchestrate the task loop: do-next-available-task -> implement -> "
             "(optional pre-finish hook) -> finish-this-task, repeated until a stop "
-            "condition. Use --plan for a read-only dependency/wave report (no git)."
+            "condition. Use --plan for a read-only dependency/wave report (no git), or "
+            "--status for a goal's leaves by state, a completion range and what waits on a person."
         ),
     )
     _add_mode_and_stop_args(p)
     _add_implement_args(p)
     _add_implement_limit_args(p)
     _add_passthrough_args(p)
+    return p
+
+
+def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
+    p = build_parser()
     ns = p.parse_args(argv if argv is not None else sys.argv[1:])
     ns.fields = _plan_fields(p, ns)
+    _reject_status_conflicts(p, ns)
     if ns.step:
         _reject_step_conflicts(p, ns)
-    elif ns.implement_mode == "hook" and not ns.implement_cmd and not ns.plan:
+    elif ns.implement_mode == "hook" and not ns.implement_cmd and not (ns.plan or ns.status):
         p.error("--implement-mode hook requires --implement-cmd")
     for name in (
         "max_limit_waits",

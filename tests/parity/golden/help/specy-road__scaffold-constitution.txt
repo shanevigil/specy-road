@@ -1,0 +1,15 @@
+$ specy-road scaffold-constitution --help
+exit: 0
+--- stdout ---
+usage: specy-road scaffold-constitution [-h] [--repo-root DIR] [--force]
+
+Create starter constitution/purpose.md and constitution/principles.md (human judgment; not
+validated by specy-road). Skips files that already exist unless --force.
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --force          Overwrite existing purpose.md and/or principles.md.
+--- stderr ---

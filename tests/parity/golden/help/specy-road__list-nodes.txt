@@ -1,0 +1,13 @@
+$ specy-road list-nodes --help
+exit: 0
+--- stdout ---
+usage: specy-road list-nodes [-h] [--status STATUS] [--json]
+
+options:
+  -h, --help       show this help message and exit
+  --status STATUS  Keep only nodes with this ROLLUP status — what roadmap.md and the PM GUI show,
+                   which for a parent is rolled up from its leaves rather than read off its own
+                   field. Repeatable. One of: Blocked, Complete, In Progress, Not Started
+  --json           Print a JSON array of full node objects (titles untruncated), each with its
+                   chunk path
+--- stderr ---
