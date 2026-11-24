@@ -331,7 +331,7 @@
       "parent_id": "M16.8",
       "planning_dir": "planning/M16.8.12_three-tests-pass-in-the-ci-environment-ci-variables-set-and-git_8241e7a7-15ef-4eda-abb9-dfd7600528b7.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Three tests pass in the CI environment: CI variables set and git 2.48 or later",
       "touch_zones": [
         "tests/cli/test_cli_smoke_lane.py",
