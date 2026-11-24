@@ -465,7 +465,9 @@ def _nested_leaf(tmp_path: Path) -> Path:
     bare = tmp_path / "remote.git"
     git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
     git(repo, "remote", "add", "origin", str(bare))
-    git(repo, "fetch", "-q", "origin")
+    # Leave refs/remotes/origin/HEAD absent. Git 2.48 and later creates it on
+    # fetch; this key is ignored on older git, so the recorded goldens stay put.
+    git(repo, "-c", "remote.origin.followRemoteHEAD=never", "fetch", "-q", "origin")
     git(nested, "checkout", "-q", "-b", "feature/rm-thing")
     commit_file(nested, "core.py", "x = 2\n", "leaf work in the nested repo")
     git(nested, "checkout", "-q", "dev")
