@@ -241,7 +241,8 @@
       "codename": "gate-a-0-3-1-release-candidate-is-published-to-testpypi",
       "dependencies": [
         "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
-        "5fea1f7e-848b-4cbf-87e6-c96b506a2f86"
+        "5fea1f7e-848b-4cbf-87e6-c96b506a2f86",
+        "8241e7a7-15ef-4eda-abb9-dfd7600528b7"
       ],
       "execution_milestone": "Human-led",
       "id": "M16.8.5",
@@ -313,6 +314,28 @@
         "tests/",
         "requirements-ci.in",
         "requirements-ci.txt"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A1: `tests/cli/test_cli_smoke_lane.py` passes with `CI=true GITHUB_ACTIONS=true` set and with both unset; `test_a_missing_listed_id_fails_a_run_that_deselects_the_first_item` still asserts the message appears exactly once.",
+        "A2: `tests/flows/review/test_review_packet.py` passes on git older than 2.48 and on git 2.48 or later, with `tests/parity/golden/packet/nested-PACKET.md` and `over-budget-PACKET.md` byte-identical to the integration branch.",
+        "A3: the branch changes no file outside its two touch zones: no golden, product code, dependency, lock file or workflow."
+      ],
+      "codename": "three-tests-pass-in-the-ci-environment-ci-variables-set-and-git",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.8.12",
+      "node_key": "8241e7a7-15ef-4eda-abb9-dfd7600528b7",
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.12_three-tests-pass-in-the-ci-environment-ci-variables-set-and-git_8241e7a7-15ef-4eda-abb9-dfd7600528b7.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "Three tests pass in the CI environment: CI variables set and git 2.48 or later",
+      "touch_zones": [
+        "tests/cli/test_cli_smoke_lane.py",
+        "tests/flows/review/test_review_packet.py"
       ],
       "type": "task"
     }

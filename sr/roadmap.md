@@ -87,6 +87,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.8.9` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
 | `M16.8.10` | Gate: 0.3.1 tagged | gate | Human-led | Not Started |
 | `M16.8.11` | Two tests pass in the CI environment: Node 20 and a dev-only install | task | Agentic-led | Complete |
+| `M16.8.12` | Three tests pass in the CI environment: CI variables set and git 2.48 or later | task | Agentic-led | Not Started |
 | `M17` | 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 | phase | Human-led | In Progress |
 | `M17.1` | Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 | gate | Human-led | Complete |
 | `M17.2` | PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock | task | Agentic-led | Complete |
