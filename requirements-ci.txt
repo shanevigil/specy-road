@@ -62,7 +62,7 @@ pytest==9.1.1
     #   specy-road
 pytest-xdist==3.8.0
     # via specy-road
-pyyaml==6.0.3
+pyyaml==6.0.4
     # via specy-road
 referencing==0.37.0
     # via
