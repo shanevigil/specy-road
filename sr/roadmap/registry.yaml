@@ -78,3 +78,12 @@ entries:
     started: '2026-11-20'
     owner: savigil
     implementation_review: pending
+  - codename: three-tests-pass-in-the-ci-environment-ci-variables-set-and-git
+    node_id: M16.8.12
+    branch: feature/rm-three-tests-pass-in-the-ci-environment-ci-variables-set-and-git
+    touch_zones:
+      - tests/cli/test_cli_smoke_lane.py
+      - tests/flows/review/test_review_packet.py
+    started: '2026-11-23'
+    owner: savigil
+    implementation_review: pending
