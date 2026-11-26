@@ -105,7 +105,7 @@ Like READY files, the pin and the acceptance are honour-system: an agent set on
 forging them can (another commit with the registration subject, a hand-written
 acceptance). The rule stops the CR1 regression, an executor that rosters a
 reviewer or turns the gate off on the integration branch after its claim;
-M22.5's steering guard is the broader protection.
+The steering guard is the broader protection.
 
 ## What the review-policy fingerprint covers
 
