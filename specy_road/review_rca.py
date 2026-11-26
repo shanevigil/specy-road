@@ -10,8 +10,7 @@ of the rounds it reviewed in a row, whatever ids or models it named; or after
 (:mod:`specy_road.review_trend`) unless ``policy.escalate_when_converging``. A coordinator may also force an analysis with
 a reason (:func:`forced_escalation`). An ``RCA-*.md`` record resolves every
 round up to its ``trigger.round``, so counting restarts after each analysis.
-Thresholds come from the gate's policy (the integration branch). Design:
-``docs/design-notes/review-loop-rca.md``.
+Thresholds come from the gate's policy (the integration branch).
 """
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ from specy_road.orchestration_config import (
     is_rostered_reviewer,
     substitute_for,
 )
-from specy_road.review_deferral import load_markers
+from specy_road.review_defer_rules import load_markers
 from specy_road.review_files import (
     RCA_PREFIX,
     ReviewFile,
@@ -38,7 +37,7 @@ from specy_road.review_files import (
     list_review_history,
     reviews_dir,
 )
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_pin import policy_source
 from specy_road.review_target import ReviewTarget, full_sha
 from specy_road.review_trend import converging, trend_status
 
@@ -98,7 +97,7 @@ class LoopState:
     rcas: list[ReviewFile]
     escalation: Escalation | None
     resolved: int = 0   # rounds an RCA record already covers
-    marker_problems: list[str] = field(default_factory=list)   # malformed DEFERRAL-*.yaml (review_deferral)
+    marker_problems: list[str] = field(default_factory=list)   # malformed DEFERRAL-*.yaml (review_defer_rules)
     converging: bool = False            # review_trend.converging over the rounds since the last RCA
     deferred_converging: bool = False   # a same_family/review_rounds escalation waits because of it
 
@@ -258,7 +257,7 @@ def rca_trigger(repo_root: Path, node_id: str, model: str, loop: LoopState,
                           "there is nothing to analyse")
     if esc is None:
         return None, (f"{node_id}'s review loop is not escalated; no root-cause analysis is due "
-                      f"(`specy-road handoff status {node_id}`); a coordinator can start one anyway "
+                      f"(`specy-road review status {node_id}`); a coordinator can start one anyway "
                       "with `--force --reason '<why>'`")
     if model in rca_parties(repo_root, node_id, loop):
         return None, (f"{model!r} implemented or reviewed {node_id}; the root-cause analyst must be "
@@ -339,7 +338,7 @@ def rca_preamble(repo_root: Path, node_id: str, model: str, esc: Escalation) -> 
         "anything else stays a must-fix in this leaf.",
         f"5. Write the record to `{out}` (gitignored; open the absolute path) in this shape, validated against "
         "specy-road's `rca-record` schema, then run "
-        f"`specy-road handoff status {node_id}`: a valid record clears the escalation (a forced one restarts "
+        f"`specy-road review status {node_id}`: a valid record clears the escalation (a forced one restarts "
         "the round count), and an invalid one is "
         "listed as a problem. Stop.",
         "",

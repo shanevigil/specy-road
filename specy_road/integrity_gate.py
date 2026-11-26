@@ -7,7 +7,7 @@ unless its exact line is in the node's ``planned_test_changes``. With
 merge base and pass at head (pass on both when declared ``preserve: <id>``), as
 ``work/reviews/<NODE_ID>/RED-GREEN.md`` records for the commit under review
 (:mod:`specy_road.red_green`). The switches and the declarations are read from
-the integration branch (the ``ref`` :func:`review_policy_ref.policy_source`
+the integration branch (the ``ref`` :func:`review_policy_pin.policy_source`
 returns), never from the leaf branch or the working tree: the leaf approved
 before pickup is the waiver, and an executor cannot add a declaration from its
 worktree.
@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import git_text
 from specy_road.integrity import compare_integrity
 from specy_road.red_green import red_green_problems

@@ -4,42 +4,20 @@
 step, with every directory each step takes: a full clone with its ``.git``, a linked worktree with its
 administrative directory. :func:`walk_foreign` walks exactly those directories for another repository's
 worktree, checkout or bare clone, and :func:`foreign_refusal` says why one refuses. Every git call here and
-in ``worktree_prune`` reads bytes (:func:`git_run`), and every command shown is built with :func:`cmd`.
+in ``worktree_prune`` reads bytes (:func:`specy_road.git_subprocess.run_bytes` and its views): git prints
+paths, and text mode's universal newlines and stripping would turn a ``\\r`` in one into ``\\n`` or drop an
+edge space. Paths are decoded with :func:`os.fsdecode` only, which round-trips any name. Every command shown
+is built with :func:`cmd`.
 """
 
 from __future__ import annotations
 
 import os
 import shlex
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.git_subprocess import DEFAULT_TIMEOUT
-
-
-# Every git call in worktree prune goes through git_run, which reads bytes: git prints paths (its own output,
-# and in messages), and text mode's universal newlines and stripping would turn a '\\r' in one into '\\n'
-# or drop an edge space. Paths are decoded with os.fsdecode only, which round-trips any name.
-def git_run(args: list[str], d: Path) -> tuple[int, bytes, str]:
-    """``(exit code, stdout bytes, message)``: the message is stderr (or stdout), decoded for display."""
-    try:
-        r = subprocess.run(["git", *args], cwd=d, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
-    except (OSError, ValueError, subprocess.SubprocessError) as e:
-        return -1, b"", str(e)
-    return r.returncode, r.stdout, os.fsdecode(r.stderr or r.stdout).strip()
-
-
-def git_out(args: list[str], d: Path) -> str | None:
-    """``git <args>``'s stdout in ``d`` less its final newline, or ``None`` on failure."""
-    code, out, _msg = git_run(args, d)
-    return None if code else os.fsdecode(out.removesuffix(b"\n"))
-
-
-def git_path(args: list[str], d: Path) -> Path | None:
-    """The one path ``git <args>`` prints in ``d``, or ``None`` on failure or none printed."""
-    out = git_out(args, d)
-    return Path(out).resolve() if out else None
+from specy_road.git_subprocess import git_out, git_path, run_bytes
 
 
 def cmd(*argv: object) -> str:
@@ -49,11 +27,6 @@ def cmd(*argv: object) -> str:
 
 def common_dir(d: Path) -> Path | None:
     return git_path(["rev-parse", "--path-format=absolute", "--git-common-dir"], d)
-
-
-def is_repo_top(d: Path) -> bool:
-    """``d`` is the top of a git worktree (its own repository, not a directory of an enclosing one)."""
-    return d.is_dir() and git_path(["rev-parse", "--show-toplevel"], d) == d.resolve()
 
 
 # The entries git keeps in a worktree's administrative directory (<common dir>/worktrees/<name>): only
@@ -138,9 +111,9 @@ def head_state(d: Path) -> tuple[str, str | None]:
     names an unborn branch too, where ``rev-parse --abbrev-ref`` fails), marked when it has no commit yet;
     else ``HEAD (detached at <sha>)``; else ``an unreadable HEAD``."""
     sha = git_out(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], d) or None
-    code, out, _msg = git_run(["symbolic-ref", "-q", "--short", "HEAD"], d)
-    if not code and out.strip():
-        name = os.fsdecode(out.removesuffix(b"\n"))
+    r = run_bytes(["symbolic-ref", "-q", "--short", "HEAD"], d)
+    if r.ok and r.out.strip():
+        name = os.fsdecode(r.out.removesuffix(b"\n"))
         return (name if sha else f"{name} (no commits yet)"), sha
     return (f"HEAD (detached at {sha[:12]})" if sha else "an unreadable HEAD"), sha
 

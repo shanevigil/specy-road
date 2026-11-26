@@ -5,13 +5,21 @@ How a launched reviewer answers and what specy-road checks before it files the r
 The reviewer prompt ends with the review output schema: the review-record
 schema without the fields specy-road fills (`family`, `independence`,
 `notes_sha256`, `signature`, `launch_mode`, `harness_model`, `model_mismatch`), plus `notes`, the Markdown notes.
-The reviewer's final message is exactly one JSON object matching it. Each default
-reviewer command passes the harness's structured-output flag where there is one:
+`notes_sha256` is the SHA-256 of the Markdown body below the front matter, line endings
+normalised and trailing whitespace dropped. It does not cover the front matter, `findings`,
+`commands_rerun`, or the file as a whole. `review record` refuses two models' identical
+bodies at one commit.
+The reviewer's final message is exactly one JSON object matching it. Before
+that object, the prompt tells the reviewer to list every required change
+it can find in this one review, re-scan the diff for further instances of each
+defect class (other inputs, call sites, files) and any acceptance line not fully
+met, and that a later round should find nothing it could have reported now.
+Each default reviewer command passes the harness's structured-output flag where there is one:
 
 | Harness | Reviewer command | Where the JSON comes from |
 |---|---|---|
 | Claude Code | bare or explicit (below); both use `--allowedTools Read,Glob,Grep,Bash`, `--disallowedTools` (below), `--json-schema '<schema>'` (the schema inline, less its top-level `$schema`: Claude Code 2.1.318 rejects the draft 2020-12 reference) and `--add-dir` | the `result` event's `structured_output`, else its text |
-| Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <answer file> -` (the answer file is in a private temporary directory, outside the checkout and the hand-off directory) | at `turn.completed`, the `-o` file; a resume (which documents neither flag) the turn's last `agent_message` |
+| Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never` with memories off (`-c features.memories=false -c memories.use_memories=false -c memories.generate_memories=false`) and `CODEX_HOME` set to the model's isolated home (the session's home on resume), then `--output-schema <file> -o <answer file> -` (the answer file is in a private temporary directory, outside the checkout and the hand-off directory) | at `turn.completed`, the `-o` file; a resume (which documents neither flag) the turn's last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the last `result` event's text |
 | Antigravity (`agy`, a `generic` entry) | its roster `channels.cli` (never the profile's `access.cli`), with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
 | anything else (`channels.cli`, `generic`, or a plain-text wrapper on any harness) | as written | the whole output, as one final message (a JSON envelope's `structured_output`) |
@@ -99,6 +107,11 @@ specy-road decides the outcome:
   is never a third turn. Neither kind gets a repair turn after a capacity
   failure or a non-zero exit, and an unreadable run log, a write (still a
   review failure) and a chore reviewer get none.
+  A refusal's one-line reason (the first one, and a repair turn's) is
+  `rerun requested: review record refused the output: <first offending line, whole> (N more; full text in
+  work/reviews/<ID>/REJECTED-<model>.md)`. A turn (first or repair) whose last attempt
+  ended with a capacity error has no answer to read: the run's reason is the
+  capacity reason alone, and the write check still runs.
 - **recorded** — specy-road writes the notes to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the
@@ -148,8 +161,11 @@ add` that creates one.
 
 After the run, `specy_road/review_model_check.py` compares the model the
 harness reported (its first `system/init` event's `model`, as worker usage
-reads it, and each `result` event's `model`, or the one key of its
-`modelUsage`) with the entry's one effective model
+reads it, each `result` event's `model`, or the one key of its
+`modelUsage`, and for Codex, whose `--json` stream names no model, the
+`turn_context.model` its rollout recorded for the first `thread.started`
+thread, found under the profile's `CODEX_HOME`, a `CODEX_HOME` the entry's
+`channels.cli` or `cli_resume` sets in its own words, or else the user's) with the entry's one effective model
 (`review_model_check.resolve_effective_model`: `harness_model`, else the
 profile's `api_id`, else the roster `id`; empty or `unknown` resolves to none),
 after normalising case, separators and display names (`Claude Opus 5.5` is
@@ -157,9 +173,23 @@ after normalising case, separators and display names (`Claude Opus 5.5` is
 profile's other names when `harness_model` selects a different model. Any reported model that differs is a mismatch, so a line
 the model printed can add one but never hide one. The filed record carries
 `harness_model`; on a real mismatch it also carries `model_mismatch: true`, and the gate does not count
-it (`harness ran a different model`), which `handoff status` lists under who
-can still approve. A harness that reports no model (Codex, plain-text
-commands) is a warning only.
+it (`harness ran a different model`), which `review status` lists under who
+can still approve. A harness that reports no model (a plain-text command, or a
+Codex thread with no rollout found) is a warning only, and the record has no
+`harness_model`. The record's `model` is always the requested roster id.
+
+A `channels.cli` wrapper must pass the harness's event stream through to
+stdout unchanged (`claude -p --output-format stream-json --verbose`, `agent -p
+--output-format stream-json`, `codex exec --json`), with its stderr kept off
+stdout: the model check reads only that stream, and a wrapper that prints only
+the final answer files every record as reporting no model. A Codex wrapper must
+not change `CODEX_HOME`: specy-road finds the run's rollout under its own
+`CODEX_HOME` (else `~/.codex`) and the profile homes, and it cannot see a
+child's environment. A wrapper that changes it (inside a script, at run time or
+to a relative path) has its model recorded as unreported, with the warning
+above. Only an absolute `CODEX_HOME=VALUE` word written in the `channels.cli` or
+`cli_resume` text itself is also searched; it is a mitigation, not a supported
+way to move the home.
 
 ## Prevention and the tripwire (A2)
 
@@ -182,7 +212,7 @@ After the run a small tripwire (`specy_road/review_write_check.py`) reports a
    than the reviewer's notes (`notes-<model>.md`) and the run files specy-road
    itself writes (`RUN-<model>.json`, `RUN-<model>.log`, `.review-run.lock`).
 
-Paths are compared as text and no symlink is followed: an entry is left to rule 2 only when the path `git status` prints lies under the hand-off directory, whose place the snapshot before the run fixes (the snapshot after reuses it). A tracked file replaced by a symlink (`T`), a new symlink anywhere in the worktree, or the hand-off directory replaced by a symlink is a review failure; a symlink is hashed by its target text.
+Paths are compared as text and no symlink is followed: an entry is left to rule 2 only when the path `git status` prints lies under the hand-off directory, whose place the snapshot before the run fixes (the snapshot after reuses it). A tracked file replaced by a symlink (`T`), a new symlink anywhere in the worktree, or the hand-off directory replaced by a symlink is a review failure; a symlink is hashed by its target text. Before that comparison, and before anything is restored, the tripwire checks `work` and `work/reviews` with lstat from the project directory that holds `work/`. A symlink at either is a review failure and nothing is read, deleted or written through it, including the run log and a later gate read: an outside record reached only through that link does not count, and neither does one reached through a symlink at the node directory. A closed listing reads no directory in the project, so a record at `<project>/.handoff-closed` is not an approval. The log read checks every ancestor from the project root saved before the run, so a symlink at the node directory is not opened. `mark-implementation-reviewed` refuses that node link before it reads the gate, names the path, and does not commit the registry. A relative `work/reviews/<node>` is owned by `.` (the directory that holds that `work`), so the lock and the writers do not create `work/work` or follow a top-level `work` symlink. The review lock and the review writers use the same rule: a symlink at the file, or at any directory from that project root down, refuses the command before it writes. A successful `review record` checks `REJECTED-<model>.md` before it writes the live record or clears that marker. Readers apply the same rule: a hand-off file (`REVIEW-*.md`, a `history/` copy, `READY-*.md`, `RCA-*.md`, `RED-GREEN.md`, `PRE-EXISTING.md`, `POLICY-ACCEPTED.yaml`) that is a symlink, or is reached through one, is reported unreadable and never counts, and a symlinked `history/` is not listed. A failed run's restore puts back only this model's records that were regular files before the run, so a link placed earlier never becomes a real record.
 
 It is a tripwire, **not a security boundary**. Out of scope by design:
 identical-byte rewrites, writes undone before the run ends, metadata-only
@@ -194,7 +224,18 @@ one leaf share its hand-off directory, so they take turns: a second run while
 one holds `.review-run.lock` is refused at once, before it writes its prompt,
 run record, schema or answer file. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1`, `PYTEST_ADDOPTS=-p no:cacheprovider` and
-`GIT_OPTIONAL_LOCKS=0`, so re-running tests and `git status` write nothing. A
+`GIT_OPTIONAL_LOCKS=0`, so re-running tests and `git status` write nothing.
+Both runners (`review delegate` and `prompt --channel cli --run`) start the
+reviewer in a session and process group of its own, and guard it from launch
+to end: the prompt goes on stdin from a separate thread, after the watch on
+the reviewer's exit has started, so an undelivered prompt (a child holding
+stdin unread) never holds the run. When its main process
+exits (a background child still holding its output does not delay this), or
+the run is interrupted (Ctrl-C reaches specy-road, not the reviewer) or fails
+while reading output, specy-road sends that group SIGTERM, then SIGKILL after
+5 s, and reads the rest of the output for at most 5 s more. It signals only
+while the group has a member and never its own group; a process that left the
+group with its own session before the reviewer exited is not reached. A
 prompt specy-road does not read back (`paste`, `subagent`) asks for the same
 object and still has the reviewer file it with `review record`.
 

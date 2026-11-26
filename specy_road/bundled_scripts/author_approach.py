@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""``specy-road author-approach <ID> [<ID>...]``: the prompt that writes a leaf's ``## Approach``.
+"""``specy-road planning approach <ID> [<ID>...]``: the prompt that writes a leaf's ``## Approach``.
 
 Pickup skips a leaf while its ``## Approach`` is still brainstorm promote's or
 scaffold-planning's placeholder (M3.1). For each such leaf this prints the
@@ -17,9 +17,9 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.brief_dependency_context import extract_intent_block
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
-from specy_road.bundled_scripts.planning_sheet_bootstrap import _section_bodies, approach_is_placeholder
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.planning_sheet_bootstrap import _section_bodies, approach_is_placeholder
+from specy_road.roadmap_load import load_roadmap
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
@@ -74,7 +74,6 @@ def render_prompt(root: Path, node: dict, by_id: dict[str, dict], rel: str) -> s
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="specy-road author-approach",
         description="Print the prompt that writes each leaf's ## Approach while it is still a placeholder.",
     )
     p.add_argument("node_ids", nargs="+", metavar="NODE_ID")
@@ -99,7 +98,7 @@ def main(argv: list[str] | None = None) -> None:
             continue
         sheet = _sheet(root, node)
         if sheet is None:
-            print(f"error: {nid} has no planning sheet (specy-road scaffold-planning {nid})", file=sys.stderr)
+            print(f"error: {nid} has no planning sheet (specy-road planning scaffold {nid})", file=sys.stderr)
             failed = True
             continue
         rel, text = sheet

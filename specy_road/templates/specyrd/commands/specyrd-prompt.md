@@ -7,7 +7,7 @@ cd "$(git rev-parse --show-toplevel)"
 specy-road prompt <NODE_ID> --model <roster id> --role executor     # from the brief
 specy-road prompt <NODE_ID> --model <roster id> --role reviewer     # from work/reviews/<NODE_ID>/PACKET.md
 specy-road prompt <NODE_ID> --model <roster id> --role coordinator
-specy-road prompt <NODE_ID> --model <roster id> --role rca          # root-cause analysis, only while handoff status says escalated
+specy-road prompt <NODE_ID> --model <roster id> --role rca          # root-cause analysis, only while review status says escalated
 ```
 
 The model must be a roster `id` in `roadmap/orchestration.yaml` with that role; its profile (the entry's `profile`, under `model-profiles/`) supplies the model's prompting rules and failure-mode guards.
@@ -16,8 +16,8 @@ The model must be a roster `id` in `roadmap/orchestration.yaml` with that role; 
 - `--channel cli` writes the file and prints the command it would run: the roster entry's `channels.cli`, else (any role but a reviewer) the profile's `access.cli`, with `"<prompt>"` (the shipped profiles' form) replaced by the prompt text as one argument and `{prompt}` by the prompt file's path. It launches nothing without `--run`. `paste` (default) and `subagent` only write the file.
 - A reviewer prompt needs the packet first: `/specyrd-review-packet`.
 - `--channel cli --run` on a reviewer runs, in the leaf's worktree (`--worktree PATH` to name another), its harness's read-only reviewer command with the rostered model (`claude-code`, `codex`, `cursor` without `channels.cli`) or its own `channels.cli`, captured (`agy` gets `--json-schema`); an unknown model, a missing command or `--force`/`--yolo`/`--dangerously-skip-permissions` is refused. specy-road files `REVIEW-<model>.md` from the final JSON; a run that writes anything is a review failure (its notes go in the JSON), one whose last message is not valid JSON a rerun request. A record whose harness reported another model carries `model_mismatch` and does not count.
-- `rca` takes a rostered reviewer that neither implemented nor reviewed the leaf; it writes `work/reviews/<NODE_ID>/RCA-<round>.md`, which `handoff status` validates.
-- `--ref <branch or commit>` names the commit under review when no registry claim does (a Complete node, say), as `review-packet --ref` does; the reviewer prompt passes it on to `review record`.
+- `rca` takes a rostered reviewer that neither implemented nor reviewed the leaf; it writes `work/reviews/<NODE_ID>/RCA-<round>.md`, which `review status` validates.
+- `--ref <branch or commit>` names the commit under review when no registry claim does (a Complete node, say), as `review packet --ref` does; the reviewer prompt passes it on to `review record`.
 
 Check who can take which role with `specy-road models list`; `specy-road models stale` says when a profile's research is too old to trust. See `docs/orchestration-models.md`.
 

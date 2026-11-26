@@ -6,6 +6,7 @@
   "required": ["version", "integration_branch", "remote"],
   "additionalProperties": false,
   "$defs": {
+    "checkStage": { "enum": ["baseline", "ready", "land", "prompt"] },
     "nestedRepoPath": {
       "type": "string",
       "minLength": 1,
@@ -56,7 +57,7 @@
     },
     "land": {
       "enum": ["push", "local"],
-      "description": "How finish-this-task in merge (and auto) mode lands the root repository, as nested_repos' land does for nested ones: push (default) merges onto <remote>/<integration_branch> and pushes; local merges into the local integration_branch (bookkeeping resolved and land_check_cmd run as for push), fetching and pushing nothing, and says so. See docs/git-workflow-preferences.md."
+      "description": "How finish-this-task in merge (and auto) mode lands the root repository, as nested_repos' land does for nested ones: push (default) merges onto <remote>/<integration_branch> and pushes; local merges into the local integration_branch (bookkeeping resolved and land_check_cmd run as for push), fetching and pushing nothing, and says so. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow-preferences.md."
     },
     "pr_body_footer": {
       "type": "string",
@@ -71,17 +72,40 @@
       "enum": ["off", "events", "full", false],
       "description": "Whether worker logs are tracked in git (default off when omitted). off (or YAML false) keeps them in gitignored work/.workers/ only; events also mirrors each worker's event log to work/worker-logs/<NODE_ID>/<worker id>.events.jsonl in the worker's checkout, which finish-this-task commits with the leaf; full mirrors the raw output log (<worker id>.log) too. Logs get long: full can add megabytes per leaf."
     },
+    "worker_sandbox": {
+      "enum": ["bwrap", "auto", "off", false],
+      "description": "Whether unattended worker turns (worker delegate, message, resume) run their harness in a bubblewrap sandbox (default off when omitted: a project opts in). bwrap requires it: a host without bwrap, a turn outside a linked worktree, or a sandbox that fails to start stops the turn. auto uses bwrap on Linux where it is installed, with the same refusals, and elsewhere warns on each launch and runs unsandboxed. off (or YAML false) runs unsandboxed. See https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md (Worker sandbox)."
+    },
+    "checks": {
+      "type": "array",
+      "description": "The commands pickup, ready, landing and the prompts use, each named once with when: baseline (do-next-available-task and grind-session run it on the integration branch before a claim; CLI --baseline-cmd replaces it, an empty value runs none), ready (specy-road ready runs it like a --run command), land (finish-this-task in merge and auto mode runs it on the merge commit before it lands; CLI --land-check-cmd replaces it, an empty value runs none) and prompt (executor briefs and reviewer prompts give the first one for the leaf's tests, with the test paths appended). Entries of one stage run in file order. Replaces baseline_cmd, land_check_cmd and verify_cmd, which are ignored when checks is present. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md (Checks).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "run", "when"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "description": "A label for the entry." },
+          "run": { "type": "string", "pattern": "\\S", "description": "The shell command; not blank." },
+          "when": {
+            "oneOf": [
+              { "$ref": "#/$defs/checkStage" },
+              { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/checkStage" } }
+            ]
+          }
+        }
+      }
+    },
     "baseline_cmd": {
       "type": "string",
-      "description": "Shell command do-next-available-task and grind-session run on the integration branch, after syncing and before claiming a leaf (e.g. make test). A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it. CLI --baseline-cmd wins (an empty value turns it off for that run); --baseline-warn downgrades a failure to a warning."
+      "description": "Deprecated: use checks with when: baseline (removed in the release after 0.3.1; ignored when checks is present). Shell command do-next-available-task and grind-session run on the integration branch, after syncing and before claiming a leaf (e.g. make test). A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it. CLI --baseline-cmd wins (an empty value turns it off for that run); --baseline-warn downgrades a failure to a warning."
     },
     "land_check_cmd": {
       "type": "string",
-      "description": "Shell command finish-this-task runs in merge (and auto) mode on the local merge commit, at the project root of a detached temporary worktree, before it pushes the integration branch (e.g. the full test and lint gate). A non-zero exit pushes nothing and resets the local integration branch. CLI --land-check-cmd wins (an empty value skips it for that run). pr mode never runs it."
+      "description": "Deprecated: use checks with when: land (removed in the release after 0.3.1; ignored when checks is present). Shell command finish-this-task runs in merge (and auto) mode on the local merge commit, at the project root of a detached temporary worktree, before it pushes the integration branch (e.g. the full test and lint gate). A non-zero exit pushes nothing and resets the local integration branch. CLI --land-check-cmd wins (an empty value skips it for that run). pr mode never runs it."
     },
     "verify_cmd": {
       "type": "string",
-      "description": "Command executor briefs and reviewer prompts give for running the leaf's tests, with the test paths appended (e.g. python -m pytest -n 4 -p no:cacheprovider). Keep its worker count small: several workers on one machine each running a full parallel suite oversubscribe the CPU. Separate from land_check_cmd, which runs the full suite at landing. When omitted, the prompts say to cap parallel test workers when other workers share the machine."
+      "description": "Deprecated: use checks with when: prompt (removed in the release after 0.3.1; ignored when checks is present). Command executor briefs and reviewer prompts give for running the leaf's tests, with the test paths appended (e.g. python -m pytest -n 4 -p no:cacheprovider). Keep its worker count small: several workers on one machine each running a full parallel suite oversubscribe the CPU. Separate from land_check_cmd, which runs the full suite at landing. When omitted, the prompts say to cap parallel test workers when other workers share the machine."
     },
     "prefer_agentic_pick_order": {
       "type": "boolean",
@@ -90,21 +114,21 @@
     "grind_session_max_limit_waits": {
       "type": "integer",
       "minimum": 0,
-      "description": "grind-session: how many times one leaf may wait out a Claude usage limit before the run stops (default 3). CLI --max-limit-waits wins."
+      "description": "Deprecated: use grind.max_limit_waits (removed in the release after 0.3.1; grind.max_limit_waits wins when both are set). grind-session: how many times one leaf may wait out a Claude usage limit before the run stops (default 3). CLI --max-limit-waits wins."
     },
     "grind_session_max_limit_wait_hours": {
       "type": "number",
       "minimum": 0,
-      "description": "grind-session: longest single wait for a stated Claude reset, in hours (default 6). A reset further out stops the run rather than waiting unattended. CLI --max-limit-wait-hours wins."
+      "description": "Deprecated: use grind.max_limit_wait_hours (removed in the release after 0.3.1; grind.max_limit_wait_hours wins when both are set). grind-session: longest single wait for a stated Claude reset, in hours (default 6). A reset further out stops the run rather than waiting unattended. CLI --max-limit-wait-hours wins."
     },
     "grind_session_limit_wait_grace_seconds": {
       "type": "integer",
       "minimum": 0,
-      "description": "grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
+      "description": "Deprecated: use grind.limit_wait_grace_seconds (removed in the release after 0.3.1; grind.limit_wait_grace_seconds wins when both are set). grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
     },
     "nested_repos": {
       "type": "array",
-      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote, land, base, refuse_behind_remote} (integration_branch and remote default to this file's; land push, base remote). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode lands each leaf branch (per land) before the main repository, and review-packet includes their diffs. See docs/git-workflow.md.",
+      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote, land, base, refuse_behind_remote} (integration_branch and remote default to this file's; land push, base remote). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode lands each leaf branch (per land) before the main repository, and review packet includes their diffs. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md.",
       "uniqueItems": true,
       "items": {
         "oneOf": [
@@ -148,7 +172,7 @@
       "type": "object",
       "additionalProperties": false,
       "minProperties": 1,
-      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, link names paths symlinked from it, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See docs/git-workflow.md.",
+      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, link names paths symlinked from it, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md.",
       "properties": {
         "cmd": {
           "type": "string",
@@ -175,7 +199,7 @@
         },
         "link": {
           "type": "array",
-          "description": "Paths symlinked from the main checkout into the new worktree at the same project-relative path, before cmd runs (e.g. node_modules, .venv). Each is added to .git/info/exclude so a directory-only ignore pattern (node_modules/) does not leave the symlink untracked. See docs/orchestration-worktrees.md.",
+          "description": "Paths symlinked from the main checkout into the new worktree at the same project-relative path, before cmd runs (e.g. node_modules, .venv). Each is added to .git/info/exclude so a directory-only ignore pattern (node_modules/) does not leave the symlink untracked. See https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-worktrees.md.",
           "items": { "$ref": "#/$defs/envSetupPath" }
         }
       }
@@ -183,7 +207,12 @@
     "grind_session_max_empty_retries": {
       "type": "integer",
       "minimum": 0,
-      "description": "grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
+      "description": "Deprecated: use grind.max_empty_retries (removed in the release after 0.3.1; grind.max_empty_retries wins when both are set). grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
+    },
+    "grind_session_status_interval_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Deprecated: use grind.status_interval_minutes (removed in the release after 0.3.1; grind.status_interval_minutes wins when both are set). grind-session --status --watch: minutes between reports (default 30), and how often the bundled coordinator skills post grind-session --status during a grind. CLI --watch MINUTES wins."
     },
     "grind": {
       "type": "object",
@@ -195,6 +224,31 @@
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true,
           "description": "Directory touch zones that do not make two leaves overlap in grind-session --plan batches or the validate registry overlap warning (default [\"planning/\", \"shared/\"]; [] turns it off). Two leaves naming the same file under one still overlap."
+        },
+        "max_limit_waits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "grind-session: how many times one leaf may wait out a Claude usage limit before the run stops (default 3). CLI --max-limit-waits wins."
+        },
+        "max_limit_wait_hours": {
+          "type": "number",
+          "minimum": 0,
+          "description": "grind-session: longest single wait for a stated Claude reset, in hours (default 6). A reset further out stops the run rather than waiting unattended. CLI --max-limit-wait-hours wins."
+        },
+        "limit_wait_grace_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
+        },
+        "max_empty_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
+        },
+        "status_interval_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "grind-session --status --watch: minutes between reports (default 30), and how often the bundled coordinator skills post grind-session --status during a grind. CLI --watch MINUTES wins."
         }
       }
     }

@@ -1,0 +1,18 @@
+version: 1
+entries:
+- id: P1
+  kind: preference
+  summary: Docs-only leaves go to mid-2 in this clone
+  role: executor
+  models:
+  - mid-2
+  asked: '2026-11-05'
+  status: open
+- id: P4
+  kind: preference
+  summary: This clone reviews with fast-4
+  role: reviewer
+  models:
+  - fast-4
+  asked: '2026-11-06'
+  status: open

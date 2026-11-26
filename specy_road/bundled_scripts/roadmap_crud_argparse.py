@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg
 from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
     cmd_add_dependency,
     cmd_apply,
@@ -15,10 +16,10 @@ from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
     resolve_dependency_refs,
 )
 from specy_road.bundled_scripts.roadmap_edit_fields import LIST_KEYS, ROADMAP_NODE_STATUSES
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 
-from specy_road.bundled_scripts.roadmap_crud_delete import cmd_remove_node
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_crud_ops import cmd_remove_node
+from specy_road.roadmap_crud_ops import (
     cmd_add,
     cmd_archive,
     cmd_edit,
@@ -46,10 +47,9 @@ def _p_list(sub: argparse._SubParsersAction) -> None:
             + ", ".join(sorted(ROADMAP_NODE_STATUSES))
         ),
     )
-    sp.add_argument(
-        "--json",
+    add_json_arg(
+        sp,
         dest="as_json",
-        action="store_true",
         help="Print a JSON array of full node objects (titles untruncated), each with its chunk path",
     )
     sp.set_defaults(func=cmd_list)
@@ -270,7 +270,7 @@ def _p_list_dependencies(sub: argparse._SubParsersAction) -> None:
 def _p_set_dependencies(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "set-dependencies",
-        help="Replace explicit dependencies (node_keys); same validation as PM GUI patch",
+        help="Replace explicit dependencies (KEY or ID); same validation as PM GUI patch",
     )
     sp.add_argument("node_id", metavar="NODE_ID")
     mx = sp.add_mutually_exclusive_group(required=True)
@@ -283,7 +283,7 @@ def _p_set_dependencies(sub: argparse._SubParsersAction) -> None:
         "--deps",
         dest="deps_raw",
         metavar="KEYS",
-        help="Space/comma/semicolon-separated dependency node_keys (same as edit-node dependencies=…)",
+        help="Space/comma/semicolon-separated KEY or ID values (same as edit-node dependencies=…)",
     )
     sp.set_defaults(func=cmd_set_dependencies)
 

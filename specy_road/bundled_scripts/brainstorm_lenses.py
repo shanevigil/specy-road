@@ -1,6 +1,6 @@
 """Lenses, diversity operators and directions the diverge prompts draw from.
 
-The research behind brainstorm v2 (``docs/design-notes/v0-3-1-brainstorm-v2.md``)
+The research behind brainstorm v2
 found that named creativity methods add little on their own, while cheap
 prompt mechanics — personas, random constraints, analogies, low-typicality
 sampling, regeneration against the visible pool — carry the measured gains.

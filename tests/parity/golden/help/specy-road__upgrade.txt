@@ -1,0 +1,63 @@
+$ specy-road upgrade --help
+exit: 0
+--- stdout ---
+usage: specy-road upgrade [-h] [--repo-root DIR] [--dry-run] [--prune]
+
+Bring a consumer repo up to the installed specy-road: ``specy-road upgrade``.
+
+After ``pip install -U specy-road``, ``pipx upgrade specy-road`` or
+``uv tool upgrade specy-road`` the repo still carries what older versions
+copied into it. Four commands fix that, and adopters of 0.3.1rc1 ran them from
+memory, in different orders, and stopped at different points: one kept
+duplicate ``/specyrd-…`` commands because the ``rm`` was buried in output,
+another never got the ``AGENTS.md`` block. This runs the same commands, in
+order, and nothing else:
+
+1. ``refresh-schemas``  — ``schemas/``
+2. ``refresh-profiles`` — missing ``model-profiles/`` files, never overwriting
+3. shipped docs and templates — missing ``docs/`` files the ``.specyrd/AGENTS.md`` load order names
+   and missing ``work/*.template.md`` files prompts reference (never overwriting)
+4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
+   the stubs this version no longer installs, and ``.cursor``/``.codex`` copies
+   of the skills that are links or verbatim stubs)
+5. ``validate``, then ``digest --check``; in between, when validate passes, it
+   writes ``roadmap-context.md`` (``specy-road digest``) when missing or drifted
+   and ``roadmap.md`` (``specy-road export``) when tracked and drifted
+
+It first prints the running version, its ``sys.prefix`` and every
+``specy-road``/``specyrd`` on PATH. After writing it names each file its own
+writes pushed over the project's file-limits cap (a file already over is not
+blamed on it), and lists the other git worktrees, which still carry the old
+managed files while sharing this install.
+
+Each step keeps its own narrow contract; the roadmap, planning sheets and
+anything outside a managed block are never touched. The refreshes run once, on
+a temporary mirror of the checkout that keeps its links; what they wrote there
+is the plan, which is then written into the checkout. ``--dry-run`` lists the
+same plan, writes it into a temporary copy instead and runs ``validate`` there;
+the checkout is never written, and the generated files it would write are
+listed as ``would write``, the digest rendered from the checkout's history,
+read-only. Every git call runs with every ``GIT_`` variable of
+the caller's removed and a timeout; in the plan's mirror and the dry run's
+copy, git also reads no global or system config and runs no hook, and in the
+checkout the caller's own config files apply. The exit code is 2 when a git
+call it depends on fails or times out, 1 when ``validate`` fails or a write
+is refused, and 0 otherwise. A generated file with a symlink on its path is
+refused, and ``digest`` stays a next step, as it does when ``validate`` fails
+(nothing is regenerated from an invalid graph). A refused stub, skill file,
+skill link or ignore file is printed ``error:``; that path is left as it is,
+the rest of the plan is applied. A refused ``AGENTS.md``, ``CLAUDE.md``,
+shipped doc, work template or profile stays a report line. Read validate's
+notices for what the new version reports (held milestones among them).
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --dry-run        Show what the refreshes would write and validate a temporary copy with them
+                   applied; change nothing in the checkout.
+  --prune          Also delete stubs this version no longer installs (e.g. pre-0.3.0
+                   .cursor/commands/specyrd-*.md) and .cursor/.codex copies of the skills in
+                   .agents/skills.
+--- stderr ---

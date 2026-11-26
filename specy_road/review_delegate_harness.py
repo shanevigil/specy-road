@@ -6,13 +6,18 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.role_prompt_cli import reviewer_command
+from specy_road.orchestration.role_prompt_cli import reviewer_command
 from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import reviews_dir
 from specy_road.review_record_write import OUTPUT_SCHEMA_NAME
 from specy_road.reviewer_auth import claude_default_reviewer
-from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for, reviewer_cli
+from specy_road.orchestration.workers.worker_adapters import (
+    ClaudeCode,
+    Launch,
+    adapter_for,
+    reviewer_cli,
+)
 
 
 class HarnessSetupError(Exception):

@@ -15,7 +15,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 
 
 def heal_before_mutation(root: Path) -> None:
@@ -51,7 +51,8 @@ def derive_codename_with_collision_suffix(
     through to ``title_to_codename`` (promote caps derived slugs).
     """
     from specy_road.bundled_scripts.roadmap_codename_cap import cap_codename_slug
-    from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_MAX_CHARS, title_to_codename
+    from specy_road.bundled_scripts.roadmap_codename_cap import CODENAME_MAX_CHARS
+    from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 
     uncapped = title_to_codename(title, max_words=max_words)
     if not uncapped:

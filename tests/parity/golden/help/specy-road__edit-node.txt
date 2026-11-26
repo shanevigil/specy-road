@@ -1,0 +1,31 @@
+$ specy-road edit-node --help
+exit: 0
+--- stdout ---
+usage: specy-road edit-node [-h] [--set KEY=VALUE] [--add KEY=ENTRY] [--remove KEY=ENTRY]
+                            [--sync-codename]
+                            NODE_ID
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help          show this help message and exit
+  --set KEY=VALUE     Field to set; repeatable. List fields (acceptance, risks, touch_zones,
+                      dependencies, planned_test_changes) take one --set per item: --set
+                      acceptance='Saves offline' --set acceptance='Syncs on reconnect'.
+                      touch_zones also splits on commas; '|' is not a separator. An empty value
+                      (acceptance=) removes the field.
+  --add KEY=ENTRY     Append one entry of a list field (acceptance, risks, touch_zones,
+                      dependencies, planned_test_changes) and keep the rest; repeatable. Not
+                      combined with --set of the same field. dependencies takes a node_key or a
+                      display id.
+  --remove KEY=ENTRY  Drop one entry of a list field (acceptance, risks, touch_zones,
+                      dependencies, planned_test_changes) and keep the rest; repeatable. Not
+                      combined with --set of the same field. dependencies takes a node_key or a
+                      display id.
+  --sync-codename     Re-derive the codename from a new --set title even when the current one was
+                      chosen by hand. Editing a title re-derives a title-derived codename
+                      automatically; a hand-picked one is kept, because the codename is the branch
+                      identity (feature/rm-<codename>) and the registry key. Renaming it mid-
+                      flight desynchronizes a live branch from its node.
+--- stderr ---

@@ -1,0 +1,259 @@
+# Recorded with the legacy keys at pickup of M16.4.5 (base 261e2318), before `checks:` existed.
+# Columns and the PROBE placeholder: see test_checks_migration.py. `checks` is the hand-written
+# equivalent of `legacy`; null means no config line. `cli` is the --baseline-cmd or
+# --land-check-cmd value (null: not given; "": disables the check for that run).
+rows:
+- id: baseline-absent
+  stage: baseline
+  legacy: null
+  checks: null
+  cli: null
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: baseline-blank
+  stage: baseline
+  legacy: |
+    baseline_cmd: '  '
+  checks: |
+    checks: []
+  cli: null
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: baseline-set
+  stage: baseline
+  legacy: |
+    baseline_cmd: PROBE baseline
+  checks: |
+    checks:
+      - {name: baseline, run: 'PROBE baseline', when: baseline}
+  cli: null
+  expect:
+    runs: [{"argv": ["baseline"], "cwd": "project", "env_added": []}]
+    printed: ["baseline on main: PROBE baseline"]
+    ok: true
+- id: baseline-set-failing
+  stage: baseline
+  legacy: |
+    baseline_cmd: PROBE baseline fail
+  checks: |
+    checks:
+      - {name: baseline, run: 'PROBE baseline fail', when: baseline}
+  cli: null
+  expect:
+    runs: [{"argv": ["baseline", "fail"], "cwd": "project", "env_added": []}]
+    printed: ["baseline on main: PROBE baseline fail"]
+    ok: false
+- id: baseline-cli-override
+  stage: baseline
+  legacy: |
+    baseline_cmd: PROBE baseline
+  checks: |
+    checks:
+      - {name: baseline, run: 'PROBE baseline', when: baseline}
+  cli: 'PROBE cli'
+  expect:
+    runs: [{"argv": ["cli"], "cwd": "project", "env_added": []}]
+    printed: ["baseline on main: PROBE cli"]
+    ok: true
+- id: baseline-cli-disabled
+  stage: baseline
+  legacy: |
+    baseline_cmd: PROBE baseline fail
+  checks: |
+    checks:
+      - {name: baseline, run: 'PROBE baseline fail', when: baseline}
+  cli: ''
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: land-push-absent
+  stage: land-push
+  legacy: null
+  checks: null
+  cli: null
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: land-push-blank
+  stage: land-push
+  legacy: |
+    land_check_cmd: '  '
+  checks: |
+    checks: []
+  cli: null
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: land-push-set
+  stage: land-push
+  legacy: |
+    land_check_cmd: PROBE land-push
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-push', when: land}
+  cli: null
+  expect:
+    runs: [{"argv": ["land-push"], "cwd": "land worktree", "env_added": []}]
+    printed: ["land check on <sha>: PROBE land-push"]
+    ok: true
+- id: land-push-set-failing
+  stage: land-push
+  legacy: |
+    land_check_cmd: PROBE land-push fail
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-push fail', when: land}
+  cli: null
+  expect:
+    runs: [{"argv": ["land-push", "fail"], "cwd": "land worktree", "env_added": []}]
+    printed: ["land check on <sha>: PROBE land-push fail"]
+    ok: false
+    error: "land check failed on merge commit <sha>; nothing was pushed."
+- id: land-push-cli-override
+  stage: land-push
+  legacy: |
+    land_check_cmd: PROBE land-push
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-push', when: land}
+  cli: 'PROBE cli'
+  expect:
+    runs: [{"argv": ["cli"], "cwd": "land worktree", "env_added": []}]
+    printed: ["land check on <sha>: PROBE cli"]
+    ok: true
+- id: land-push-cli-disabled
+  stage: land-push
+  legacy: |
+    land_check_cmd: PROBE land-push fail
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-push fail', when: land}
+  cli: ''
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: land-local-absent
+  stage: land-local
+  legacy: null
+  checks: null
+  cli: null
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: land-local-blank
+  stage: land-local
+  legacy: |
+    land_check_cmd: '  '
+  checks: |
+    checks: []
+  cli: null
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: land-local-set
+  stage: land-local
+  legacy: |
+    land_check_cmd: PROBE land-local
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-local', when: land}
+  cli: null
+  expect:
+    runs: [{"argv": ["land-local"], "cwd": "land worktree", "env_added": []}]
+    printed: ["land check on <sha>: PROBE land-local"]
+    ok: true
+- id: land-local-set-failing
+  stage: land-local
+  legacy: |
+    land_check_cmd: PROBE land-local fail
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-local fail', when: land}
+  cli: null
+  expect:
+    runs: [{"argv": ["land-local", "fail"], "cwd": "land worktree", "env_added": []}]
+    printed: ["land check on <sha>: PROBE land-local fail"]
+    ok: false
+    error: "land check failed on merge commit <sha>; nothing was pushed."
+- id: land-local-cli-override
+  stage: land-local
+  legacy: |
+    land_check_cmd: PROBE land-local
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-local', when: land}
+  cli: 'PROBE cli'
+  expect:
+    runs: [{"argv": ["cli"], "cwd": "land worktree", "env_added": []}]
+    printed: ["land check on <sha>: PROBE cli"]
+    ok: true
+- id: land-local-cli-disabled
+  stage: land-local
+  legacy: |
+    land_check_cmd: PROBE land-local fail
+  checks: |
+    checks:
+      - {name: land, run: 'PROBE land-local fail', when: land}
+  cli: ''
+  expect:
+    runs: []
+    printed: []
+    ok: true
+- id: prompt-absent
+  stage: prompt
+  legacy: null
+  checks: null
+  cli: null
+  expect:
+    executor: ["**Running tests:** when other workers share this machine, cap parallel test workers (for example `pytest -n 4`, not `-n auto`): each full parallel suite starts one worker per core. A project can name the command as `verify_cmd` in `roadmap/git-workflow.yaml`."]
+    reviewer: ["**Running tests:** when other workers share this machine, cap parallel test workers (for example `pytest -n 4`, not `-n auto`): each full parallel suite starts one worker per core. A project can name the command as `verify_cmd` in `roadmap/git-workflow.yaml`."]
+- id: prompt-blank
+  stage: prompt
+  legacy: |
+    verify_cmd: '  '
+  checks: |
+    checks: []
+  cli: null
+  expect:
+    executor: ["**Running tests:** when other workers share this machine, cap parallel test workers (for example `pytest -n 4`, not `-n auto`): each full parallel suite starts one worker per core. A project can name the command as `verify_cmd` in `roadmap/git-workflow.yaml`."]
+    reviewer: ["**Running tests:** when other workers share this machine, cap parallel test workers (for example `pytest -n 4`, not `-n auto`): each full parallel suite starts one worker per core. A project can name the command as `verify_cmd` in `roadmap/git-workflow.yaml`."]
+- id: prompt-set
+  stage: prompt
+  legacy: |
+    verify_cmd: python -m pytest -n 4 -p no:cacheprovider
+  checks: |
+    checks:
+      - {name: verify, run: 'python -m pytest -n 4 -p no:cacheprovider', when: prompt}
+  cli: null
+  expect:
+    executor: ["**Running tests:** run this leaf's tests with `python -m pytest -n 4 -p no:cacheprovider` followed by the test paths (`verify_cmd` in `roadmap/git-workflow.yaml`); other workers may share this machine, and the full suite runs at landing."]
+    reviewer: ["**Running tests:** run this leaf's tests with `python -m pytest -n 4 -p no:cacheprovider` followed by the test paths (`verify_cmd` in `roadmap/git-workflow.yaml`); other workers may share this machine, and the full suite runs at landing."]
+- id: evidence-absent
+  stage: evidence
+  legacy: null
+  checks: null
+  cli: null
+  expect:
+    packet: ["### `echo checked` → exit 0 (run by review-packet)"]
+    ready_verify: [{"cmd": "pytest tests/x.py", "exit": 0}]
+- id: evidence-set
+  stage: evidence
+  legacy: |
+    verify_cmd: python -m pytest -n 4 -p no:cacheprovider
+  checks: |
+    checks:
+      - {name: verify, run: 'python -m pytest -n 4 -p no:cacheprovider', when: prompt}
+  cli: null
+  expect:
+    packet: ["### `echo checked` → exit 0 (run by review-packet)"]
+    ready_verify: [{"cmd": "pytest tests/x.py", "exit": 0}]

@@ -1,0 +1,20 @@
+$ specy-road start-milestone-session --help
+exit: 0
+--- stdout ---
+usage: specy-road start-milestone-session [-h] [--repo-root DIR] [--base BRANCH] [--remote NAME]
+                                          PARENT_NODE_ID
+
+Sync integration branch, ensure rollup branch feature/rm-<parent-codename>, and write
+work/.milestone-session.yaml for subtree-scoped task pickup.
+
+positional arguments:
+  PARENT_NODE_ID   Roadmap id of the milestone parent (e.g. M7).
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --base BRANCH    Integration branch (default: roadmap/git-workflow.yaml).
+  --remote NAME    Git remote (default: roadmap/git-workflow.yaml).
+--- stderr ---

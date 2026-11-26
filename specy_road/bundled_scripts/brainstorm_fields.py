@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # the real import would be circular; raised lazily below
-    from specy_road.bundled_scripts.brainstorm_session import BrainstormError
+    from specy_road.brainstorm_session import BrainstormError
 
 VERIFICATIONS = ("unverified", "matched", "not-found", "blocked")
 #: Read-side names from older session files: ``retrieved`` meant the quote was found.
@@ -46,7 +46,7 @@ def parse_origin(text: str | None) -> dict[str, str] | None:
 
 
 def _error(msg: str) -> "BrainstormError":
-    from specy_road.bundled_scripts.brainstorm_session import BrainstormError
+    from specy_road.brainstorm_session import BrainstormError
 
     return BrainstormError(msg)
 

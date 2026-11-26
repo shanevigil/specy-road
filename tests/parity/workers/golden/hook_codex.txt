@@ -1,0 +1,52 @@
+$ specy-road hook_codex
+exit: 0
+--- stdout ---
+{"argv": ["hook", "--format", "codex", "--print-config"], "exit": 0, "out": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\"type\": \"command\", \"command\": \"specy-road worker hook --format codex\", \"timeout\": 10,\n           \"statusMessage\": \"specy-road worker witness\"}\n        ]\n      }\n    ]\n  }\n}\n", "err": "# Put the snippet in .codex/hooks.json; the project's .codex/ layer and the hook must be trusted (`/hooks`, or --dangerously-bypass-hook-trust). Silent on success, as Codex expects.\n"}
+{"argv": ["hook", "--format", "codex"], "exit": 0, "out": "", "err": ""}
+{"argv": ["hook", "--format", "codex"], "exit": 0, "out": "", "err": ""}
+{"argv": ["hook", "--format", "codex"], "exit": 0, "out": "", "err": "worker hook: ignored (Expecting value: line 1 column 1 (char 0))\n"}
+=== .lock
+<present>
+=== FLAG
+<present>
+=== w-0001.events.jsonl
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 1, "source": "broker", "summary": "delegated M1.1 to codex/opus (attempt 1)", "type": "started", "worker_id": "w-0001"}
+=== w-0001.interventions.jsonl
+{"at": "<MASKED>", "harness": "codex", "prompt": "do not add an abstraction", "session_id": "sid-1"}
+=== w-0001.yaml
+{
+  "attempt": 1,
+  "billing_route": null,
+  "branch": null,
+  "checkpoint": null,
+  "contract_hash": null,
+  "created": "<MASKED>",
+  "descendants_unchecked": null,
+  "flags": [],
+  "harness": "codex",
+  "harness_pid": null,
+  "harness_start": null,
+  "instruction_epoch": 0,
+  "last_event_seq": 1,
+  "last_output_at": null,
+  "lease": {
+    "holder": "human",
+    "since": "<TIME>"
+  },
+  "limit_reset_at": null,
+  "model": "opus",
+  "node_id": "M1.1",
+  "pgid": null,
+  "pid": null,
+  "provider_session_id": "sid-1",
+  "queued_message": null,
+  "recoveries": null,
+  "started_head": "<MASKED>",
+  "state": "idle",
+  "toolkit_version": "<MASKED>",
+  "updated": "<MASKED>",
+  "worker_id": "w-0001",
+  "worktree": "<REPO>",
+  "wrapper_token": null
+}
+--- stderr ---

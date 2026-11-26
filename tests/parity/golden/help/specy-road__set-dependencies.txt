@@ -1,0 +1,13 @@
+$ specy-road set-dependencies --help
+exit: 0
+--- stdout ---
+usage: specy-road set-dependencies [-h] (--clear | --deps KEYS) NODE_ID
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help   show this help message and exit
+  --clear      Remove all explicit dependencies on this node
+  --deps KEYS  Space/comma/semicolon-separated KEY or ID values (same as edit-node dependencies=…)
+--- stderr ---

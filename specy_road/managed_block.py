@@ -18,12 +18,20 @@ Idempotent by construction: applying the same lines twice is a no-op, so
 in an ignore file and an H1 heading in Markdown, which is why the agent-guide
 block uses :data:`HTML_COMMENT` instead. :data:`HASH` stays the default so the
 ignore files keep their existing bytes.
+
+**One write path.** The block writer (:func:`apply_managed_block`, used for the
+ignore files, ``CLAUDE.md`` and the ``AGENTS.md`` stub) and the whole-file writer
+for the files specy-road owns outright (:func:`write_owned_file`, used for
+``.specyrd/AGENTS.md`` and the team addendum) both store text through one
+function, so the symlink check and the write itself are stated once.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+
+from specy_road import safe_write
 
 _LABEL = "specy-road managed block — do not edit inside"
 _END_LABEL = "end specy-road managed block"
@@ -82,15 +90,34 @@ def resolves_outside(root: Path, path: Path) -> bool:
     return not path.resolve().is_relative_to(root.resolve())
 
 
-def refused_link(root: Path, path: Path, *, any_link: bool = False) -> str | None:
-    """The one-line refusal for writing ``path``, or ``None`` when it may be written.
+def refused_link(root: Path, path: Path, *, any_link: bool = True) -> str | None:
+    """The one-line refusal for writing ``path`` under ``root``, or ``None`` when it may be written.
 
-    Refused when :func:`resolves_outside` ``root``, or with ``any_link`` when
-    ``path`` is a symlink at all (the review hand-off directory follows none).
+    The :mod:`specy_road.safe_write` rule: any symlink on the path is refused,
+    in the repository or out of it, whatever ``any_link`` says (kept for callers).
     """
-    if resolves_outside(root, path) or (any_link and path.is_symlink()):
-        return f"{REFUSED}: {path}"
+    return safe_write.refused(root, path)
+
+
+def rule_refusal(outcome: str) -> str | None:
+    """The reason in a :mod:`specy_road.safe_write` refusal (``refused: <why>``), else ``None``.
+
+    :data:`REFUSED` (a ``resolves_outside`` writer's link out: ``AGENTS.md``,
+    ``CLAUDE.md``) is not one: it stays a report line.
+    """
+    if outcome.startswith("refused: ") and outcome != REFUSED:
+        return outcome.removeprefix("refused: ")
     return None
+
+
+def raise_rule_refusal(written: list[str]) -> None:
+    """Raise ``SafeWriteError`` for the first :func:`rule_refusal` among ``written``, if any.
+
+    For a command that stops on the rule (``init project``, ``specyrd init``): the
+    re-check right before replace refuses a link swapped in after its preflight.
+    """
+    if why := next((w for e in written if (w := rule_refusal(getattr(e, "outcome", "")))), None):
+        raise safe_write.SafeWriteError(why)
 
 
 def render_block(
@@ -106,7 +133,11 @@ def render_block(
 
 
 def _split(text: str, style: MarkerStyle) -> tuple[str, str | None, str]:
-    """``(before, block, after)`` — ``block`` is ``None`` when absent."""
+    """``(before, block, after)`` — ``block`` is ``None`` when absent.
+
+    ``block`` ends at the end marker; ``after`` is every byte after it, the
+    marker's own line ending included.
+    """
     start = text.find(style.start)
     if start < 0:
         return text, None, ""
@@ -116,7 +147,7 @@ def _split(text: str, style: MarkerStyle) -> tuple[str, str | None, str]:
         # everything from the start marker on as ours to replace.
         return text[:start], text[start:], ""
     stop = end + len(style.end)
-    return text[:start], text[start:stop], text[stop:].lstrip("\n")
+    return text[:start], text[start:stop], text[stop:]
 
 
 def apply_managed_block(
@@ -126,13 +157,17 @@ def apply_managed_block(
     note: str = "",
     style: MarkerStyle = HASH,
     dry_run: bool = False,
+    strict: bool = False,
 ) -> str:
     """Write ``lines`` into ``path``'s managed block. Returns what happened.
 
     Creates the file when missing, replaces the block when present, and leaves
     every other line exactly as it was. Never raises: an unwritable path costs
     the block, not the command that asked for it, and a symlink out of the
-    file's directory is :data:`REFUSED`, not followed.
+    file's directory is :data:`REFUSED`, not followed. With ``strict`` the
+    :mod:`specy_road.safe_write` rule applies instead: a symlink of any kind at
+    ``path`` is refused (``"refused: <why>"``) before it is read, and the write
+    is that module's.
 
     With ``dry_run`` the outcome is computed and nothing is written, so
     ``specyrd init --dry-run`` can report the same line it would report for
@@ -140,12 +175,12 @@ def apply_managed_block(
     """
     block = render_block(lines, note=note, style=style)
     try:
-        existing = path.read_text(encoding="utf-8") if path.is_file() else None
-    except (OSError, UnicodeDecodeError):
-        return FAILED
+        existing = _read(path, strict)
+    except (OSError, UnicodeDecodeError) as e:
+        return f"refused: {e}" if isinstance(e, safe_write.SafeWriteError) else FAILED
 
     if existing is None:
-        return _write(path, block, CREATED, dry_run)
+        return _write(path, block, CREATED, dry_run, strict)
 
     before, current, after = _split(existing, style)
     if current is not None and current + "\n" == block:
@@ -153,37 +188,73 @@ def apply_managed_block(
     if current is None:
         prefix = before if before.endswith("\n") or not before else before + "\n"
         joiner = "\n" if prefix.strip() else ""
-        return _write(path, f"{prefix}{joiner}{block}", UPDATED, dry_run)
-    tail = f"\n{after}" if after.strip() else ""
-    return _write(path, f"{before}{block}{tail}", UPDATED, dry_run)
+        return _write(path, f"{prefix}{joiner}{block}", UPDATED, dry_run, strict)
+    # Keep the bytes after the end marker as they are; with none, the block ends the file with its newline.
+    text = f"{before}{block[:-1]}{after}" if after else f"{before}{block}"
+    return _write(path, text, UPDATED, dry_run, strict)
 
 
-def _write(path: Path, text: str, outcome: str, dry_run: bool = False) -> str:
-    if resolves_outside(path.parent, path):   # a managed file sits directly in the root its caller named
+def _read(path: Path, strict: bool) -> str | None:
+    """``path``'s text with its line endings as they are, ``None`` when absent.
+
+    With ``strict`` the safe-write rule is checked before it is read.
+    """
+    from specy_road.fs_atomic import read_text_exact  # here: `validate` imports this module, not this read
+
+    safe_write.check_all(path.parent, [path] if strict else [])
+    return read_text_exact(path) if path.is_file() else None
+
+
+def _store(path: Path, text: str, *, strict: bool = False) -> None:
+    """Write ``text`` to ``path``: the one write every managed file goes through.
+
+    ``strict`` hands the write to :mod:`specy_road.safe_write` (atomic, every link
+    refused); otherwise the parent is created and the file written in place. The
+    caller has already made its symlink check. Raises ``OSError``.
+    """
+    if strict:
+        safe_write.write(path.parent, path, text)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="")
+
+
+def _write(path: Path, text: str, outcome: str, dry_run: bool = False, strict: bool = False) -> str:
+    # A managed block's file sits directly in the root its caller named, so its parent is the root.
+    if not strict and resolves_outside(path.parent, path):
         return REFUSED
     if dry_run:
         return outcome
+    # strict: a refusal here is the re-check before replace catching a race; it is still the rule's.
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        _store(path, text, strict=strict)
+    except safe_write.SafeWriteError as e:
+        return f"refused: {e}"
     except OSError:
         return FAILED
     return outcome
 
 
-def remove_managed_block(path: Path, *, style: MarkerStyle = HASH) -> str:
-    """Drop the block, leaving the rest of the file alone."""
-    try:
-        if not path.is_file():
-            return UNCHANGED
-        existing = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return FAILED
-    before, current, after = _split(existing, style)
-    if current is None:
+def write_owned_file(
+    root: Path, rel: str, text: str, *, replace: bool, dry_run: bool = False
+) -> str:
+    """Create ``root / rel``, or rewrite it when ``replace`` and it differs. Returns what happened.
+
+    For a file specy-road owns whole (``.specyrd/AGENTS.md``), or creates once and
+    then leaves to the team (``.specyrd/AGENTS.team.md``, ``replace=False``). A
+    path, or a directory above it, that links out of ``root`` is :data:`REFUSED`,
+    not followed. Unlike :func:`apply_managed_block` it raises ``OSError``: a file
+    the command owns cannot be skipped quietly.
+    """
+    path = root / rel
+    if resolves_outside(root, path):
+        return REFUSED
+    if path.is_file() and (not replace or path.read_text(encoding="utf-8") == text):
         return UNCHANGED
-    rest = (before.rstrip("\n") + "\n" + after).lstrip("\n") if after.strip() else before
-    return _write(path, rest, UPDATED)
+    outcome = UPDATED if path.is_file() else CREATED
+    if not dry_run:
+        _store(path, text)
+    return outcome
 
 
 def agent_file_lines_outside_block(

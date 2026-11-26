@@ -1,0 +1,20 @@
+$ specy-road init project --help
+exit: 0
+--- stdout ---
+usage: specy-road init project [-h] [--dry-run] [--force] [--profiles SPEC] [path]
+
+positional arguments:
+  path             Target repository root (default: git toplevel or cwd)
+
+options:
+  -h, --help       show this help message and exit
+  --dry-run        Print paths that would be written; do not create files
+  --force          Overwrite every existing scaffold file (roadmap/, planning/, constitution/,
+                   schemas/, model-profiles/, vision.md, ...); required if roadmap/manifest.json
+                   already exists. .gitignore and AGENTS.md keep your content. Not an upgrade
+                   path: use refresh-schemas, refresh-profiles and refresh-stubs.
+  --profiles SPEC  Which model profiles to scaffold: all (default), none, or a comma-separated
+                   list of family directory names (for example anthropic-claude), file stems, or
+                   front-matter api_id values. Roster family values (anthropic, openai, …) are not
+                   accepted. Always includes model-profiles/README.md and harness-facts.yaml.
+--- stderr ---

@@ -1,0 +1,43 @@
+$ specy-road upgrade --dry-run --repo-root <ROOT>
+exit: 0
+--- stdout ---
+previewing what specy-road <VERSION> would write: <ROOT>
+Install: specy-road <VERSION> running from <PREFIX>
+- no specy-road or specyrd on PATH
+copying tracked and untracked files into a temporary directory; ignored files are not copied
+
+== refresh-schemas
+would write schemas/decisions.schema.json
+would write schemas/git-workflow.schema.json
+would write schemas/orchestration.schema.json
+would write schemas/roadmap.schema.json
+
+== refresh-profiles
+no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; `specy-road refresh-profiles --profiles all` adds every one
+
+== shipped docs
+every shipped doc the load order names is present
+every work template prompts reference is present
+
+== refresh-stubs
+would write .gitignore (updated)
+would write AGENTS.md (updated)
+would write .specyrd/AGENTS.md (updated)
+
+== file-limits default
+constraints/file-limits.yaml caps files at 400 lines with no warning; the template default is now 1000 lines with a warning at 750. upgrade leaves this file as it is; edit it to adopt the default.
+
+== applying the refreshes to a temporary copy, then validating it
+
+== validate
+notice: roadmap/git-workflow.yaml implementation_summary is commit (set or default), but .gitignore ignores 1 leaf summary: work/implementation-summary-M1.1.md (.gitignore:57:work/*); the ignore rule wins for those leaves: their executor prompts say to leave the summary uncommitted for the review packet, never to force-add it. Set implementation_summary: local to say so, or drop the ignore rule to commit summaries.
+OK: roadmap and registry validate.
+
+== generated files
+would write roadmap-context.md (specy-road digest)
+
+== digest --check
+OK: roadmap-context.md matches the roadmap.
+
+(dry-run; no files written in the checkout. The exit code is 1 when validate fails on the copy or a write is refused.)
+--- stderr ---

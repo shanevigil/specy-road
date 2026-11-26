@@ -1,0 +1,12 @@
+$ specy-road archive-node --help
+exit: 0
+--- stdout ---
+usage: specy-road archive-node [-h] [--hard-remove] NODE_ID
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help     show this help message and exit
+  --hard-remove  Remove node from chunk (fails if parent/dependency refs exist)
+--- stderr ---

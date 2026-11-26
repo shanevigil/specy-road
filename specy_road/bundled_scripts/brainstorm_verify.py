@@ -6,6 +6,10 @@ scripts; non-interactive without it fetches nothing). Fetching a known URL
 to check a quote is neither a model call nor a search; the guards are the
 GUI research module's — public hosts only, a timeout, a size cap. A fetch
 that fails records ``blocked``, never "fabricated": a paywall is not a lie.
+A 404 or 410 is ``blocked`` when that origin's root is not 200 (or cannot be
+fetched) and ``not-found`` when the root is. The root is https, the host as a
+URL spells it (an IPv6 literal in brackets), the port when it is not 443,
+fetched once per origin per run.
 The connection is made to the address the host was checked at, with the
 hostname kept for SNI and certificate checking, so a rebinding name cannot
 move a hop onto a private address after the check.
@@ -30,13 +34,12 @@ import http.client
 import ipaddress
 import socket
 import ssl
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlunsplit, urlsplit
 
-from specy_road.bundled_scripts.brainstorm_research import _is_off_host  # noqa: PLC2701 — same guard as the GUI
+from specy_road.brainstorm_research import is_off_host  # noqa: PLC2701 — same guard as the GUI
 from specy_road.bundled_scripts.brainstorm_fields import REPO, is_no_result
-from specy_road.bundled_scripts.brainstorm_session import BrainstormError, BrainstormSession, Idea
-from specy_road.git_subprocess import git_ok, git_stdout, git_text, head_sha
-from specy_road.runtime_paths import git_root
+from specy_road.brainstorm_session import BrainstormError, BrainstormSession, Idea
+from specy_road.git_subprocess import git_ok, git_root, git_stdout, git_text, head_sha
 
 TIMEOUT_SECONDS = 20
 MAX_BYTES = 2_000_000
@@ -53,6 +56,9 @@ _WS = re.compile(r"\s+")
 _PUNCT_SPACE = re.compile(r" (?=[.,;:!?)\]])|(?<=[(\[]) ")
 #: A page's reference markers ("restudying[43] while"), which an agent's copy of the sentence leaves out.
 _CITATION = re.compile(r"\[(?:\d+|[a-z]|note \d+|citation needed)\]", re.IGNORECASE)
+#: A marker a quote keeps, the space before it optional, and the page's own markers a quote may skip.
+_KEPT = re.compile(rf" ?({_CITATION.pattern})")
+_SKIPPED = rf"(?: ?(?:{_CITATION.pattern}))*"
 #: Typographic quotes, dashes and spaces to their ASCII form; soft hyphens and zero-width characters removed.
 _FOLD = str.maketrans({
     **dict.fromkeys("\u2018\u2019\u201a\u2032", "'"),
@@ -63,16 +69,33 @@ _FOLD = str.maketrans({
 })
 
 
-def _norm(text: str) -> str:
+def _norm(text: str, *, citations: bool = False) -> str:
     text = unescape(_TAGS.sub(" ", _INLINE_TAGS.sub("", text)))
-    text = _CITATION.sub("", text).translate(_FOLD)
+    text = (text if citations else _CITATION.sub("", text)).translate(_FOLD)
     return _PUNCT_SPACE.sub("", _WS.sub(" ", text).strip().lower())
+
+
+def _on_page(quote: str, page: str) -> bool:
+    """Whether ``quote`` is on ``page``: a page's citation marker is dropped only where the quote does not keep it.
+
+    A quote with no marker is compared with the page's markers all dropped. A marker the quote keeps must sit at
+    that place on the page, among any others there. A quote of markers alone has no words to find.
+    """
+    words, kept = _norm(quote), _norm(quote, citations=True)
+    if not words:
+        return False
+    if kept == words:
+        return words in _norm(page)
+    tokens: list[str] = []
+    for i, piece in enumerate(_KEPT.split(kept)):
+        tokens += [f" ?{re.escape(piece)}"] if i % 2 else map(re.escape, piece)
+    return re.search(_SKIPPED.join(tokens), _norm(page, citations=True)) is not None
 
 
 MAX_REDIRECTS = 5
 
 
-def _public_address(host: str) -> str | None:
+def public_address(host: str) -> str | None:
     """One public address ``host`` resolves to, or ``None`` when any answer is off-host.
 
     The address returned is the one the connection is made to: the name is
@@ -95,7 +118,7 @@ def _public_address(host: str) -> str | None:
     return addrs[0] if addrs else None
 
 
-class _PinnedHTTPS(http.client.HTTPSConnection):
+class PinnedHTTPS(http.client.HTTPSConnection):
     """TLS to a chosen address, with the hostname kept for SNI and certificate checking."""
 
     def __init__(self, host: str, address: str, port: int) -> None:
@@ -103,18 +126,19 @@ class _PinnedHTTPS(http.client.HTTPSConnection):
         self._pinned = address
 
     def connect(self) -> None:
+        """Open TLS to the pinned address, with the hostname kept for certificate checking."""
         sock = socket.create_connection((self._pinned, self.port), self.timeout)
         self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
 
 
-def _fetch_once(url: str) -> tuple[int, str | None, bytes]:
+def fetch_once(url: str) -> tuple[int, str | None, bytes]:
     """``(status, redirect location, body)`` for one request to the address the host was checked at."""
     parts = urlsplit(url)
     host = parts.hostname or ""
-    address = _public_address(host)
+    address = public_address(host)
     if address is None:
         raise ValueError(f"refusing {url}: not a public host")
-    conn = _PinnedHTTPS(host, address, parts.port or 443)
+    conn = PinnedHTTPS(host, address, parts.port or 443)
     try:
         path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
         conn.request("GET", path, headers={"User-Agent": "specy-road brainstorm verify", "Host": host})
@@ -143,7 +167,7 @@ def default_fetch(url: str) -> tuple[int, str]:
     for _hop in range(MAX_REDIRECTS + 1):
         if _allowed(url):
             raise ValueError(f"refusing {url}: {_allowed(url)}")
-        status, location, body = _fetch_once(url)
+        status, location, body = fetch_once(url)
         if status in (301, 302, 303, 307, 308):
             if not location:
                 return status, ""
@@ -157,7 +181,7 @@ def _allowed(url: str) -> str | None:
     parts = urlsplit(url)
     if parts.scheme != "https":
         return "not https"
-    if not parts.hostname or _is_off_host(parts.hostname):
+    if not parts.hostname or is_off_host(parts.hostname):
         return "not a public host"
     return None
 
@@ -240,8 +264,56 @@ def is_local(source: dict[str, Any]) -> bool:
     return source.get("source_type") == REPO
 
 
-def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = None) -> str:
-    """The verification state for one source after a fetch, or after a local read of a repo source."""
+def _root_url(url: str) -> str:
+    """Origin root of ``url``: https, the host as a URL spells it, effective port, path ``/``.
+
+    A hostname containing ``:`` is an IPv6 literal and is written in brackets; any other host is
+    written as itself. Port 443 is omitted, so an explicit ``:443`` is the same origin as none.
+    Userinfo, query and fragment are dropped. A zone id in the hostname is retained, so
+    ``https://[fe80::1%25eth0]/a`` has root ``https://[fe80::1%25eth0]/``.
+    """
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    host = f"[{host}]" if ":" in host else host
+    port = parts.port
+    netloc = host if port in (None, 443) else f"{host}:{port}"
+    return urlunsplit(("https", netloc, "/", "", ""))
+
+
+_ASK_ROOT = frozenset({404, 410})
+_BLOCKED_STATUS = frozenset({401, 403, 429})
+
+
+def _non_200(status: int, url: str, fetch: Fetcher, roots: dict[str, bool] | None) -> str:
+    """State for a page that is not 200. 404 and 410 follow the origin root; 401, 403 and 429 are blocked."""
+    if status in _ASK_ROOT:
+        cache = roots if roots is not None else {}
+        return "not-found" if host_answers(url, fetch, cache) else "blocked"
+    return "blocked" if status in _BLOCKED_STATUS else "not-found"
+
+
+def host_answers(url: str, fetch: Fetcher, roots: dict[str, bool]) -> bool:
+    """Whether ``url``'s origin returns 200 for ``/``; one fetch per origin, stored in ``roots``.
+
+    The origin is ``_root_url``. Any status but 200, or a fetch that fails, means the host refuses verify.
+    """
+    root = _root_url(url)
+    if root not in roots:
+        try:
+            status, _text = fetch(root)
+        except Exception:  # noqa: BLE001 — a root that cannot be fetched was not checked
+            roots[root] = False
+        else:
+            roots[root] = status == 200
+    return roots[root]
+
+
+def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = None,
+                 roots: dict[str, bool] | None = None) -> str:
+    """The verification state for one source after a fetch, or after a local read of a repo source.
+
+    ``roots`` remembers, for one verify run, whether each origin answered 200 at ``/``.
+    """
     if is_local(source):
         return check_repo_source(source, root)
     url = str(source.get("url", ""))
@@ -253,10 +325,9 @@ def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = 
     except Exception:  # noqa: BLE001 — any transport failure is "blocked"
         return "blocked"
     if status != 200:
-        return "blocked" if status in (401, 403, 429) else "not-found"
-    quote = _norm(str(source.get("quote", "")))
+        return _non_200(status, url, fetch, roots)
     # No quote, nothing to find: a URL alone is not evidence (docs/brainstorming.md).
-    return "matched" if quote and quote in _norm(text) else "not-found"
+    return "matched" if _on_page(str(source.get("quote", "")), text) else "not-found"
 
 
 def pending(ideas: list[Idea]) -> list[tuple[Idea, dict[str, Any]]]:
@@ -285,10 +356,11 @@ def verify_session(session: BrainstormSession, ideas: list[Idea], *, fetch: Fetc
                    root: Path | None = None, web: bool = True) -> list[str]:
     """Verify every unverified source on ``ideas`` (only the repo ones unless ``web``); one report line each."""
     fetch = fetch or default_fetch   # resolved at call time so tests can swap it
+    roots: dict[str, bool] = {}
     lines = []
     for idea, src in pending(ideas):
         if not (web or is_local(src)):
             continue
-        src["verification"] = check_source(src, fetch, root=root)
+        src["verification"] = check_source(src, fetch, root=root, roots=roots)
         lines.append(f"{idea.id} {src['verification']:<10} {src.get('url')}")
     return lines

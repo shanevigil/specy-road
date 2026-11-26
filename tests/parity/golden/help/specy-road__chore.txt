@@ -1,0 +1,15 @@
+$ specy-road chore --help
+exit: 0
+--- stdout ---
+usage: specy-road chore [-h] {start,close,garden} ...
+
+positional arguments:
+  {start,close,garden}
+    start               Create work/chores/<slug>.json: the worker commands then take the slug
+    close               End idle workers and write work/chores/<slug>.md (summary, usage, verdict)
+    garden              Read-only drift scans, one finding per line; --open-chores files them as
+                        leaves
+
+options:
+  -h, --help            show this help message and exit
+--- stderr ---

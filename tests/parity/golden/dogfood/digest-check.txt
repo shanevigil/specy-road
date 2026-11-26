@@ -1,0 +1,5 @@
+$ specy-road digest --check --repo-root <ROOT>
+exit: 0
+--- stdout ---
+OK: roadmap-context.md matches the roadmap.
+--- stderr ---

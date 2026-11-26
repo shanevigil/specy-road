@@ -35,6 +35,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { formatRelativeAge, lastWorkedTooltip } from "../lastWorked";
+import {
+  outlineBadge,
+  type OrchestrationNotice,
+  type OutlineBadgeView,
+} from "../orchestrationSnapshot";
 import type { ActivityEntry, DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
 import { usePendingMutations } from "../pendingMutationsContext";
@@ -48,6 +53,11 @@ import {
   showActiveFeatureBranchBar,
 } from "../rowMatchesRegisteredBranch";
 import { visibleDragSubtreeIds } from "../outlineSubtree";
+import {
+  createOutlineRowClick,
+  rowDragAttributes,
+  type OutlineRowClick,
+} from "../outlineRowClick";
 
 const TITLE_PLAN_READONLY_HINT =
   "Title and planning are read-only while this task is in active development (in progress, open or merged merge request, or this checkout matches the registered branch).";
@@ -272,6 +282,10 @@ type RowProps = {
   titleEditLocked?: boolean;
   /** Has at least one child in the outline `parent_id` tree (container row). */
   isParentRow?: boolean;
+  /** One orchestration badge for this leaf, or null when the row shows nothing new. */
+  orchBadge?: OutlineBadgeView | null;
+  /** Click passes `orchBadge.leafKey` through to the drawer's `filterLeafId`. */
+  onOpenOrchestration?: (leafKey: string) => void;
 };
 
 type OutlineRowTrExtra = {
@@ -344,6 +358,8 @@ function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
     depCellRef,
     devCellTitle,
     titleEditLocked,
+    orchBadge,
+    onOpenOrchestration,
     rowClass,
     gitCheckoutTitle,
     trRef,
@@ -406,6 +422,26 @@ function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
             <div className="outline-title-text-wrap">
               <div>{node.title}</div>
             </div>
+            {orchBadge ? (
+              <button
+                type="button"
+                className="worker-stall-badge"
+                title={orchBadge.hover}
+                style={{ border: 0, cursor: "pointer", font: "inherit", flexShrink: 0 }}
+                onClick={
+                  isPreview
+                    ? undefined
+                    : (e) => {
+                        e.stopPropagation();
+                        onOpenOrchestration?.(orchBadge.leafKey);
+                      }
+                }
+                onPointerDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+              >
+                {orchBadge.text}
+              </button>
+            ) : null}
             {titleEditLocked ? (
               <span
                 className="outline-pm-lock"
@@ -517,8 +553,11 @@ function SortableRow({
   devCellTitle,
   titleEditLocked,
   isParentRow = false,
+  orchBadge,
+  onOpenOrchestration,
   rowSourceHidden,
-}: RowProps & { rowSourceHidden: boolean }) {
+  rowClick,
+}: RowProps & { rowSourceHidden: boolean; rowClick: OutlineRowClick }) {
   const {
     attributes,
     listeners,
@@ -526,6 +565,7 @@ function SortableRow({
     transform,
     transition,
   } = useSortable({ id, disabled: dragDisabled });
+  const sortableAttributes = rowDragAttributes(attributes, dragDisabled);
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -534,7 +574,6 @@ function SortableRow({
     pointerEvents: rowSourceHidden ? "none" : undefined,
   };
 
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressOrigin = useRef<{ x: number; y: number } | null>(null);
   const skipNextTitleClick = useRef(false);
@@ -559,10 +598,7 @@ function SortableRow({
       longPressTimer.current = null;
       longPressOrigin.current = null;
       skipNextTitleClick.current = true;
-      if (clickTimer.current) {
-        clearTimeout(clickTimer.current);
-        clickTimer.current = null;
-      }
+      rowClick.disarm();
       if (!selected) onSelectRow();
       onBeginTitleEdit();
     }, TITLE_LONG_PRESS_MS);
@@ -587,14 +623,13 @@ function SortableRow({
       return;
     }
     if (depEditId) {
+      rowClick.disarm();
       onDepRowBodyClick();
       return;
     }
-    if (clickTimer.current) clearTimeout(clickTimer.current);
-    clickTimer.current = setTimeout(() => {
-      clickTimer.current = null;
-      onSelectRow();
-    }, 220);
+    const decision = rowClick.click(id, { titleEditing });
+    if (decision === "select") onSelectRow();
+    else if (decision === "open") onOpenModal();
   };
 
   const handleRowDoubleClick = (e: MouseEvent<HTMLTableRowElement>) => {
@@ -602,16 +637,12 @@ function SortableRow({
     if (depEditId) return;
     if (titleEditing) return;
     clearLongPressTimer();
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-    }
+    rowClick.disarm();
     onOpenModal();
   };
 
   const handleIdClick = () => {
-    if (clickTimer.current) clearTimeout(clickTimer.current);
-    clickTimer.current = null;
+    rowClick.disarm();
     onSelectRow();
   };
 
@@ -679,13 +710,15 @@ function SortableRow({
       isGitCheckoutRow={isGitCheckoutRow}
       devCellTitle={devCellTitle}
       titleEditLocked={titleEditLocked}
+      orchBadge={orchBadge}
+      onOpenOrchestration={onOpenOrchestration}
       variant="interactive"
       rowClass={rowClass}
       gitCheckoutTitle={gitCheckoutTitle}
       trRef={setNodeRef}
       trStyle={style}
       dndListeners={listeners}
-      dndAttributes={attributes}
+      dndAttributes={sortableAttributes}
       onRowDoubleClick={handleRowDoubleClick}
       onTitleClick={handleTitleClick}
       onTitlePointerDown={handleTitlePointerDown}
@@ -749,6 +782,10 @@ type Props = {
   parentNodeIds?: ReadonlySet<string>;
   /** Last-worked-on per node_key, derived from git history server-side. */
   activity?: Record<string, ActivityEntry>;
+  /** Latest orchestration load. Null, 404 and a leaf with no state show no badge. */
+  orchestration?: OrchestrationNotice | null;
+  /** Opens the Orchestration drawer filtered to the badge's leaf key. */
+  onOpenOrchestration?: (leafKey: string) => void;
 };
 
 export function OutlineTable({
@@ -781,8 +818,15 @@ export function OutlineTable({
   interactionLocked = false,
   parentNodeIds,
   activity,
+  orchestration = null,
+  onOpenOrchestration,
 }: Props) {
   const pendingMutationsApi = usePendingMutations();
+  const rowClickRef = useRef(createOutlineRowClick());
+  useEffect(() => {
+    const clicks = rowClickRef.current;
+    return () => clicks.disarm();
+  }, []);
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -1316,6 +1360,11 @@ export function OutlineTable({
         gitEnrichment,
             ),
       titleEditLocked: titlePlanLocked,
+      orchBadge:
+        !orchestration || parentNodeIds?.has(rowId)
+          ? null
+          : outlineBadge(orchestration.load, node.id, orchestration.at),
+      onOpenOrchestration,
       isDepCandidate: isCandidate,
       titleEditing: editingTitleId === rowId,
       titleDraft,
@@ -1459,6 +1508,7 @@ export function OutlineTable({
                     rowSourceHidden={Boolean(
                       activeDragId && activeSubtreeSet.has(id),
                     )}
+                    rowClick={rowClickRef.current}
                   />
                 </Fragment>
               );

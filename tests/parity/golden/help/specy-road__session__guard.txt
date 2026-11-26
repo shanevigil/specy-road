@@ -1,0 +1,19 @@
+$ specy-road session guard --help
+exit: 0
+--- stdout ---
+usage: specy-road session guard [-h] [--command CMD] [--format {claude-code,codex,cursor,generic}]
+                                [--always] [--print-config] [--agent AGENT] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --command CMD         Judge this command (default: read the harness payload from stdin)
+  --format {claude-code,codex,cursor,generic}
+                        Which harness's stdin payload and exit codes to use (default: generic)
+  --always              Deny even when no other session is live
+  --print-config        Print the snippet that wires this guard into --format's harness
+  --agent AGENT         Session id (default: $SPECY_ROAD_AGENT_ID, else <user>-s<POSIX session
+                        id>)
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

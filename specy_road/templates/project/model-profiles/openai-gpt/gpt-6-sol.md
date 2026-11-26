@@ -14,7 +14,7 @@ supersedes: none
 access:
   context_tokens: 1050000
   output_tokens: 128000
-  cli: codex exec --model gpt-6-sol --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+  cli: codex exec --model gpt-6-sol --disable memories -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
   cli_verified_from: codex-cli 0.165.0, run 2026-10-28 (exec has no --ask-for-approval)
   subagents: 'yes Available through the Codex agent harness; native Responses API multi-agent beta is documented for GPT-6.1 Sol, not this version [S6, S5]'
   effort_controls: 'none, low, medium, high, xhigh, max (default medium)'
@@ -28,17 +28,15 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below name the switches for `specy-road prompt --channel cli` and generic-harness workers. **`worker delegate` on codex will apply them when leaf M8.2 lands** (that leaf adds the `--disable` flags to the codex launch argv):
+When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below pass these switches, for `specy-road prompt --channel cli` and generic-harness workers. **The default `worker delegate` codex launch does not pass them:** it turns memories off with `-c features.memories=false -c memories.use_memories=false -c memories.generate_memories=false` and the profile's own `CODEX_HOME`, and leaves multi_agent and goals at Codex's defaults (both on in the codex-cli 0.166.0 capture). A roster `channels.cli` that runs the executor template disables memories only; multi_agent stays on (operator 2026-11-19, supersedes the F15 avoid) and goals stays on (operator 2026-11-20, same as multi_agent, supersedes the F15 avoid):
 
 | Feature | Switch |
 |---|---|
 | memories | `--disable memories` |
-| multi_agent | `--disable multi_agent` |
-| goals | `--disable goals` |
 
 Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
 
-Under the default codex launch (`sandbox_mode=workspace-write`) an executor cannot commit: git metadata is read-only, in a linked worktree (its gitdir under the main checkout's `.git/worktrees/`, and the common `.git`) and in a plain checkout alike. Give a codex executor a `channels.cli` and `cli_resume` that add the worktree's gitdir and the common `.git` as writable roots (specy-road `docs/orchestration-workers.md`, Roster setup, "Known limitation").
+Under the default codex launch (`sandbox_mode=workspace-write`) an executor cannot commit: git metadata is read-only, in a linked worktree (its gitdir under the main checkout's `.git/worktrees/`, and the common `.git`) and in a plain checkout alike. Give a codex executor a `channels.cli` and `cli_resume` that add the worktree's gitdir and the common `.git` as writable roots (specy-road `https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md`, Roster setup, "Known limitation").
 
 ## Strengths
 - OpenAI positions GPT-6 Sol for complex coding and agentic workflows; the API exposes a 1.05M context window and 128K output limit [S8] (confidence: high)

@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from specy_road import __version__
+from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
-from specy_road.agent_ignores import apply_and_report
 from specy_road.agents_md_block import apply_agents_and_report
+from specy_road.git_subprocess import git_root
+from specy_road.managed_block import raise_rule_refusal
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
     SKILLS_REL,
     _package_templates_dir,
+    check_install_paths,
     _read_template,
     install_stubs as _append_command_stub_installs,
     managed_paths,
@@ -25,7 +26,6 @@ from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refres
 )
 from specy_road.runtime_paths import (
     discover_project_root,
-    git_root,
     prefix_within,
     recorded_project_root,
 )
@@ -126,17 +126,7 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
 def resolve_repo_root(start: Path) -> Path:
     """Prefer git worktree root; else the resolved start path."""
     start = start.resolve()
-    try:
-        r = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=start,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return Path(r.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return start
+    return git_root(start) or start
 
 
 def _read_dot_specyrd_readme() -> str:
@@ -189,10 +179,32 @@ def _load_manifest(repo_root: Path) -> dict[str, Any]:
 
 
 def _save_manifest(repo_root: Path, data: dict[str, Any]) -> None:
-    path = repo_root / ".specyrd" / "manifest.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
     data["specyrd_version"] = __version__
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    safe_write.write(repo_root, repo_root / ".specyrd" / "manifest.json", json.dumps(data, indent=2) + "\n")
+
+
+def _refuse_unsafe_paths(
+    repo_root: Path, rel_dest: Path, files_to_install: tuple[str, ...], agent: str, guard_hooks: bool, pre_push: bool,
+) -> None:
+    """Exit 1 naming the first path the safe-write rule refuses, before anything is written.
+
+    ``.specyrd/manifest.json``, ``.specyrd/README.md``, both ignore files, every opt-in
+    hook destination (:func:`hook_destinations`), and every stub, canonical skill file and skill link
+    (the skills-link rule, :func:`check_install_paths`).
+    """
+    # The installers' modules, imported by an install only: validate reads this module's checks.
+    from specy_road.agent_ignores import check_ignore_files
+    from specy_road.specyrd_hooks import hook_destinations
+
+    try:
+        for name in ("manifest.json", "README.md"):
+            safe_write.check(repo_root, repo_root / ".specyrd" / name)
+        safe_write.check_all(repo_root, hook_destinations(repo_root, agent, guard_hooks=guard_hooks, pre_push=pre_push))
+        check_ignore_files(repo_root)
+        check_install_paths(repo_root, rel_dest, files_to_install, agent=agent)
+    except safe_write.SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 def _validate_generic_commands_dir(repo_root: Path, rel: Path) -> Path:
@@ -230,8 +242,7 @@ def _write_readme_and_gui_stub(
         if dry_run:
             written.append(str(readme_rel))
         else:
-            readme_path.parent.mkdir(parents=True, exist_ok=True)
-            readme_path.write_text(readme_content, encoding="utf-8")
+            safe_write.write(repo_root, readme_path, readme_content)
             written.append(str(readme_rel))
 
     # Never overwritten, not even with --force: this file lives in $HOME rather
@@ -269,6 +280,15 @@ def _maybe_install_specyrd_hooks(
         install_pre_push_hook(repo_root, dry_run=dry_run, written=written)
 
 
+def _apply_ignores(repo_root: Path, prefix: str, written: list[str], *, dry_run: bool) -> None:
+    """Both ignore-file blocks; one linked after the preflight is refused right before replace and raised."""
+    from specy_road.agent_ignores import apply_and_report
+
+    apply_and_report(repo_root, prefix, written, dry_run=dry_run)
+    raise_rule_refusal(written)
+
+
+@safe_write.exit_on_refusal()   # a refusal, or a symlink loop met before the rule: error, exit 1
 def run_init(
     *,
     target: Path,
@@ -296,10 +316,11 @@ def run_init(
     repo_root = resolve_repo_root(target)
     if agent == "generic":
         rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
+    files_to_install = ROLE_COMMAND_FILES[role] if role in ("pm", "dev") else COMMAND_FILES
+    _refuse_unsafe_paths(repo_root, rel_dest, files_to_install, agent, install_guard_hooks, install_pre_push)
     written: list[str] = []
     skipped: list[str] = []
     manifest = _load_manifest(repo_root)
-    files_to_install = ROLE_COMMAND_FILES[role] if role in ("pm", "dev") else COMMAND_FILES
     already_owned = {p for paths in (manifest.get("agents") or {}).values() for p in paths}
 
     _append_command_stub_installs(
@@ -326,7 +347,7 @@ def run_init(
     # omitted them is what let the CLAUDE.md overwrite go unnoticed.
     if write_claude_md:
         apply_guide_and_report(repo_root, prefix, written, agent=agent, dry_run=dry_run)
-    apply_and_report(repo_root, prefix, written, dry_run=dry_run)
+    _apply_ignores(repo_root, prefix, written, dry_run=dry_run)
     if project is not None:   # no roadmap yet: `init project` writes the block when it scaffolds one
         apply_agents_and_report(project, written, dry_run=dry_run, prefix=prefix)
     elif write_claude_md and agent in GUIDE_AGENTS:   # the CLAUDE.md imports must name files that exist

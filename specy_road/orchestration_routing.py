@@ -20,7 +20,7 @@ def entry_launch_model(repo_root: Path, entry: dict[str, Any]) -> str | None:
     if entry.get("harness") == "cursor":
         cli = (entry.get("channels") or {}).get("cli")
         if cli:
-            from specy_road.worker_models import command_model  # noqa: PLC0415 — worker modules load late
+            from specy_road.orchestration.workers.worker_models import command_model  # noqa: PLC0415 — worker modules load late
 
             return command_model(cli)
         return harness_model(entry, prof_api or "")

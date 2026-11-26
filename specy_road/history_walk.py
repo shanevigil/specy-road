@@ -140,7 +140,7 @@ def _is_graph_path(path: str) -> bool:
 
 def _sheet_events(commit: Commit) -> list[dict[str, Any]]:
     """Sheet touches, attributed straight from the filename's ``node_key``."""
-    from specy_road.bundled_scripts.planning_artifacts import PLANNING_FILENAME_RE
+    from specy_road.planning_artifacts import PLANNING_FILENAME_RE
 
     # One event per node per commit. Renumbering or recodenaming a node renames
     # its sheet, which --no-renames reports as a delete plus an add; both name

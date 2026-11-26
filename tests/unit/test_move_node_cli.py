@@ -1,0 +1,181 @@
+"""`specy-road move-node`: re-parent a subtree, renumber it, and stay atomic.
+
+`edit-node --set parent_id=` moves the edge and leaves the display id behind, so
+re-parenting meant hand-editing two chunk files and renaming a planning sheet.
+The move/renumber logic already existed for the PM GUI's outline drag; these
+tests cover exposing it — including the part that was *not* already true, that
+a rejected move leaves nothing behind.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from specy_road.bundled_scripts.roadmap_move_node import move_node
+from specy_road.roadmap_outline_ops import reorder_siblings
+from tests.move_node_helpers import (
+    NK_A1,
+    NK_B,
+    NK_B1,
+    base_fixture,
+    nodes_by_key,
+    run_move_node,
+    set_zones,
+)
+
+
+def test_move_reparents_and_renumbers(tmp_path: Path) -> None:
+    base_fixture(tmp_path)
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2")
+
+    assert r.returncode == 0, r.stderr
+    nodes = nodes_by_key(tmp_path)
+    assert nodes[NK_A1]["parent_id"] == nodes[NK_B]["id"]
+    # The leaf left M1 and joined M2, so its id is now positional under M2.
+    assert nodes[NK_A1]["id"].startswith(nodes[NK_B]["id"] + ".")
+
+
+def test_the_old_to_new_id_map_is_printed(tmp_path: Path) -> None:
+    """A move renumbers; changing ids silently is the surprise to avoid."""
+    base_fixture(tmp_path)
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2")
+
+    assert "Display ids changed" in r.stdout
+    assert "M1.1 -> " in r.stdout
+
+
+def test_the_planning_sheet_follows_the_node(tmp_path: Path) -> None:
+    base_fixture(tmp_path)
+    old = tmp_path / "planning" / f"M1.1_alpha-work_{NK_A1}.md"
+    assert old.is_file()
+
+    assert run_move_node(
+        tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2",
+    ).returncode == 0
+
+    new_id = nodes_by_key(tmp_path)[NK_A1]["id"]
+    assert not old.exists()
+    assert (tmp_path / "planning" / f"{new_id}_alpha-work_{NK_A1}.md").is_file()
+
+
+def test_a_registry_claim_follows_the_new_id(tmp_path: Path) -> None:
+    base_fixture(tmp_path)
+
+    assert run_move_node(
+        tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2",
+    ).returncode == 0
+
+    text = (tmp_path / "roadmap" / "registry.yaml").read_text(encoding="utf-8")
+    assert f"node_id: {nodes_by_key(tmp_path)[NK_A1]['id']}" in text
+    assert "codename: alpha-work" in text
+
+
+def test_moving_to_the_root_is_spelled_null(tmp_path: Path) -> None:
+    base_fixture(tmp_path)
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "null")
+
+    assert r.returncode == 0, r.stderr
+    assert nodes_by_key(tmp_path)[NK_A1]["parent_id"] is None
+
+
+def test_an_unknown_parent_is_refused_before_anything_moves(tmp_path: Path) -> None:
+    base_fixture(tmp_path)
+    before = (tmp_path / "roadmap" / "phases" / "T.json").read_bytes()
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M9")
+
+    assert r.returncode == 1
+    assert "not an existing node id" in r.stderr
+    assert (tmp_path / "roadmap" / "phases" / "T.json").read_bytes() == before
+
+
+def test_a_node_cannot_move_under_its_own_descendant(tmp_path: Path) -> None:
+    base_fixture(tmp_path)
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1", "--to-parent", "M1.1")
+
+    assert r.returncode == 1
+    assert "descendant" in r.stderr
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda root: move_node(root, NK_A1, "M2", None),
+        # The PM GUI's reorder used to persist, then validate, too.
+        lambda root: reorder_siblings(root, None, ["M2", "M1"]),
+    ],
+    ids=["move", "reorder"],
+)
+def test_a_rejected_move_leaves_the_working_tree_untouched(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutate
+) -> None:
+    """The defect this command could have inherited: persist, then validate."""
+    base_fixture(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    sheet = tmp_path / "planning" / f"M1.1_alpha-work_{NK_A1}.md"
+    registry = tmp_path / "roadmap" / "registry.yaml"
+    before = (chunk.read_bytes(), sheet.read_bytes(), registry.read_bytes())
+
+    def boom(_root: Path) -> None:
+        raise ValueError("roadmap: synthetic validation failure")
+
+    monkeypatch.setattr(
+        "specy_road.bundled_scripts.roadmap_move_node.run_validate_raise", boom
+    )
+    with pytest.raises(ValueError, match="synthetic"):
+        mutate(tmp_path)
+
+    assert (chunk.read_bytes(), sheet.read_bytes(), registry.read_bytes()) == before
+    assert sheet.is_file()
+    assert not list((tmp_path / "planning").glob("M2.*_alpha-work_*.md"))
+
+
+def test_touch_zone_segments_naming_an_old_id_follow_the_node(tmp_path: Path) -> None:
+    """A renumber must not strand `docs/M1.1/` on whatever now sits at M1.1."""
+    base_fixture(tmp_path)
+    set_zones(tmp_path, {
+        "M1.1": ["docs/M1.1/", "src/M1.10/x.py", "notes/M1.1-old.md", "M1.1"],
+        "M2.1": ["docs/M2.1/", "shared/M1.1/api.md"],
+    })
+
+    # Index 0 makes a chain under a whole-outline renumber: M1.1 -> M2.1 while
+    # the old M2.1 -> M2.2.
+    r = run_move_node(
+        tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2",
+        "--index", "0", "--renumber-outline",
+    )
+
+    assert r.returncode == 0, r.stderr
+    nodes = nodes_by_key(tmp_path)
+    assert nodes[NK_A1]["id"] == "M2.1" and nodes[NK_B1]["id"] == "M2.2"
+    # Whole segments only: M1.10 and M1.1-old are other names.
+    assert nodes[NK_A1]["touch_zones"] == ["docs/M2.1/", "src/M1.10/x.py", "notes/M1.1-old.md", "M2.1"]
+    # Each zone follows the node it named, including one owned by another node.
+    assert nodes[NK_B1]["touch_zones"] == ["docs/M2.2/", "shared/M2.1/api.md"]
+    assert "touch-zone path segments" in r.stdout
+
+
+def test_a_registry_claims_touch_zones_follow_the_new_id(tmp_path: Path) -> None:
+    """The finish check reads the claim's copy of the zones first."""
+    base_fixture(tmp_path)
+    set_zones(tmp_path, {"M1.1": ["docs/M1.1/"]})
+    registry = tmp_path / "roadmap" / "registry.yaml"
+    registry.write_text(
+        registry.read_text(encoding="utf-8") + "    touch_zones:\n      - docs/M1.1/\n",
+        encoding="utf-8",
+    )
+
+    assert run_move_node(
+        tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2",
+    ).returncode == 0
+
+    new_id = nodes_by_key(tmp_path)[NK_A1]["id"]
+    text = registry.read_text(encoding="utf-8")
+    assert f"- docs/{new_id}/" in text
+    assert "docs/M1.1/" not in text

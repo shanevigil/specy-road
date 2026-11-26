@@ -26,6 +26,8 @@ let these commands manage it.
 This prevents dispatching a sub-agent for work whose dependencies are unmet (e.g.
 `M11.1` while `M10.5` is still in flight).
 
+**Status reports during a grind.** At the start of a grind, and then every `grind.status_interval_minutes` (in `roadmap/git-workflow.yaml`, default 30), run `specy-road grind-session --status` with the grind's own scope (`--until`, `--under`) and post its text output to the chat unchanged. Use the harness's scheduler or wake-up for the interval where it has one; where it has none, run it at the first turn after the interval has passed. Do not use `--watch` here: it never ends, and it is for a person's terminal.
+
 ### Drive the loop from this session (step mode)
 
 Step mode is the in-pane path: this session is the coordinator, and each
@@ -42,7 +44,7 @@ Step mode is the in-pane path: this session is the coordinator, and each
    it **now, before review**. After review, any commit touching more than
    `roadmap/registry.yaml`, and any merge (including `-s ours`), makes the
    reviews stale. A `--pre-finish-cmd` must therefore only check, never commit.
-4. **Review.** Run `specy-road review-packet <ID>`. Dispatch a **different**
+4. **Review.** Run `specy-road review packet <ID>`. Dispatch a **different**
    fresh sub-agent, not the executor and not this session, whose model id is
    rostered as a `reviewer` in `roadmap/orchestration.yaml` **as committed on
    the integration branch**. It reads only `work/reviews/<ID>/PACKET.md`, fills
@@ -74,8 +76,8 @@ and dispatch a fresh executor. Cursor and Codex have no auto-continue: re-run
 inside a live session and are blocked by the same limit, so they cannot restart
 a session; use them only to poll, for example while a human reviews.
 
-Step mode does not take `--implement-mode hook`, `--implement-cmd`, `--plan`,
-or `--delete-merged-branches`. `--max-leaves` and `--max-cycles` do not apply;
+Step mode does not take `--implement-mode hook`, `--implement-cmd` or `--plan`.
+`--max-leaves` and `--max-cycles` do not apply;
 stopping is your call.
 
 ### Hook mode (terminal only)
@@ -104,10 +106,10 @@ Human-in-the-loop (manual mode: implement, then `touch work/.session-ready`):
 specy-road grind-session --max-leaves 1 --on-complete merge
 ```
 
-A hook or manual loop that ends on its own terms checks out the **integration branch**; add
-**`--delete-merged-branches`** to also delete the `feature/rm-*` branches it
-merged (locally, and on the remote when `--push` was given). Without the flag it
-prints the command. With `--json`, stdout is JSONL only — sub-command output goes
+A hook or manual loop that ends on its own terms checks out the **integration branch** and
+prints the command that deletes the `feature/rm-*` branches it merged; afterwards
+**`specy-road doctor --prune --kind branches`** removes them (`--delete-merged-branches`
+is a deprecated alias). With `--json`, stdout is JSONL only — sub-command output goes
 to stderr.
 
 Stop conditions: `--until NODE`, `--under PARENT`, `--max-leaves N`, or default

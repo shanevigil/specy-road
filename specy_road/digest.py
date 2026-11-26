@@ -22,15 +22,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from specy_road.roadmap_index import RoadmapIndex
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import records_or_empty
+from specy_road.generated_files import DEFAULT_OUTPUT
 from specy_road.node_kinds import is_gate
 
 BANNER = (
     "<!-- specy-road: generated context digest — do not edit by hand. "
     "Regenerate with `specy-road digest`. -->"
 )
-DEFAULT_OUTPUT = "roadmap-context.md"
 
 # A digest is only useful if an agent reads all of it, so the long tail of each
 # unbounded section is summarised rather than listed.
@@ -41,7 +42,7 @@ _MAX_AREAS = 30
 
 def _load_nodes(root: Path) -> list[dict[str, Any]]:
 
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     return load_roadmap(root)["nodes"]
 
@@ -53,19 +54,13 @@ def _status_of(node: dict[str, Any]) -> str:
     return str(node.get("status") or "")
 
 
-def _key_to_node(nodes: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    return {
-        n["node_key"]: n for n in nodes if isinstance(n.get("node_key"), str)
-    }
-
-
 def _label(node: dict[str, Any]) -> str:
     return f"{node.get('id')} {node.get('title') or '(no title)'}"
 
 
 def _section_outline(nodes: list[dict[str, Any]]) -> list[str]:
     """The live graph as an indented outline with rolled-up status."""
-    from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
+    from specy_road.roadmap_layout import ordered_tree_rows
 
     out = [
         "## Live roadmap",
@@ -90,7 +85,7 @@ def _section_outline(nodes: list[dict[str, Any]]) -> list[str]:
 
 def _section_decisions(nodes: list[dict[str, Any]]) -> list[str]:
     """Decisions already taken — the thing an agent must not silently redo."""
-    from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+    from specy_road.roadmap_layout import natural_id_sort_key
 
     decided = [
         n
@@ -121,7 +116,7 @@ def _section_decisions(nodes: list[dict[str, Any]]) -> list[str]:
 
 def _section_open_gates(nodes: list[dict[str, Any]]) -> list[str]:
     """Gates still holding work back."""
-    from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+    from specy_road.roadmap_layout import natural_id_sort_key
 
     gates = [
         n
@@ -150,7 +145,7 @@ def _section_dropped_dependencies(
     a decision someone already made, and it is invisible in the current graph
     precisely because it was removed.
     """
-    by_key = _key_to_node(nodes)
+    by_key = RoadmapIndex(nodes).by_key
     # An edge re-added since its removal is live again, not dropped.
     events = [
         e for e in _history_events(root, kinds={"dep_removed"})
@@ -274,6 +269,10 @@ def _section_quality(root: Path, nodes: list[dict[str, Any]]) -> list[str]:
         out.append(f"| `{a.area}`{flag} | {a.leaves} | {a.no_tally} | {mean} | {rate} | {a.integrity} | {a.rca} |")
     if len(areas) > _MAX_AREAS:
         out.append(f"\n_…and {len(areas) - _MAX_AREAS} more areas._")
+    unread = [a for a in areas if a.unreadable]
+    if unread:
+        detail = ", ".join(f"`{a.area}` {a.unreadable}" for a in unread)
+        out += ["", f"Unreadable tallies: {detail}. They stay in the leaf totals and are left out of the rates."]
     return [*out, "", "Leaves with no tally landed before tallies were recorded; they are left out of the rates.", ""]
 
 

@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.integrity_removals import REQUIRED_HEADING, missing_removal_entries, target_unplanned_removals
 from specy_road.review_files import HUMAN, load_review
 from specy_road.review_target import ReviewTarget, milestone_open_problem, same_commit
@@ -26,7 +26,10 @@ PROBE_RULES_LINES = [
     "Probe the change yourself; the executor's checks show only what the executor thought to try:",
     "",
     "1. Run the tests that import each changed module, not only the executor's selection or the READY's "
-    "verifiers (search the tests directory for the module's import name).",
+    "verifiers (search the tests directory for the module's import name). If the sandbox prevents a test from "
+    "running, name the command and its error as not run in the notes; on an approve, include the existing "
+    f"'{NOT_A_DEFECT} <reason>' explanation. Do not put the command in `commands_rerun`; the absence of that run "
+    "alone is no block.",
     "2. For each changed public function, try at least one input that the diff's tests do not use, and report "
     "it, with what it returned, under `commands_rerun`.",
     "3. Fail an acceptance item whose observed behaviour differs from its text, even when the difference looks "
@@ -131,15 +134,6 @@ def _named_defect(text: str) -> str | None:
         if not _NEGATED.search(text[:m.start()]):
             return m.group(1)
     return None
-
-
-def defect_word(line: str) -> str | None:
-    """The first word in ``line`` that names a defect, or ``None``; a line carrying :data:`NOT_A_DEFECT`,
-    a heading, a ``>`` quote and code spans name none."""
-    text = _CODE_SPAN.sub("", line).strip()
-    if explained(text) or text.startswith(("#", ">")):
-        return None
-    return _named_defect(text)
 
 
 def _observation(clause: str) -> str | None:

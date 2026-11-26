@@ -10,13 +10,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from specy_road.clock import utc_now
 from specy_road.git_subprocess import git_text
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_files import latest_ready
 from specy_road.review_target import same_commit
-from specy_road.session_presence import list_sessions
-from specy_road.worker_orphans import SLOT_STATES
-from specy_road.worker_state import list_records
+from specy_road.orchestration.guard.session_presence import list_sessions
+from specy_road.orchestration.workers.worker_orphans import SLOT_STATES
+from specy_road.orchestration.workers.worker_state import list_records
 
 
 def stays_claimed(node_id: str) -> str:
@@ -38,7 +39,7 @@ def orphaned_claims(repo_root: Path) -> list[dict[str, str]]:
     ``age`` is from the branch's last commit, else the registry row's ``started`` date. ``since`` is that
     timestamp, or ``""`` when neither exists.
     """
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     records = list_records(repo_root)
     sessions = {s.branch for s in list_sessions(repo_root) if s.branch}
     out = []

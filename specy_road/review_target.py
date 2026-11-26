@@ -1,7 +1,7 @@
 """Resolve what a review is about: node, branch, commit under review, and base.
 
-Shared by ``review-packet``, ``prompt``, ``handoff status``, ``review record``,
-``review list``, and the ``mark-implementation-reviewed`` gate so all of them
+Shared by ``review packet``, ``prompt``, ``review status``, ``review record``
+and the ``mark-implementation-reviewed`` gate so all of them
 agree on which commit a review binds to.
 
 The commit under review is the tip of the node's registered feature branch —
@@ -25,20 +25,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.finish_implementation_check import base_ref
+from specy_road.errors import SpecyError, inherited_init
+from specy_road.roadmap_chunk_utils import find_chunk_path
+from specy_road.roadmap_graph import load_roadmap
 from specy_road.git_subprocess import git_stdout, git_text, local_branch_exists
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.registry_yaml import REGISTRY_REL, read_registry, registry_path
 from specy_road.roadmap_json import nodes_from_chunk_doc
 from specy_road.runtime_paths import project_prefix
 
-REGISTRY_REL = "roadmap/registry.yaml"
-
-
-class ReviewTargetError(Exception):
+class ReviewTargetError(SpecyError):
     """The node, branch, or commit to review cannot be resolved."""
+
+    __init__ = inherited_init
 
 
 @dataclass
@@ -106,7 +105,7 @@ def default_ref(repo_root: Path, entry: dict[str, Any] | None, remote: str) -> s
         node = (entry or {}).get("node_id", "this node")
         raise ReviewTargetError(
             f"no registry claim for {node}; pick it up first (`specy-road do-next-available-task --under {node}`)"
-            " — review-packet, review record, review list and prompt also take --ref <branch or commit>"
+            " — review packet, review record, review status and prompt also take --ref <branch or commit>"
         )
     if local_branch_exists(repo_root, branch):
         return branch
@@ -147,7 +146,7 @@ def reviewed_commit(repo_root: Path, ref: str, base: str | None) -> str | None:
         return None
     # git names changed paths from the repository root; the registry sits
     # under the project prefix in the nested layout.
-    registry = project_prefix(repo_root) + REGISTRY_REL
+    registry = project_prefix(repo_root) + REGISTRY_REL.as_posix()
     span = [f"{base}..{tip}"] if base else ["-n", "20", tip]
     shas = (git_text(["log", "--first-parent", "--format=%H", *span], repo_root) or "").split()
     for sha in shas:
@@ -251,9 +250,8 @@ def resolve_target(
 ) -> ReviewTarget:
     """Build the target for ``node_id``; raises :class:`ReviewTargetError`.
 
-    ``nodes`` is the already-loaded graph when the caller has one: the public
-    loader applies the milestone-review hold, so a nested ``load_roadmap``
-    here would recurse.
+    The fallback graph carries no hold, so a caller that renders or compares
+    rollups passes ``nodes=``.
     """
     nodes = list(nodes) if nodes is not None else load_roadmap(repo_root)["nodes"]
     node = next((n for n in nodes if n.get("id") == node_id), None)
@@ -263,6 +261,8 @@ def resolve_target(
     ib, remote, _warn = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None
     )
+    from specy_road.finish_implementation_check import base_ref
+
     bref = base_ref(repo_root, remote, ib)
     if is_milestone(nodes, node_id) and not (entry or {}).get("branch"):
         use_ref = ref or bref
@@ -287,12 +287,12 @@ def resolve_target(
                         committed_zones=_zones_at(repo_root, node_id, commit))
 
 
-def resolve_target_or_exit(repo_root: Path, node_id: str, ref: str | None = None) -> ReviewTarget:
-    try:
-        return resolve_target(repo_root, node_id, ref)
-    except ReviewTargetError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+def resolve_target_or_exit(
+    repo_root: Path, node_id: str, ref: str | None = None, *,
+    nodes: list[dict[str, Any]] | None = None,
+) -> ReviewTarget:
+    """The review target. A ReviewTargetError propagates for the command entry to print and exit."""
+    return resolve_target(repo_root, node_id, ref, nodes=nodes)
 
 
 # --- Milestone full review: what every command says about it (policy.milestone_full_review) ---
@@ -301,7 +301,7 @@ MILESTONE_SUMMARY = "_A milestone has no implementation summary: each leaf's was
 
 
 def milestone_status(t: ReviewTarget, state: str) -> tuple[str, list[str]]:
-    """``(state, next-step lines)`` for ``handoff status`` and ``review list``; unchanged for a leaf.
+    """``(state, next-step lines)`` for ``review status``; unchanged for a leaf.
 
     A finished milestone whose gate is not met is ``awaiting_full_review``; a
     Complete one is ``complete_no_claim``, like a leaf whose claim is released.
@@ -316,7 +316,7 @@ def milestone_status(t: ReviewTarget, state: str) -> tuple[str, list[str]]:
         state = "awaiting_full_review"
     if state == "approved":
         return state, [f"milestone full review met: specy-road mark-implementation-reviewed {t.node_id} sets it Complete"]
-    return state, [f"milestone full review pending (policy.milestone_full_review): specy-road review-packet {t.node_id}; "
+    return state, [f"milestone full review pending (policy.milestone_full_review): specy-road review packet {t.node_id}; "
                    f"approval releases the rollup with specy-road mark-implementation-reviewed {t.node_id}"]
 
 
@@ -339,7 +339,7 @@ def milestone_open_problem(t: ReviewTarget) -> str | None:
 
 
 def milestone_packet_or_exit(t: ReviewTarget) -> None:
-    """``review-packet`` needs every leaf landed and the milestone's start (a leaf registration, or ``--base``)."""
+    """``review packet`` needs every leaf landed and the milestone's start (a leaf registration, or ``--base``)."""
     why = milestone_open_problem(t)
     if why is None and t.milestone and not t.base:
         why = (f"no 'register as in-progress' commit of a leaf under {t.node_id} is reachable from {t.ref}, "

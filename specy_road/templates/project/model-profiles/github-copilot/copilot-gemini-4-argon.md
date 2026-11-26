@@ -72,5 +72,5 @@ role_fit:
 - S2: GitHub Copilot CLI programmatic reference, GitHub Docs, read 2026-11-03, https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-programmatic-reference, primary
 - S3: Supported AI models in GitHub Copilot, GitHub Docs, read 2026-11-03, https://docs.github.com/en/copilot/reference/ai-models/supported-models, primary
 - S4: GitHub Copilot CLI changelog, github/copilot-cli, read 2026-11-03 (newest entry 1.0.105, 2026-10-27), https://github.com/github/copilot-cli/blob/main/changelog.md, primary
-- S5: Harness compatibility triage (research of 2026-10-28), specy-road, docs/design-notes/harness-compatibility-triage.md, secondary
+- S5: Harness compatibility triage (research of 2026-10-28), specy-road, maintainers' triage notes (not published), secondary
 - S6: Gemini 4 Argon profile, specy-road, model-profiles/google-gemini/gemini-4-argon.md, secondary

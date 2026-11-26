@@ -1,0 +1,66 @@
+$ specy-road sync
+exit: 0
+--- stdout ---
+{"argv": ["sync"], "exit": 0, "out": "No new worker events.\n", "err": ""}
+{"argv": ["delegate", "M1.1", "--model", "opus"], "exit": 0, "out": "w-0001: delegated \u2014 M1.1 on claude-code/opus in <REPO>\nPoll with `specy-road worker sync`.\n", "err": ""}
+{"argv": ["sync", "--ack"], "exit": 0, "out": "w-0001 M1.1 idle worktree=<REPO> lease=broker epoch=0\n  #1 started (broker): delegated M1.1 to claude-code/opus (attempt 1)\n  #2 launched (system): started sh (pid <N>)\n  #3 first_output (system): first stdout line read\n  #4 started (worker): claude session s-3 (fake)\n  #5 turn_completed (worker): success: done\n  done\n  #6 usage (worker): usage: in ? (? cached), out ?, reasoning ?, $?\n  #7 post_run_check (system): post-run check: clean\n  #8 completion (worker): exit 0; READY file missing\n  `specy-road worker resume w-0001 --ready-only`\n  done\n", "err": ""}
+{"argv": ["sync"], "exit": 0, "out": "No new worker events.\n", "err": ""}
+=== .lock
+<present>
+=== FLAG
+<present>
+=== sync.yaml
+{
+  "w-0001": {
+    "acked_at": "<TIME>",
+    "seq": 8
+  }
+}
+=== w-0001.events.jsonl
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 1, "source": "broker", "summary": "delegated M1.1 to claude-code/opus (attempt 1)", "type": "started", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "system", "detail": {"argv0": "sh", "harness": "claude-code", "model": null, "resumed": false}, "epoch": 0, "seq": 2, "source": "system", "summary": "started sh (pid <N>)", "type": "launched", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 3, "source": "system", "summary": "first stdout line read", "type": "first_output", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "worker_suggestion", "detail": {"mcp_servers": [], "model": "fake", "plugins": [], "tools": []}, "epoch": 0, "seq": 4, "source": "worker", "summary": "claude session s-3 (fake)", "type": "started", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "worker_suggestion", "detail": {"message": "done"}, "epoch": 0, "seq": 5, "source": "worker", "summary": "success: done", "type": "turn_completed", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "worker_suggestion", "detail": {"cached_input_tokens": null, "cost_is_estimate": null, "cost_usd": null, "harness_version": null, "input_tokens": null, "num_turns": null, "observed_model": "fake", "output_tokens": null, "reasoning_tokens": null, "requested_model": null, "session_cost_usd": null}, "epoch": 0, "seq": 6, "source": "worker", "summary": "usage: in ? (? cached), out ?, reasoning ?, $?", "type": "usage", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "system", "detail": {"findings": []}, "epoch": 0, "seq": 7, "source": "system", "summary": "post-run check: clean", "type": "post_run_check", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "system", "detail": {"exit": 0, "ready": false}, "epoch": 0, "seq": 8, "source": "worker", "summary": "exit 0; READY file missing", "type": "completion", "worker_id": "w-0001"}
+=== w-0001.log
+<present>
+=== w-0001.yaml
+{
+  "attempt": 1,
+  "billing_route": "claude_subscription",
+  "branch": "feature/rm-thing",
+  "checkpoint": null,
+  "contract_hash": "<MASKED>",
+  "created": "<MASKED>",
+  "descendants_unchecked": null,
+  "flags": [],
+  "harness": "claude-code",
+  "harness_pid": null,
+  "harness_start": null,
+  "instruction_epoch": 0,
+  "last_event_seq": 8,
+  "last_output_at": "<MASKED>",
+  "lease": {
+    "holder": "broker",
+    "since": "<TIME>"
+  },
+  "limit_reset_at": null,
+  "model": "opus",
+  "node_id": "M1.1",
+  "pgid": null,
+  "pid": null,
+  "provider_session_id": "<UUID>",
+  "queued_message": null,
+  "recoveries": null,
+  "started_head": "<MASKED>",
+  "state": "idle",
+  "toolkit_version": "<MASKED>",
+  "updated": "<MASKED>",
+  "worker_id": "w-0001",
+  "worktree": "<REPO>",
+  "wrapper_token": "<MASKED>"
+}
+--- stderr ---

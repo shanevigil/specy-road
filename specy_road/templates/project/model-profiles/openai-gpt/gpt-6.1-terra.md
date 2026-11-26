@@ -14,7 +14,7 @@ supersedes: none
 access:
   context_tokens: 500000
   output_tokens: unknown
-  cli: codex exec --model gpt-6.1-terra --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+  cli: codex exec --model gpt-6.1-terra --disable memories -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
   cli_verified_from: codex-cli 0.165.0, run 2026-11-03 (pilot ran codex exec -m gpt-6.1-terra --json; workspace-write could not commit in a linked worktree)
   subagents: 'yes Codex catalog lists multi_agent_version v2 and an ultra effort described as maximum reasoning with automatic task delegation [S2]'
   effort_controls: 'low, medium, high, xhigh, max, ultra (catalog default low; the pilot ran medium) [S2]'
@@ -27,17 +27,15 @@ role_fit:
 ---
 ## Orchestration: harness features to avoid
 
-When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below name the switches for `specy-road prompt --channel cli` and generic-harness workers. **`worker delegate` on codex will apply them when leaf M8.2 lands** (that leaf adds the `--disable` flags to the codex launch argv):
+When this model runs as a roster **executor** on `codex`, the executor template and `access.cli` below pass these switches, for `specy-road prompt --channel cli` and generic-harness workers. **The default `worker delegate` codex launch does not pass them:** it turns memories off with `-c features.memories=false -c memories.use_memories=false -c memories.generate_memories=false` and the profile's own `CODEX_HOME`, and leaves multi_agent and goals at Codex's defaults (both on in the codex-cli 0.166.0 capture). A roster `channels.cli` that runs the executor template disables memories only; multi_agent stays on (operator 2026-11-19, supersedes the F15 avoid) and goals stays on (operator 2026-11-20, same as multi_agent, supersedes the F15 avoid):
 
 | Feature | Switch |
 |---|---|
 | memories | `--disable memories` |
-| multi_agent | `--disable multi_agent` |
-| goals | `--disable goals` |
 
 Orchestration guard hooks deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
 
-Under the default codex launch (`sandbox_mode=workspace-write`) an executor cannot commit [S1]: git metadata is read-only, in a linked worktree (its gitdir under the main checkout's `.git/worktrees/`, and the common `.git`) and in a plain checkout alike. Give a codex executor a `channels.cli` and `cli_resume` that add the worktree's gitdir and the common `.git` as writable roots (specy-road `docs/orchestration-workers.md`, Roster setup, "Known limitation").
+Under the default codex launch (`sandbox_mode=workspace-write`) an executor cannot commit [S1]: git metadata is read-only, in a linked worktree (its gitdir under the main checkout's `.git/worktrees/`, and the common `.git`) and in a plain checkout alike. Give a codex executor a `channels.cli` and `cli_resume` that add the worktree's gitdir and the common `.git` as writable roots (specy-road `https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md`, Roster setup, "Known limitation").
 
 ## Strengths
 - Approved first round by both reviewers on two of two reviewed replays (M11.65, M11.77), where the landed Opus version of M11.65 needed a fix round [S1] (confidence: low, n = 2)

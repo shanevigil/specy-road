@@ -1,0 +1,391 @@
+"""The same commands, the same answers, in both supported layouts.
+
+specy-road supports two shapes, chosen per project:
+
+* **embedded** — ``roadmap/``, ``planning/``, ``shared/`` at the repository root;
+* **nested** — the same tree under a subfolder (``sr/``), so the coding root
+  stays uncluttered.
+
+Nested already half-worked: ``init project sr`` scaffolded it and every command
+accepted ``--repo-root``. What did not work was resolving it *without* that
+flag, because the CLI read no environment and did no discovery. These tests run
+the real commands with no ``--repo-root`` at all, from three different working
+directories, which is the only way the two layouts stay interchangeable a year
+from now.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from tests.helpers import DOGFOOD, script_subprocess_env
+from tests.support.cli import run_script
+from tests.support.same.git_736cc1f249f0 import git
+
+#: (script, extra args) — the read-mostly commands a consumer runs constantly.
+COMMANDS = [
+    ("validate_roadmap.py", []),
+    ("export_roadmap_md.py", ["--check"]),
+    ("generate_brief.py", ["M0.3", "--no-history"]),
+    ("digest_cli.py", ["-o", "-"]),
+    ("roadmap_crud.py", ["list-nodes"]),
+    ("search_cli.py", ["contract"]),
+    ("validate_file_limits.py", []),
+]
+
+
+
+
+@pytest.fixture(params=["embedded", "nested"])
+def layout(request: pytest.FixtureRequest, tmp_path: Path) -> tuple[Path, Path]:
+    """``(git_root, project_root)`` for each supported layout.
+
+    The two are the same path when embedded and differ when nested — which is
+    exactly the distinction every path bug in this area came from conflating.
+    """
+    top = tmp_path / "checkout"
+    top.mkdir()
+    prefix = "" if request.param == "embedded" else "sr/"
+    project = (top / prefix) if prefix else top
+    shutil.copytree(DOGFOOD, project, dirs_exist_ok=True)
+
+    git(top, "init", "-q", "-b", "main")
+    manifest = top / ".specyrd" / "manifest.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps({"project_root": prefix.rstrip("/") or "."}) + "\n",
+        encoding="utf-8",
+    )
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "seed")
+    return top.resolve(), project.resolve()
+
+
+def _run(script: str, args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    return run_script(script, args, cwd=cwd, env=script_subprocess_env())
+
+
+@pytest.mark.parametrize(("script", "args"), COMMANDS)
+def test_command_works_with_no_repo_root_flag(
+    layout: tuple[Path, Path], script: str, args: list[str]
+) -> None:
+    """Nested used to need an explicit --repo-root on every single invocation."""
+    top, _project = layout
+    proc = _run(script, args, cwd=top)
+
+    assert proc.returncode == 0, f"{script} failed:\n{proc.stderr}"
+
+
+@pytest.mark.parametrize(
+    "where", ["git_root", "inside_project", "sibling_subdir"]
+)
+def test_resolution_agrees_from_any_working_directory(
+    layout: tuple[Path, Path], where: str
+) -> None:
+    """cwd must not change which project a command operates on."""
+    top, project = layout
+    sibling = top / "src" / "deep"
+    sibling.mkdir(parents=True, exist_ok=True)
+    cwd = {
+        "git_root": top,
+        "inside_project": project / "planning",
+        "sibling_subdir": sibling,
+    }[where]
+
+    proc = _run("validate_roadmap.py", [], cwd=cwd)
+
+    assert proc.returncode == 0, f"from {where}:\n{proc.stderr}"
+
+
+def test_the_gui_and_the_cli_resolve_the_same_root(
+    layout: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One resolver, two callers — the split this work exists to close."""
+    from specy_road.gui_app_helpers import get_repo_root
+    from specy_road.runtime_paths import project_root
+
+    top, project = layout
+    monkeypatch.chdir(top)
+
+    assert get_repo_root() == project_root() == project
+
+
+def test_the_brief_is_identical_across_layouts(tmp_path: Path) -> None:
+    """A brief must not depend on where in the checkout the project sits.
+
+    Guards the whole class of bug at once: any path handled relative to the
+    wrong root shows up here as a diff. The one deliberate difference (M3.9):
+    a nested brief names its project root, with the summary and hand-off
+    paths from the git root, in one line the embedded brief does not have.
+    The ``_Size:`` header line (M10.7) counts that line, so it differs too.
+    """
+    briefs = []
+    for prefix in ("", "sr/"):
+        top = tmp_path / f"c{len(briefs)}"
+        top.mkdir()
+        project = (top / prefix) if prefix else top
+        shutil.copytree(DOGFOOD, project, dirs_exist_ok=True)
+        git(top, "init", "-q", "-b", "main")
+        proc = _run(
+            "generate_brief.py",
+            ["M0.3", "--no-history", "--repo-root", str(project)],
+            cwd=top,
+        )
+        assert proc.returncode == 0, proc.stderr
+        briefs.append(proc.stdout)
+
+    root_line = ("- **Project root:** `sr/` under the git root. Work from the git root; from there this leaf's "
+                 "implementation summary is `sr/work/implementation-summary-M0.3.md` and its review hand-offs go "
+                 "in `sr/work/reviews/M0.3/` of the main checkout — never in the git root's `work/`.\n")
+    assert root_line not in briefs[0] and briefs[1].count(root_line) == 1
+    size_line = re.compile(r"^_Size: \d+ bytes\. Largest sections: .*_\n", re.M)
+    assert all(len(size_line.findall(b)) == 1 for b in briefs)
+    assert size_line.sub("", briefs[0]) == size_line.sub("", briefs[1].replace(root_line, ""))
+
+
+def test_ignore_blocks_land_at_the_git_root_and_match(
+    layout: tuple[Path, Path],
+) -> None:
+    """The known breakage, end to end: archived material must really be ignored."""
+    from specy_road.agent_ignores import apply_agent_ignores
+    from specy_road.runtime_paths import prefix_within
+
+    top, project = layout
+    prefix = prefix_within(top, project)
+    apply_agent_ignores(top, prefix)
+
+    assert (top / ".gitignore").is_file()
+    cache = project / ".specyrd" / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "x.json").write_text("{}", encoding="utf-8")
+
+    rel = (cache / "x.json").relative_to(top).as_posix()
+    proc = subprocess.run(
+        ["git", "-C", str(top), "check-ignore", rel],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, f"{rel} should be gitignored"
+
+
+# --- init writes correct blocks regardless of command order -----------------
+
+
+def _fresh(tmp_path: Path, prefix: str) -> tuple[Path, Path]:
+    top = tmp_path / "checkout"
+    top.mkdir(parents=True, exist_ok=True)
+    git(top, "init", "-q", "-b", "main")
+    project = (top / prefix) if prefix else top
+    return top.resolve(), project
+
+
+@pytest.mark.parametrize("prefix", ["", "sr/"])
+def test_specyrd_init_prefixes_the_blocks_using_the_recorded_root(
+    tmp_path: Path, prefix: str
+) -> None:
+    """The bug end-to-end verification caught that the unit tests did not.
+
+    ``specyrd init`` computed the prefix with ``discover_project_root``, which
+    only walks *upward* — so run from the git root of a nested repo it found
+    nothing and wrote an unprefixed block that matched no path at all. The
+    recorded root is what it should have been reading.
+    """
+    from specy_road.init_project import run_init_project
+    from specy_road.specyrd_init import run_init
+
+    top, project = _fresh(tmp_path, prefix)
+    run_init_project(project, dry_run=False, force=False)
+    run_init(
+        target=top,
+        agent="claude-code",
+        dry_run=False,
+        force=False,
+        ai_commands_dir=None,
+    )
+
+    text = (top / ".cursorindexingignore").read_text(encoding="utf-8")
+    assert f"{prefix}roadmap/archive/" in text
+    if prefix:
+        assert "\nroadmap/archive/" not in text
+
+
+@pytest.mark.parametrize("prefix", ["", "sr/"])
+def test_init_project_after_specyrd_init_still_ends_up_prefixed(
+    tmp_path: Path, prefix: str
+) -> None:
+    """The reverse order: nothing is recorded yet when the blocks are first written."""
+    from specy_road.init_project import run_init_project
+    from specy_road.specyrd_init import run_init
+
+    top, project = _fresh(tmp_path, prefix)
+    run_init(
+        target=top,
+        agent="claude-code",
+        dry_run=False,
+        force=False,
+        ai_commands_dir=None,
+    )
+    run_init_project(project, dry_run=False, force=False)
+
+    text = (top / ".cursorindexingignore").read_text(encoding="utf-8")
+    assert f"{prefix}roadmap/archive/" in text
+    if prefix:
+        assert "\nroadmap/archive/" not in text
+
+def test_history_reports_events_in_both_layouts(layout: tuple[Path, Path]) -> None:
+    """The git-derived history must survive the git-root/project-root split.
+
+    ``git log --name-only`` prints paths relative to the **git** root while
+    roadmap paths are relative to the **project** root, so every lookup in a
+    nested layout depends on ``rebase_to_project``. When that rebasing is wrong
+    the walk does not raise — it silently reports no events, which is
+    indistinguishable from a young repository. Asserting on both layouts is
+    what makes the nested one a real check.
+    """
+    _git_root, project = layout
+    r = _run("history_cli.py", ["--repo-root", str(project)], cwd=project)
+    assert r.returncode == 0, r.stderr
+    assert "created as M0.3" in r.stdout, r.stdout
+
+
+def test_committed_copies_are_read_relative_to_the_project_root(layout: tuple[Path, Path]) -> None:
+    """The review gate, routing and packets read files *as committed on a ref*.
+
+    ``git show <ref>:roadmap/x`` resolves from the git root, so in the nested
+    layout every such read silently missed the project's files: the roster read
+    from the integration branch came back empty and routing offered only the
+    human. ``<ref>:./roadmap/x`` resolves from the process's cwd, which is the
+    project root in both layouts.
+    """
+    from specy_road.orchestration_config import effective_config
+
+    top, project = layout
+    (project / "roadmap" / "orchestration.yaml").write_text(
+        "version: 1\nroster:\n  - id: human\n    family: human\n    roles: [coordinator, reviewer]\n"
+        "  - id: reviewer-x\n    family: xai\n    roles: [reviewer]\n"
+        "policy:\n  reviewers_required: 2\n  reviewers_distinct_families: true\n",
+        encoding="utf-8",
+    )
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "roster")
+
+    config, err = effective_config(project, "HEAD")
+
+    assert err is None
+    assert [e["id"] for e in config["roster"]] == ["human", "reviewer-x"]
+    assert config["policy"]["reviewers_required"] == 2
+
+    from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+
+    nodes = load_roadmap_nodes_at_ref(project, "HEAD")
+    assert nodes and any(n.get("id") == "M1" for n in nodes)
+
+
+def test_a_registry_only_tip_commit_does_not_stale_a_review(layout: tuple[Path, Path]) -> None:
+    """`mark-implementation-reviewed` commits only the registry on the feature branch; the review
+    stays bound to the implementation commit. git names that path from the repository root,
+    so the nested layout compared `sr/roadmap/registry.yaml` with `roadmap/registry.yaml` and
+    `finish-this-task` refused every approval."""
+    from specy_road.review_target import reviewed_commit
+
+    top, project = layout
+    (project / "vision.md").write_text("real change\n", encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "work")
+    work = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    reg = project / "roadmap" / "registry.yaml"
+    reg.write_text(reg.read_text(encoding="utf-8") + "# approved\n", encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "chore: mark reviewed")
+
+    assert reviewed_commit(project, "HEAD", None) == work
+
+
+def test_finish_bookkeeping_paths_are_matched_under_the_project_prefix(layout: tuple[Path, Path]) -> None:
+    """Re-landing a finished branch counted every bookkeeping write as a stray commit in the nested layout."""
+    from specy_road.finish_modes import stray_finish_paths
+
+    top, project = layout
+    subprocess.run(["git", "-C", str(top), "checkout", "-q", "-b", "feature/rm-x"], check=True)
+    (project / "roadmap.md").write_text("regenerated\n", encoding="utf-8")
+    (project / "work").mkdir(exist_ok=True)
+    (project / "work" / "note.md").write_text("x\n", encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "finish bookkeeping")
+
+    assert stray_finish_paths(project, "feature/rm-x") == []
+
+    (top / "README.md").write_text("code\n", encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "code")
+    assert stray_finish_paths(project, "feature/rm-x") == ["README.md"]
+
+
+def test_landing_runs_in_the_holders_project_root(layout: tuple[Path, Path]) -> None:
+    """When another worktree holds the integration branch, finish lands there; in the
+    nested layout the bookkeeping files live below that worktree's git root."""
+    from specy_road.finish_land_integration import holder_project_root
+
+    top, project = layout
+    holder = top.parent / "holder"
+    assert holder_project_root(project, holder) == holder / project.relative_to(top)
+
+
+def test_packet_boundary_reads_changed_paths_relative_to_the_project(layout: tuple[Path, Path]) -> None:
+    """The implementation summary under the project's work/ is bookkeeping, not a boundary breach,
+    in both layouts; git reports it as `sr/work/...` when nested."""
+    from specy_road.bundled_scripts.review_packet import changed_paths_section
+    from specy_road.review_target import ReviewTarget
+
+    top, project = layout
+    base = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    (project / "work").mkdir(exist_ok=True)
+    (project / "work" / "implementation-summary-M1.md").write_text("done\n", encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "summary")
+    tip = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    node = {"id": "M1", "touch_zones": ["src/"]}
+    target = ReviewTarget(node=node, nodes=[node], entry=None, ref="HEAD", commit=tip, base_ref=None, base=base)
+
+    paths, lines = changed_paths_section(project, target)
+
+    assert paths == ["work/implementation-summary-M1.md"]
+    assert "outside touch zones" not in "\n".join(lines)
+
+
+
+def test_trial_merge_classifies_conflicts_relative_to_the_project(layout: tuple[Path, Path]) -> None:
+    """When nested, a git-root `roadmap/x.json` is outside the project, so its conflict blocks;
+    `sr/roadmap/registry.yaml` is the project's registry and stays bookkeeping."""
+    from specy_road.review_gate import trial_merge
+
+    top, project = layout
+    reg = project / "roadmap" / "registry.yaml"
+    seed = reg.read_text(encoding="utf-8")
+
+    def commit_side(side: str) -> None:
+        reg.write_text(seed + f"# {side}\n", encoding="utf-8")
+        (top / "roadmap").mkdir(exist_ok=True)
+        (top / "roadmap" / "x.json").write_text(f'"{side}"\n', encoding="utf-8")
+        git(top, "add", "-A")
+        git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", side)
+
+    git(top, "checkout", "-q", "-b", "feature/rm-x")
+    commit_side("feature")
+    git(top, "checkout", "-q", "main")
+    commit_side("main")
+    git(top, "checkout", "-q", "feature/rm-x")
+
+    tm = trial_merge(project, "HEAD", "main")
+    if top == project:   # embedded: both paths are the project's own bookkeeping
+        assert tm.conflicts == ["roadmap/registry.yaml", "roadmap/x.json"] and tm.code_conflicts == []
+    else:
+        assert tm.conflicts == ["../roadmap/x.json", "roadmap/registry.yaml"]
+        assert tm.code_conflicts == ["../roadmap/x.json"]

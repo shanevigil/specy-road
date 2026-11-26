@@ -6,7 +6,7 @@ and ``work/``. Both are regenerated from the graph, and both belong in git — a
 fresh clone and CI read them before anything has been regenerated.
 
 Adopters have gitignored them anyway, because "generated" usually implies
-"untracked" (see ``docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md`` §4).
+"untracked" (v0.2.1-rc1 adopter feedback triage, §4).
 The local checkout then looks fine while CI sees the file missing. These helpers
 detect that and say so once, non-fatally.
 """
@@ -16,9 +16,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from specy_road.digest import DEFAULT_OUTPUT, render_digest
+from specy_road import safe_write
 from specy_road.git_subprocess import run as git_run
 from specy_road.managed_block import refused_link
+
+#: The digest's file (``specy-road digest``), named here so a reader of the name need not load the
+#: digest and the roadmap index it renders from.
+DEFAULT_OUTPUT = "roadmap-context.md"
 
 #: Repo-root-relative names that are generated and committed.
 GENERATED_COMMITTED: tuple[str, ...] = ("roadmap.md", DEFAULT_OUTPUT)
@@ -98,7 +102,7 @@ def warn_if_generated_files_ignored(root: Path) -> list[str]:
 
 
 def refused_generated_files(root: Path) -> dict[str, str]:
-    """Each :data:`GENERATED_COMMITTED` name that is a link out of ``root``, with its refusal line."""
+    """Each :data:`GENERATED_COMMITTED` name the safe-write rule refuses (any symlink, in-repo too), with its refusal line."""
     reasons = {name: refused_link(root, root / name) for name in GENERATED_COMMITTED}
     return {name: why for name, why in reasons.items() if why}
 
@@ -110,11 +114,12 @@ def regenerate_generated_files(root: Path) -> list[str]:
     (archive, restore-archive), so ``export --check`` and ``digest --check``
     pass without a separate ``export`` and ``digest`` run.
 
-    A name that is a symlink out of ``root`` is not written: a stderr line names
-    it, and the refused names are returned.
+    A name the safe-write rule refuses (a symlink of any kind) is not written:
+    a stderr line names it, and the refused names are returned.
     """
-    # Imported here: export_roadmap_md imports this module.
+    # Imported here: export_roadmap_md and digest import this module.
     from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
+    from specy_road.digest import render_digest
 
     refused = refused_generated_files(root)
     for why in refused.values():
@@ -122,5 +127,5 @@ def regenerate_generated_files(root: Path) -> list[str]:
     if "roadmap.md" not in refused:
         reexport_roadmap_md(root)
     if DEFAULT_OUTPUT not in refused:
-        (root / DEFAULT_OUTPUT).write_text(render_digest(root), encoding="utf-8")
+        safe_write.write(root, root / DEFAULT_OUTPUT, render_digest(root))
     return list(refused)

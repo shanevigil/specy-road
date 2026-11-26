@@ -1,0 +1,831 @@
+"""Harness adapters and the per-worker wrapper (slice 7b): commands, parsing, exit handling."""
+
+from __future__ import annotations
+
+import json
+import sys
+import time
+from dataclasses import asdict
+from pathlib import Path
+
+import pytest
+
+from tests.support.review import make_review_repo, shipped_anthropic_opus_cli_yaml_line
+from tests.support.cli import run_main
+from tests.support.profiles import commit_profile, make_profile_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import reset_cursor_adapter_via_init
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_reconcile as wrc
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.bundled_scripts import role_prompt
+from tests.support.bounded_wait import pause
+from tests.support.extracted.worker_adapters import (
+    CLAUDE_RESULT,
+    CODEX_TURN,
+    CURSOR_RESULT,
+    FULL_INIT,
+    RECORDED,
+)
+from tests.support.review import git
+from tests.support.harness import make_worker_repo
+from specy_road.review_files import reviews_root
+import subprocess
+from tests.support import REPO
+from specy_road.orchestration.workers.worker_adapters import placeholder_problem
+from tests.support.extracted.folded_review_policy import PROFILE_REL, ROSTER
+from tests.support.same.git_84c8ad8f55f9 import git as git_folded
+from specy_road.orchestration.workers import worker_process as wp
+from tests.support.extracted.worker_adapters import launch
+from tests.support.extracted.worker_adapters import launch as launch_fn
+from specy_road.review_files import list_ready, reviews_dir
+import os
+
+FAKE = '''
+import json, sys
+spec = json.loads(open(sys.argv[1]).read())
+if spec.get("write"):
+    open(spec["write"]["path"], "w").write(spec["write"]["text"])
+for d in spec["lines"]:
+    print(json.dumps(d), flush=True)
+sys.exit(int(open(sys.argv[1]).read().count("FAIL") > 0))
+'''
+
+
+def _fake(tmp_path: Path, lines: list[dict], *, fail: bool = False, write: dict | None = None) -> tuple[Path, str]:
+    """A harness stand-in: prints the given JSON lines; the prompt file carries them (and a file to write)."""
+    script = tmp_path / "fake.py"
+    script.write_text(FAKE)
+    prompt = tmp_path / "prompt.json"
+    prompt.write_text(json.dumps({"lines": lines, "note": "FAIL" if fail else "", "write": write}))
+    return prompt, f"{sys.executable} {script} {{prompt}}"
+
+
+def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("do the thing")
+    c = wa.adapter_for("claude-code").launch(p, tmp_path, "claude-opus-5-5", None)
+    assert c.argv[:4] == ["claude", "-p", "--setting-sources", "user,project,local"] and c.session_id in c.argv
+    assert c.argv[-1] == wa.STDIN_INSTRUCTION and c.stdin == "do the thing" and {"stream-json", "--session-id"} <= {*c.argv}
+    r = wa.adapter_for("claude-code").resume("sid", p, tmp_path, "m", None)
+    assert r.argv[2:6] == ["--setting-sources", "user,project,local", "--resume", "sid"] and r.stdin == "do the thing"
+    x = wa.adapter_for("codex").launch(p, tmp_path, "gpt-6.1-sol", None)
+    assert x.argv[:3] == ["codex", "exec", "--json"] and x.argv[-1] == "-" and x.stdin == "do the thing"
+    xr = wa.adapter_for("codex").resume("t1", p, tmp_path, "m", None)
+    assert xr.argv[:4] == ["codex", "exec", "resume", "--json"] and xr.argv[-2:] == ["t1", "-"] and xr.stdin == "do the thing"
+    # codex-cli 0.165: `exec` has no --ask-for-approval, and `exec resume` no --sandbox or -C either.
+    for argv in (x.argv, xr.argv):
+        assert "approval_policy=never" in argv and "sandbox_mode=workspace-write" in argv
+        assert "--ask-for-approval" not in argv and "--sandbox" not in argv
+    assert "-C" not in xr.argv
+    u = wa.adapter_for("cursor").launch(p, tmp_path, "composer-2.5", None)
+    assert u.argv[:2] == ["agent", "-p"] and "--workspace" in u.argv
+    # a new worktree is an untrusted workspace: without --trust (or --force) `agent -p` exits 1
+    ur = wa.adapter_for("cursor").resume("c1", p, tmp_path, "m", None)
+    assert "--trust" in u.argv and "--trust" in ur.argv and "--force" not in u.argv + ur.argv   # sandboxed by default
+    assert wa.adapter_for("claude-code").human_resume("sid", tmp_path) == ["claude", "--resume", "sid"]
+    assert wa.adapter_for("codex").human_resume("t1", tmp_path) == ["codex", "resume", "t1"]
+    assert wa.adapter_for("cursor").human_resume("c1", tmp_path) == ["agent", "--resume", "c1"]
+
+
+def test_generic_needs_a_cli_and_custom_cli_overrides_any_harness(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    with pytest.raises(wa.Unsupported, match="channels.cli"):
+        wa.adapter_for("generic").launch(p, tmp_path, "m", None)
+    g = wa.adapter_for("generic").launch(p, tmp_path, "m", "mytool --file {prompt}")
+    assert g.argv == ["sh", "-c", f"mytool --file {p}"]
+    c = wa.adapter_for("claude-code").launch(p, tmp_path, "m", "wrapper {prompt}")
+    assert c.argv[0] == "sh" and c.session_id is None
+    # A custom command naming {session} gets a fresh id on launch, and keeps it.
+    c = wa.adapter_for("claude-code").launch(p, tmp_path, "m", "wrapper --session-id {session} {prompt}")
+    assert c.session_id and f"--session-id {c.session_id} " in c.argv[2]
+    # The profiles' <prompt> form means the prompt text, quoted.
+    g = wa.adapter_for("generic").launch(p, tmp_path, "m", 'tool "<prompt>"')
+    assert g.argv[2] == "tool x"
+    for h in ("generic",):
+        with pytest.raises(wa.Unsupported):
+            wa.adapter_for(h).resume("s", p, tmp_path, "m", None)
+        with pytest.raises(wa.Unsupported):
+            wa.adapter_for(h).human_resume("s", tmp_path)
+    with pytest.raises(wa.Unsupported, match="unknown harness"):
+        wa.adapter_for("copilot")
+    for a in wa.ADAPTERS.values():
+        assert a.caps.interrupt is False and a.caps.steer is False
+
+
+def test_parsers_map_each_harness_output_to_events() -> None:
+    cc = wa.adapter_for("claude-code")
+    assert cc.parse('{"type":"system","subtype":"init","session_id":"s1","model":"opus"}').session_id == "s1"
+    out = cc.parse('{"type":"assistant","session_id":"s1","message":{"content":[{"type":"text","text":"hi  there"}]}}')
+    assert out.type == "output" and out.summary == "hi there"
+    done = cc.parse('{"type":"result","subtype":"success","session_id":"s1","result":"ok","total_cost_usd":0.5}')
+    assert done.type == "turn_completed" and done.detail == {"cost_usd": 0.5, "message": "ok"}
+    assert cc.parse('{"type":"result","subtype":"error_max_turns","is_error":true}').type == "error"
+    assert cc.parse("not json") is None and cc.parse('{"type":"user"}') is None
+    cx = wa.adapter_for("codex")
+    assert cx.parse('{"type":"thread.started","thread_id":"t1"}').session_id == "t1"
+    said = cx.parse('{"type":"item.completed","item":{"type":"agent_message","text":"done"}}')
+    assert said.summary == "done" and said.detail == {"message": "done"}
+    assert cx.parse('{"type":"item.completed","item":{"type":"agent_message","text":""}}').summary == "(empty message)"
+    assert cx.parse('{"type":"item.completed","item":{"type":"command_execution"}}').summary == "command_execution done"
+    assert cx.parse('{"type":"turn.completed","usage":{"input_tokens":1}}').type == "turn_completed"
+    assert cx.parse('{"type":"turn.failed","error":{"message":"boom"}}').type == "error"
+    cu = wa.adapter_for("cursor")
+    assert cu.parse('{"type":"system","subtype":"init","session_id":"c1"}').session_id == "c1"
+    assert cu.parse('{"type":"tool_call","subtype":"started","session_id":"c1"}').summary == "tool call started"
+    assert cu.parse('{"type":"result","subtype":"success","session_id":"c1","result":"fin"}').type == "turn_completed"
+    # A sandboxed shell refusal is a permission_denied beside the tool line (M22.37). The turn result stays success.
+    launch = wa.Launch(["agent"])
+    failure = {"type": "tool_call", "subtype": "completed", "session_id": "c1", "tool_call": {"shellToolCall": {
+        "result": {"failure": {"command": "touch outside", "exitCode": 1,
+                               "stderr": "touch: cannot touch 'outside': Permission denied\n"}}}}}
+    events = cu.parse_events(json.dumps(failure), launch)
+    assert [e.type for e in events] == ["output", "permission_denied"]
+    assert events[1].summary.startswith("denied shell:") and events[1].detail["exit_code"] == 1
+    carried = {"type": "tool_call", "subtype": "completed", "session_id": "c1", "tool_call": {"shellToolCall": {
+        "result": {"success": {"command": "git add x", "exitCode": 0,
+                               "stderr": "fatal: Unable to create index.lock: Operation not permitted\n"}}}}}
+    assert [e.type for e in cu.parse_events(json.dumps(carried), launch)] == ["output", "permission_denied"]
+    clean = {"type": "tool_call", "subtype": "completed", "session_id": "c1", "tool_call": {"shellToolCall": {
+        "result": {"success": {"command": "git status", "exitCode": 0, "stderr": ""}}}}}
+    assert [e.type for e in cu.parse_events(json.dumps(clean), launch)] == ["output"]
+    plain = wa.adapter_for("generic").parse("plain line")
+    assert plain.summary == "plain line" and plain.detail == {"message": "plain line"}
+
+
+
+
+def test_each_adapter_reports_turn_usage_in_one_shape() -> None:
+    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor")); reset_cursor_adapter_via_init(cu)
+    assert cc.parse(json.dumps(CLAUDE_RESULT)).usage == {"input_tokens": 38 + 67090 + 1224204, "cached_input_tokens": 1224204,
+        "output_tokens": 13258, "reasoning_tokens": 4703, "cost_usd": 1.0474079, "cost_is_estimate": True, "num_turns": 19,
+        "harness_version": None, "session_cost_usd": 1.0474079}   # input counts cache reads and writes; the wrapper takes the delta
+    cx_tokens = {"input_tokens": 14784, "cached_input_tokens": 12288, "output_tokens": 5, "reasoning_tokens": 0}
+    assert cx.parse(json.dumps(CODEX_TURN)).usage == {**cx_tokens, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None, "session_usage": cx_tokens}   # the thread's running total too: the wrapper takes the delta
+    assert cu.parse(json.dumps(CURSOR_RESULT)).usage == {"input_tokens": 9323 + 4864, "cached_input_tokens": 4864, "output_tokens": 25,
+        "reasoning_tokens": None, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None}
+    assert set(cu.parse(json.dumps({**CURSOR_RESULT, "usage": None})).usage.values()) == {None}   # constructed: no usage → nulls
+    w = cc.parse(json.dumps({**CLAUDE_RESULT, "usage": {"input_tokens": 12, "cache_creation_input_tokens": 3000}})).usage
+    assert (w["input_tokens"], w["cached_input_tokens"], w["reasoning_tokens"]) == (3012, None, None)   # writes alone count
+    bad = cc.parse(json.dumps({**CLAUDE_RESULT, "total_cost_usd": "1", "usage": {"output_tokens": "9", "input_tokens": True}}))
+    assert {k: v for k, v in bad.usage.items() if v is not None} == {"num_turns": 19} and wa.adapter_for("generic").parse("x").usage is None
+
+
+def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    prompt, cli = _fake(tmp_path, [
+        {"type": "system", "subtype": "init", "session_id": "s-42", "model": "opus"},
+        {"type": "assistant", "message": {"content": [{"type": "text", "text": "working"}]}, "session_id": "s-42"},
+        {"type": "result", "subtype": "success", "result": "all done", "session_id": "s-42"},
+    ])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    launch = wa.adapter_for("claude-code").launch(prompt, repo, "opus", cli)
+    assert wr.run(repo, rec.worker_id, launch) == 0
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.provider_session_id == "s-42" and rec.state == "idle" and rec.pid is None   # no READY file yet
+    types = [e.type for e in ws.events_since(repo, rec.worker_id)]
+    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "usage", "post_run_check", "completion"]
+    assert "working" in wr.log_path(repo, rec.worker_id).read_text()
+
+
+def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    from tests.support.same.git_84c8ad8f55f9 import git
+    d = ws.reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    ready = {"path": str(d / "READY-sol.md"),      # written by the harness during the turn (review round 6, B3)
+             "text": f"---\nnode_id: M1.1\nagent: sol\nbranch: feature/rm-thing\ncommit: {git(repo, 'rev-parse', 'HEAD')}\n"
+                     f"base: {git(repo, 'rev-parse', 'HEAD')}\nchanged_paths: []\nverify: []\n---\n"}
+    prompt, cli = _fake(tmp_path, [{"type": "thread.started", "thread_id": "t-9"}, {"type": "turn.completed"}], write=ready)
+    rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
+    wr.run(repo, rec.worker_id, wa.adapter_for("codex").launch(prompt, repo, "sol", cli))
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == "completed" and rec.provider_session_id == "t-9"
+    prompt2, cli2 = _fake(tmp_path, [{"type": "error", "message": "boom"}], fail=True)   # limit wording pauses (M8.2)
+    rec2 = ws.create_record(repo, "M1.2", "codex", "sol", repo)
+    assert wr.run(repo, rec2.worker_id, wa.adapter_for("codex").launch(prompt2, repo, "sol", cli2)) == 1
+    rec2 = ws.load_record(repo, rec2.worker_id)
+    assert rec2.state == "failed"
+    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-4:] == ["error", "usage", "post_run_check", "error"]   # nulls: no usage
+
+
+def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "generic", "x", repo)
+    assert wr.run(repo, rec.worker_id, wa.Launch(["/no/such/binary"])) == 127
+    assert (after := ws.load_record(repo, rec.worker_id)).state == "failed" and after.flags == ["post_run_findings"]
+    *_, usage, check, last = ws.events_since(repo, rec.worker_id)   # the post-run check runs on a start failure too (M8.2)
+    assert "cannot start" in last.summary and last.detail == {"exit": 127} and "cannot start" in check.summary
+    assert usage.type == "usage" and set(usage.detail.values()) == {None} and check.type == "post_run_check"
+    # The startup failure is the turn's end, so its ack is timed; the harness never launched or spoke.
+    assert [d["worker_id"] for d in wrc.sync(repo, ack=True)] == [rec.worker_id]
+    capsys.readouterr()
+    assert run_worker_cli("worker", "timeline", rec.worker_id, "--json", "--repo-root", str(repo)) == 0
+    phases = json.loads(capsys.readouterr().out)["phases"]
+    assert isinstance(phases["end_to_acked"], float) and phases["end_to_acked"] >= 0
+    assert phases["delegated_to_launched"] is None and phases["launched_to_first_output"] is None
+    assert phases["first_output_to_end"] is None
+
+
+def test_spawn_returns_before_the_worker_ends_and_the_record_catches_up(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    prompt, cli = _fake(tmp_path, [{"type": "system", "subtype": "init", "session_id": "c-1"},
+                                   {"type": "result", "subtype": "success", "result": "ok", "session_id": "c-1"}])
+    rec = ws.create_record(repo, "M1.1", "cursor", "composer", repo)
+    pid = wr.spawn(repo, rec, wa.adapter_for("cursor").launch(prompt, repo, "composer", cli))
+    assert ws.load_record(repo, rec.worker_id).state == "running" and rec.pid == pid
+    for _ in range(100):
+        if not ws.load_record(repo, rec.worker_id).active or ws.load_record(repo, rec.worker_id).state == "idle":
+            break
+        pause(0.1)
+    final = ws.load_record(repo, rec.worker_id)
+    assert final.state == "idle" and final.provider_session_id == "c-1" and not wr.pid_alive(final.pid)
+
+
+def test_custom_cli_resume_needs_the_session_placeholder(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cc = wa.adapter_for("claude-code")
+    assert cc.resume("sid", p, tmp_path, "m", "wrapper {prompt}").argv[:2] == ["claude", "-p"]   # no {session}: default
+    r = cc.resume("sid", p, tmp_path, "m", "wrapper {prompt} --resume {session}")
+    assert r.argv[0] == "sh" and "--resume sid" in r.argv[2] and r.session_id == "sid"
+
+
+# --- access.launch_mode (M10.4) -------------------------------------------------
+
+BARE_INIT = {"type": "system", "subtype": "init", "session_id": "s1", "tools": ["Bash", "Read", "Edit"],
+             "mcp_servers": [], "plugins": []}
+
+
+def test_claude_passes_bare_only_when_the_profile_says_bare(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cc = wa.adapter_for("claude-code")
+    bare = cc.launch(p, tmp_path, "m", None, launch_mode="bare")
+    assert "--bare" in bare.argv and bare.launch_mode == "bare"
+    assert "--bare" in cc.resume("sid", p, tmp_path, "m", None, launch_mode="bare").argv
+    for launch in (cc.launch(p, tmp_path, "m", None, launch_mode="full"), cc.launch(p, tmp_path, "m", None),
+                   cc.resume("sid", p, tmp_path, "m", None, launch_mode="full")):
+        assert "--bare" not in launch.argv and launch.launch_mode == "full"
+    # A custom command is run as written; it only carries the mode for the init check.
+    custom = cc.launch(p, tmp_path, "m", "wrapper {prompt}", launch_mode="bare")
+    assert custom.argv == ["sh", "-c", f"wrapper {p}"] and custom.launch_mode == "bare"
+    resumed = cc.resume("sid", p, tmp_path, "m", "wrapper {prompt} --resume {session}", launch_mode="bare")
+    assert "--bare" not in resumed.argv[2] and resumed.launch_mode == "bare"
+
+
+def test_claude_init_detail_reports_what_loaded_and_the_inferred_mode() -> None:
+    cc = wa.adapter_for("claude-code")
+    full = cc.parse(json.dumps(FULL_INIT))
+    assert full.type == "started" and full.detail == {
+        "tools": ["Bash", "Read", "Edit", "Write", "Skill"], "mcp_servers": ["docs"], "plugins": ["lint"],
+        "version": "2.1.300", "inferred_mode": "full"}
+    bare = cc.parse(json.dumps(BARE_INIT)).detail
+    assert bare["inferred_mode"] == "bare" and "version" not in bare
+    assert cc.parse(json.dumps({**BARE_INIT, "version": "2.1.301"})).detail["version"] == "2.1.301"
+    # No tool list reported: nothing to infer from, so no mode and no mismatch.
+    quiet = cc.parse('{"type":"system","subtype":"init","session_id":"s1"}').detail
+    assert "inferred_mode" not in quiet
+
+
+def test_claude_init_mismatch_adds_an_error_naming_both_modes(tmp_path: Path) -> None:
+    cc = wa.adapter_for("claude-code")
+    full, bare = wa.Launch(["claude"]), wa.Launch(["claude"], launch_mode="bare")
+    assert [e.type for e in cc.parse_events(json.dumps(FULL_INIT), full)] == ["started"]
+    assert [e.type for e in cc.parse_events(json.dumps(BARE_INIT), bare)] == ["started"]
+    started, err = cc.parse_events(json.dumps(BARE_INIT), full)
+    assert started.type == "started" and err.type == "error" and err.session_id == "s1"
+    assert "bare mode" in err.summary and "launch_mode is full" in err.summary
+    assert err.detail == {"inferred_mode": "bare", "launch_mode": "full"}
+    assert [e.type for e in cc.parse_events(json.dumps(FULL_INIT), bare)] == ["started", "error"]
+    assert cc.parse_events('{"type":"user"}', full) == []
+    # Other harnesses never check the mode.
+    assert [e.type for e in wa.adapter_for("cursor").parse_events(json.dumps(BARE_INIT), full)] == ["started"]
+
+
+def test_the_wrapper_payload_carries_the_mode_and_records_the_mismatch(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    prompt, cli = _fake(tmp_path, [FULL_INIT, {"type": "result", "subtype": "success", "result": "ok", "session_id": "s1"}])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    launch = wa.adapter_for("claude-code").launch(prompt, repo, "opus", cli, launch_mode="bare")
+    payload = tmp_path / "payload.json"   # what `spawn` writes and `main` reads back
+    payload.write_text(json.dumps({"launch": asdict(launch)}))
+    with pytest.raises(SystemExit) as e:
+        wr.main([str(repo), rec.worker_id, "tok", str(payload)])
+    assert e.value.code == 0
+    events = ws.events_since(repo, rec.worker_id)
+    assert [x.type for x in events] == ["started", "launched", "first_output", "started", "error", "turn_completed",
+                                        "usage", "post_run_check", "completion"]
+    mismatch = events[4]
+    assert mismatch.detail == {"inferred_mode": "full", "launch_mode": "bare"}
+    assert "exit" not in mismatch.detail   # not a turn end: the turn goes on
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "s1"
+
+
+# --- access.effort_by_role (M10.5) ----------------------------------------------
+
+def test_default_claude_and_codex_commands_carry_the_effort_flag_and_cursor_none(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor"))
+    for launch in (cc.launch(p, tmp_path, "m", None, effort="medium"), cc.resume("sid", p, tmp_path, "m", None,
+                                                                                  effort="medium")):
+        i = launch.argv.index("--effort")
+        assert launch.argv[i + 1] == "medium"
+    for launch in (cx.launch(p, tmp_path, "m", None, effort="high"), cx.resume("t1", p, tmp_path, "m", None,
+                                                                               effort="high")):
+        i = launch.argv.index("model_reasoning_effort=high")
+        assert launch.argv[i - 1] == "-c"
+    assert cx.resume("t1", p, tmp_path, "m", None, effort="high").argv[-2:] == ["t1", "-"]   # still the last args
+    no_effort = (cc.launch(p, tmp_path, "m", None), cc.resume("sid", p, tmp_path, "m", None),
+                 cx.launch(p, tmp_path, "m", None), cx.resume("t1", p, tmp_path, "m", None))
+    assert not any("--effort" in x.argv or any("model_reasoning_effort" in a for a in x.argv) for x in no_effort)
+    assert cu.launch(p, tmp_path, "m", None, effort="high").argv == cu.launch(p, tmp_path, "m", None).argv
+
+
+def test_custom_cli_effort_placeholder_becomes_each_harness_flag(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cli = "wrapper {effort} {prompt}"
+    assert wa.adapter_for("claude-code").launch(p, tmp_path, "m", cli, effort="low").argv[2] == f"wrapper --effort low {p}"
+    assert wa.adapter_for("codex").launch(p, tmp_path, "m", cli, effort="low").argv[2] == \
+        f"wrapper -c model_reasoning_effort=low {p}"
+    assert wa.adapter_for("cursor").launch(p, tmp_path, "m", cli, effort="low").argv[2] == f"wrapper  {p}"
+    assert wa.adapter_for("generic").launch(p, tmp_path, "m", cli, effort="low").argv[2] == f"wrapper  {p}"
+    assert wa.adapter_for("claude-code").launch(p, tmp_path, "m", cli).argv[2] == f"wrapper  {p}"   # no level
+    resumed = wa.adapter_for("claude-code").resume("sid", p, tmp_path, "m", "w {session_flag} {effort} {prompt}",
+                                                   effort="max")
+    assert resumed.argv[2] == f"w --resume sid --effort max {p}"
+    for bad in ("w --effort={effort} {prompt}", "w <{effort} {prompt}"):
+        assert wa.placeholder_problem(bad)
+        with pytest.raises(wa.Unsupported):
+            wa.adapter_for("claude-code").launch(p, tmp_path, "m", bad, effort="low")
+
+
+def test_effort_note_only_when_a_level_is_set_and_the_command_names_no_effort() -> None:
+    from specy_road.orchestration.workers.worker_adapter_parsers import effort_note  # noqa: PLC0415
+    assert "takes no effort" in effort_note("w {prompt}", "high")
+    assert effort_note("w {effort} {prompt}", "high") is None
+    assert effort_note("w {prompt}", None) is None and effort_note(None, "high") is None
+
+
+ENV_PROBE = "import os, sys\nopen(sys.argv[1], 'w').write(os.environ.get('CLAUDE_CODE_EFFORT_LEVEL', 'unset'))\n"
+
+
+def test_the_worker_child_environment_has_no_claude_code_effort_level(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    script, out, prompt = tmp_path / "probe.py", tmp_path / "env.txt", tmp_path / "p.md"
+    script.write_text(ENV_PROBE)
+    prompt.write_text("x")
+    monkeypatch.setenv("CLAUDE_CODE_EFFORT_LEVEL", "max")
+    rec = ws.create_record(repo, "M1.1", "generic", "x", repo)
+    launch = wa.adapter_for("generic").launch(prompt, repo, "x", f"{sys.executable} {script} {out} {{prompt}}")
+    wr.run(repo, rec.worker_id, launch)
+    assert out.read_text() == "unset"
+
+
+def _harness(repo: Path, cli: str | None = None) -> None:
+    """Roster ``opus`` on ``claude-code`` (and its ``channels.cli``), landed on ``dev`` like the profile."""
+    roster = repo / "roadmap" / "orchestration.yaml"
+    extra = "    harness: claude-code\n" + (f"    channels: {{cli: '{cli}'}}\n" if cli else "")
+    roster.write_text(roster.read_text().replace("    family: anthropic\n", "    family: anthropic\n" + extra, 1))
+    commit_profile(repo)
+
+
+def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tmp_path: Path, capfd) -> None:
+    repo = make_profile_repo(tmp_path)
+    _harness(repo)
+    prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    prof_path.write_text(prof_path.read_text().replace(shipped_anthropic_opus_cli_yaml_line(), "  cli: echo {effort} {prompt}"))
+    commit_profile(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
+                "--repo-root", str(repo)) == 0
+    out, err = capfd.readouterr()
+    assert out.splitlines()[-1].startswith("--effort low ") and "takes no effort" not in err
+    prof_path.write_text(prof_path.read_text().replace("  cli: echo {effort} {prompt}", "  cli: echo {prompt}"))
+    commit_profile(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli", "--run",
+                "--repo-root", str(repo)) == 0
+    out, err = capfd.readouterr()
+    assert "--effort" not in out.splitlines()[-1] and err.count("takes no effort") == 1 and "effort low" in err
+
+
+@pytest.mark.slow
+def test_delegate_passes_the_executor_effort_to_default_and_custom_commands(tmp_path: Path, capsys,
+                                                                            monkeypatch) -> None:
+    launches = []
+    monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
+    for name, cli in (("default", None), ("effort", "wrapper {effort} {prompt}"), ("none", "wrapper {prompt}")):
+        (tmp_path / name).mkdir()
+        repo = make_profile_repo(tmp_path / name)
+        _harness(repo, cli)
+        ops.delegate(repo, "M1.1", "opus")
+        notes = capsys.readouterr().err.count("takes no effort")
+        if cli is None:
+            i = launches[-1].argv.index("--effort")
+            assert launches[-1].argv[i + 1] == "medium" and notes == 0
+        elif "{effort}" in cli:
+            assert launches[-1].argv[2].startswith("wrapper --effort medium ") and notes == 0
+        else:
+            assert "--effort" not in launches[-1].argv[2] and notes == 1
+
+
+
+# --- B4 -----------------------------------------------------------------------
+
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
+def test_an_embedded_placeholder_is_refused_not_quoted_inside_quotes(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("$(echo pwned)")
+    for cli in ('printf "prefix <prompt>"', "x --prompt=<prompt>", "x '<prompt>y'"):
+        assert "whole argument" in (wa.placeholder_problem(cli) or ""), cli
+        with pytest.raises(wa.Unsupported):
+            wa.ADAPTERS["generic"].launch(p, tmp_path, "m", cli)
+    assert wa.placeholder_problem('claude -p "<prompt>"') is None
+    assert wa.placeholder_problem("run {prompt} {session}") is None
+
+
+
+# --- F9 -----------------------------------------------------------------------
+
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
+def test_a_ready_on_another_branch_does_not_complete(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git(repo, "rev-parse", "HEAD")
+    (d / "READY-x.md").write_text(f"---\nnode_id: M1.1\nagent: x\nbranch: feature/rm-other\ncommit: {head}\n"
+                                  f"base: {head}\nchanged_paths: []\nverify: []\n---\n")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    spec = tmp_path / "ok.json"
+    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
+    launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")
+    pause(0.05)
+    os.utime(d / "READY-x.md", None)
+    assert wr.run(repo, rec.worker_id, launch) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+
+
+
+def _ready(repo: Path, commit: str, branch: str = "feature/rm-thing") -> Path:
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / "READY-x.md"
+    p.write_text(f"---\nnode_id: M1.1\nagent: x\nbranch: {branch}\ncommit: {commit}\nbase: {commit}\n"
+                 "changed_paths: []\nverify: []\n---\n")
+    return p
+
+
+
+# --- Gemini B2 / Sol F1 ---------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
+def test_a_ready_for_an_older_commit_does_not_complete(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    old = git(repo, "rev-parse", "HEAD~1")
+    ready = _ready(repo, old)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    spec = tmp_path / "ok.json"
+    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
+    launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")
+    pause(0.05)
+    os.utime(ready, None)
+    assert wr.run(repo, rec.worker_id, launch) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+    head = git(repo, "rev-parse", "HEAD")
+    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}],
+                                "write": {"path": str(ready), "text": ready.read_text().replace(old, head)}}))
+    wr.run(repo, rec.worker_id, launch, resumed=True)      # the turn rewrites the READY at HEAD
+    assert ws.load_record(repo, rec.worker_id).state == "completed"
+
+
+
+# --- Sol B3 ----------------------------------------------------------------------
+
+def test_a_malformed_custom_cli_raises_instead_of_widening(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("hi")
+    with pytest.raises(wa.Unsupported, match="whole argument"):
+        wa.adapter_for("cursor").launch(p, tmp_path, "m", 'agent -p --mode plan "$(cat {prompt})"')
+    launch = wa.adapter_for("cursor").launch(p, tmp_path, "m", "agent -p --mode plan {prompt}")
+    assert launch.argv[:2] == ["sh", "-c"] and "--force" not in launch.argv[2]
+
+
+
+# --- F1 / G1 ---------------------------------------------------------------------
+
+# Session ids are validated and resume commands rendered with shlex.
+# A placeholder is a whole shell word; embedded or multi-word quoted forms are refused, and
+# validation and substitution walk the same tokens.
+# `message --op-id` binds the message text, and a retry whose file is gone answers from the
+# outbox.
+# The hook matches by harness and id, refuses ambiguity, and never waits long for the workers
+# lock; `delegate` keeps its preflight outside the lock.
+# Dead wrappers on any leaf are reaped by `sync` and before the `max_workers` count; `delegate`
+# refuses a dirty checkout; a crashed reclaim is repaired, not repeated; `sync --ack` is
+# serialised.
+# `message` from a linked worktree, and the brief in the same checkout.
+
+@pytest.mark.parametrize("cli", [
+    "claude -p --session-id={session} < {prompt}",
+    'printf "prefix <prompt> suffix"',
+    "run --prompt={prompt}",
+    "run '<prompt> and more'",
+    'run "$(cat {prompt})"',
+    "run <prompt>'",
+])
+def test_embedded_placeholders_are_refused(cli: str) -> None:
+    assert wa.placeholder_problem(cli) is not None
+
+
+
+@pytest.mark.parametrize("cli", [
+    "claude -p --session-id {session} < {prompt}",
+    'claude -p "<prompt>"',
+    "muse exec '<prompt>'",
+    "run <{prompt}",
+    "run '{session}' \"{prompt}\"",
+])
+def test_whole_word_placeholders_are_accepted(cli: str) -> None:
+    assert wa.placeholder_problem(cli) is None
+
+
+
+def test_prompt_text_cannot_run_a_command_substitution(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("hello $(echo INJECTED) world")
+    out = subprocess.run(["sh", "-c", wa.substitute_prompt('printf "%s" "<prompt>"', p)],
+                         capture_output=True, text=True, check=True).stdout
+    assert out == "hello $(echo INJECTED) world"
+    text = wa.substitute_prompt("x --session-id {session} <{prompt} '<prompt>'", p, "abc")
+    assert text == f"x --session-id abc <{p} 'hello $(echo INJECTED) world'"
+
+
+
+def test_an_embedded_session_placeholder_is_refused_by_the_adapter(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("hi")
+    with pytest.raises(wa.Unsupported, match="whole argument"):
+        wa.adapter_for("claude-code").launch(p, tmp_path, "m", "claude -p --session-id={session} < {prompt}")
+
+
+
+# --- F4 ----------------------------------------------------------------------------
+
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
+@pytest.mark.repo
+def test_documented_cli_forms_pass_the_placeholder_guard() -> None:
+    doc = (REPO / "docs" / "orchestration-models.md").read_text()
+    for form in ("claude -p --model <id> < {prompt}", 'claude -p "<prompt>" --model <id>',
+                 "codex exec -m <id> - < {prompt}", "agent -p --model <id> < {prompt}"):
+        assert form in doc and placeholder_problem(form) is None
+    assert 'claude -p "$(cat {prompt})"' in doc   # named as the refused form
+    assert placeholder_problem('claude -p "$(cat {prompt})" --model x')
+
+
+
+
+def _ready_text(repo: Path, commit: str, agent: str = "x", branch: str = "feature/rm-thing") -> str:
+    return (f"---\nnode_id: M1.1\nagent: {agent}\nbranch: {branch}\ncommit: {commit}\nbase: {commit}\n"
+            "changed_paths: []\nverify: []\n---\n")
+
+
+
+
+
+# --- B3 ---------------------------------------------------------------------------
+
+# READY freshness is a content checkpoint, not an mtime window; a wrapper that dies does not free
+# a leaf whose harness is alive, and `terminate` kills the recorded group; the launch payload
+# travels in a 0600 file, never in argv; a pid is this worker's wrapper only with the repo root,
+# worker id and token as whole arguments (and `PermissionError` is not "ours"); completion, resume
+# and reclaim check the branch actually checked out; parsed output is `worker_suggestion`, not
+# `system`.
+
+def test_a_ready_written_just_before_the_turn_does_not_complete_it_and_a_rewritten_one_does(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git_folded(repo, "rev-parse", "HEAD")
+    ready = d / "READY-x.md"
+    ready.write_text(_ready_text(repo, head))           # 0 s before the turn: the mtime window accepted this
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "quiet")) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+    # The same path rewritten with new content during the turn is a new READY, whatever the clock says.
+    old = time.time() - 3600
+    os.utime(ready, (old, old))
+    rewrite = {"path": str(ready), "text": _ready_text(repo, head, agent="y")}
+    wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "writes", write=rewrite), resumed=True)
+    assert ws.load_record(repo, rec.worker_id).state == "completed"
+    assert wp.ready_fingerprints(repo, "M1.1") == [f"READY-x.md:{__import__('hashlib').sha256(ready.read_bytes()).hexdigest()}"]
+
+
+
+def test_the_checkpoint_is_by_content_not_mtime(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git_folded(repo, "rev-parse", "HEAD")
+    (d / "READY-a.md").write_text(_ready_text(repo, head))
+    before = wp.ready_fingerprints(repo, "M1.1")
+    future = time.time() + 600
+    os.utime(d / "READY-a.md", (future, future))
+    assert wp.new_ready(repo, "M1.1", before) is None               # touched, not changed
+    (d / "READY-b.md").write_text(_ready_text(repo, head, agent="b"))
+    assert wp.new_ready(repo, "M1.1", before).path.name == "READY-b.md"   # new, though its mtime is older than a's
+
+
+
+# --- B12 ----------------------------------------------------------------------------
+
+def test_completion_resume_and_reclaim_check_the_branch_actually_checked_out(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    git_folded(repo, "checkout", "-q", "dev")
+    head = git_folded(repo, "rev-parse", "HEAD")
+    write = {"path": str(d / "READY-x.md"), "text": _ready_text(repo, head)}   # declares the branch, at dev's HEAD
+    assert wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "w", write=write)) == 0
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == "idle"
+    why = [e for e in ws.events_since(repo, rec.worker_id) if "READY-x.md ignored" in e.summary]
+    assert len(why) == 1 and "has dev checked out, not the worker's branch feature/rm-thing" in why[0].summary
+    with pytest.raises(ws.WorkerError, match="has dev checked out"):
+        ops.resume(repo, rec.worker_id)
+    git_folded(repo, "checkout", "-q", "feature/rm-thing")
+    ops.handoff(repo, rec.worker_id)
+    git_folded(repo, "checkout", "-q", "dev")
+    with pytest.raises(ws.WorkerError, match="has dev checked out"):
+        ops.reclaim(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).lease["holder"] == "human"
+    git_folded(repo, "checkout", "-q", "feature/rm-thing")
+    ops.reclaim(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).lease["holder"] == "broker"
+
+
+
+# --- F9 ---------------------------------------------------------------------------
+
+def test_parsed_output_is_worker_suggestion_and_lifecycle_stays_system(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    lines = [{"type": "system", "subtype": "init", "session_id": "n"},
+             {"type": "assistant", "message": {"content": [{"type": "text", "text": "hello"}]}},
+             {"type": "result", "subtype": "success", "result": "ok"}]
+    spec = tmp_path / "f9.json"
+    spec.write_text(json.dumps({"lines": lines}))
+    wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}"))
+    got = {(e.type, e.source): e.authority for e in ws.events_since(repo, rec.worker_id)}
+    assert got[("started", "broker")] == "system" and got[("completion", "worker")] == "system"
+    assert got[("started", "worker")] == got[("output", "worker")] == got[("turn_completed", "worker")] == "worker_suggestion"
+
+
+
+def test_worker_runner_reports_invalid_and_missing_ready(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
+    ready_path.parent.mkdir(parents=True, exist_ok=True)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    launch = launch_fn(
+        tmp_path, script, repo, "invalid",
+        write={"path": str(ready_path), "text": "no front matter\n"},
+    )
+    wr.run(repo, rec.worker_id, launch)
+    invalid_summary = ws.events_since(repo, rec.worker_id)[-1].summary
+    assert invalid_summary.startswith("exit 0; READY file invalid:")
+    invalid = next(r for r in list_ready(repo, "M1.1") if r.path.name == "READY-opus.md" and r.errors)
+    assert "; ".join(invalid.errors) in invalid_summary
+
+    rec2 = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    wr.run(repo, rec2.worker_id, launch_fn(tmp_path, script, repo, "missing"))
+    assert ws.events_since(repo, rec2.worker_id)[-1].summary == "exit 0; READY file missing"
+
+
+
+def test_exit_zero_with_a_broken_roadmap_still_completes_idle(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    (repo / "roadmap" / "manifest.json").write_text("{not json", encoding="utf-8")
+    wr.run(repo, rec.worker_id, launch_fn(tmp_path, script, repo, "broken-roadmap"))
+    last = ws.events_since(repo, rec.worker_id)[-1]
+    assert last.type == "completion"
+    assert last.summary == "exit 0; READY file missing"
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+
+
+
+# One test per finding: records survive a concurrent writer (the wrapper no longer writes a stale
+# copy back), two delegates on one leaf launch once, terminate reaches the harness and its
+# children, an op id names one operation, an older attempt's READY does not complete a new worker,
+# and the harness does not inherit the wrapper's PYTHONPATH.
+
+def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    from tests.support.same.git_84c8ad8f55f9 import git
+
+    head = git(repo, "rev-parse", "HEAD")
+    ready = d / "READY-old.md"
+    ready.write_text(f"---\nnode_id: M1.1\nagent: old\nbranch: feature/rm-thing\ncommit: {head}\nbase: {head}\n"
+                     "changed_paths: []\nverify: []\n---\n")
+    now = time.time() + 60   # even a future mtime is not freshness: the checkpoint is by content, not clock
+    os.utime(ready, (now, now))
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    lines = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
+    spec = tmp_path / "ok.json"
+    spec.write_text(json.dumps({"lines": lines}))
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"      # not completed on an older attempt's READY
+    rec2 = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
+    rec2 = ws.mutate(repo, rec2, lambda r: setattr(r, "node_id", "M1.1"))
+    spec2 = tmp_path / "writes.json"       # this worker's harness writes its own READY during the turn
+    spec2.write_text(json.dumps({"lines": lines, "write": {"path": str(d / "READY-new.md"),
+                                                           "text": ready.read_text().replace("agent: old", "agent: new")}}))
+    wr.run(repo, rec2.worker_id, wa.adapter_for("claude-code").launch(spec2, repo, "opus", f"{sys.executable} {script} {{prompt}}"))
+    assert ws.load_record(repo, rec2.worker_id).state == "completed"
+
+
+
+def test_a_bad_output_line_does_not_kill_the_wrapper(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
+    spec = tmp_path / "e.json"
+    bad = tmp_path / "bad.py"
+    bad.write_text("import json\nprint(json.dumps({'type': 'thread.started', 'thread_id': 't'}), flush=True)\n"
+                   "print(json.dumps({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': ''}}), flush=True)\n"
+                   "print(json.dumps({'type': 'turn.completed'}), flush=True)\n")
+    assert wr.run(repo, rec.worker_id, wa.Launch([sys.executable, str(bad)])) == 0
+    final = ws.load_record(repo, rec.worker_id)
+    assert final.state == "idle" and final.pid is None
+    assert [e.type for e in ws.events_since(repo, rec.worker_id)][-1] == "completion"
+
+
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
+
+def test_a_prompt_containing_the_placeholder_cannot_break_the_quoting(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("Explain <prompt> and '{prompt}' then {session} $(touch pwned)")
+    out = wa.substitute_prompt('claude -p "<prompt>" --sid {session}', p, "S1")
+    assert out == "claude -p " + "'Explain <prompt> and '\"'\"'{prompt}'\"'\"' then {session} $(touch pwned)'" + " --sid S1"
+    launch = wa.ADAPTERS["generic"]._custom("run {prompt} {session}", p)
+    assert launch and launch.argv[2].endswith(f"{p} {launch.session_id}")
+
+
+
+def test_a_ready_from_the_previous_turn_does_not_complete_the_next(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git(repo, "rev-parse", "HEAD")
+    text = (f"---\nnode_id: M1.1\nagent: old\nbranch: feature/rm-thing\ncommit: {head}\n"
+            f"base: {head}\nchanged_paths: []\nverify: []\n---\n")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    lines = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
+    writes = tmp_path / "writes.json"       # this turn's harness writes the READY
+    writes.write_text(json.dumps({"lines": lines, "write": {"path": str(d / "READY-old.md"), "text": text}}))
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(
+        writes, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "completed"
+    quiet = tmp_path / "quiet.json"         # the next turn writes nothing: the READY is the checkpoint's
+    quiet.write_text(json.dumps({"lines": lines}))
+    wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(
+        quiet, repo, "opus", f"{sys.executable} {script} {{prompt}}"), resumed=True)
+    assert ws.load_record(repo, rec.worker_id).state == "idle"

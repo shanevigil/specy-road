@@ -1,10 +1,15 @@
-import { Link } from "@tiptap/extension-link";
 import { TaskItem } from "@tiptap/extension-task-item";
 import { TaskList } from "@tiptap/extension-task-list";
 import { Markdown } from "@tiptap/markdown";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  preserveUntouchedMarkdown,
+  toEditorBlocks,
+  type EditorBlock,
+  type MarkdownToken,
+} from "../planningSectionUtils";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 
 /** Must include `ProseMirror` so `index.css` rules and ProseMirror plugins can target the root. */
@@ -22,6 +27,48 @@ function hasLeadingYamlFrontmatter(text: string): boolean {
   const rest = text.slice(nl + 1);
   const close = rest.search(/^\s*---\s*$/m);
   return close !== -1;
+}
+
+/**
+ * The editor's extensions. StarterKit already bundles Link, so Link is configured there
+ * (adding a second Link logged a duplicate-extension warning on every open).
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- shared with tests
+export function markdownWorkspaceExtensions() {
+  return [
+    StarterKit.configure({
+      heading: { levels: [1, 2, 3] },
+      link: {
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+      },
+    }),
+    TaskList.configure({
+      HTMLAttributes: { class: "pm-tiptap-task-list" },
+    }),
+    TaskItem.configure({
+      nested: true,
+      HTMLAttributes: { class: "pm-tiptap-task-item" },
+    }),
+    Markdown.configure({
+      markedOptions: { gfm: true },
+    }),
+  ];
+}
+
+/** The loaded text and its blocks, so a save keeps untouched blocks as loaded. */
+type LoadedMarkdown = {
+  text: string;
+  tokens: MarkdownToken[];
+  blocks: EditorBlock[];
+};
+
+/** The editor's top-level blocks; the editor is built from {@link markdownWorkspaceExtensions}. */
+function editorBlocks(editor: Editor): EditorBlock[] {
+  return toEditorBlocks(editor.markdown!, editor.state.doc.content.content, (n) =>
+    n.toJSON(),
+  );
 }
 
 type Props = {
@@ -50,34 +97,16 @@ export function MarkdownWorkspace({
 
   // Stable extension instances — new arrays each render made useEditor's setOptions
   // treat options as changed every frame and broke hydration of loaded markdown.
-  const extensions = useMemo(
-    () => [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      TaskList.configure({
-        HTMLAttributes: { class: "pm-tiptap-task-list" },
-      }),
-      TaskItem.configure({
-        nested: true,
-        HTMLAttributes: { class: "pm-tiptap-task-item" },
-      }),
-      Markdown.configure({
-        markedOptions: { gfm: true },
-      }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        linkOnPaste: true,
-      }),
-    ],
-    [],
-  );
+  const extensions = useMemo(() => markdownWorkspaceExtensions(), []);
 
   const onChangeRef = useRef(onChange);
   const valueRef = useRef(value);
   /** After mount, ignore onUpdate until the editor has applied the first document (avoids wiping loaded markdown). */
   const emitUpdatesRef = useRef(false);
+  /** What the editor last loaded from `value`; null until the first load. */
+  const loadedRef = useRef<LoadedMarkdown | null>(null);
+  /** Last text loaded from or emitted to `value`. */
+  const lastTextRef = useRef<string | null>(null);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -110,7 +139,19 @@ export function MarkdownWorkspace({
       onUpdate: ({ editor: ed, transaction }) => {
         if (!emitUpdatesRef.current) return;
         if (transaction && !transaction.docChanged) return;
-        const next = normalizeMd(ed.getMarkdown());
+        const serialized = normalizeMd(ed.getMarkdown());
+        const loaded = loadedRef.current;
+        const next = loaded
+          ? preserveUntouchedMarkdown({
+              source: loaded.text,
+              tokens: loaded.tokens,
+              baseline: loaded.blocks,
+              next: editorBlocks(ed),
+              serialized,
+              codec: ed.markdown!,
+            })
+          : serialized;
+        lastTextRef.current = next;
         if (next === normalizeMd(valueRef.current)) return;
         onChangeRef.current(next);
       },
@@ -138,12 +179,17 @@ export function MarkdownWorkspace({
   useLayoutEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const v = normalizeMd(value);
-    const current = normalizeMd(editor.getMarkdown());
-    if (v === current) return;
-    editor.commands.setContent(value, {
+    if (v === lastTextRef.current) return;
+    lastTextRef.current = v;
+    editor.commands.setContent(v, {
       contentType: "markdown",
       emitUpdate: false,
     });
+    loadedRef.current = {
+      text: v,
+      tokens: editor.markdown!.instance.lexer(v),
+      blocks: editorBlocks(editor),
+    };
   }, [editor, value]);
 
   const rootClass = className

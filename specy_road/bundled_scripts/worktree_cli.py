@@ -14,15 +14,11 @@ import sys
 
 from specy_road.cli_entry import run_cli
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.worktree_prune import PruneError, plan_prune, remove
+from specy_road.worktree_prune import plan_prune, remove
 
 
 def cmd_prune(ns: argparse.Namespace) -> int:
-    try:
-        plan = plan_prune(resolve_repo_root(ns), ns.node_id)
-    except PruneError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+    plan = plan_prune(resolve_repo_root(ns), ns.node_id)
     if plan.refusals:
         print(f"error: not removing {plan.worktree}:", file=sys.stderr)
         for reason in plan.refusals:

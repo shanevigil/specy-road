@@ -20,7 +20,7 @@ reports as exit 126 or 127).
 | `cursor` | `agent -p` documents no standard input (`agent --help`, 2026.10.22), so its argument is a one-line instruction naming the prompt file's absolute path; the agent reads the file. Launch, resume and the `--mode ask` reviewer alike. |
 
 A test builds every adapter's launches for every role from a 200 KiB prompt and checks that no argument exceeds
-32 KiB (`tests/test_harness_launch.py`).
+32 KiB (`tests/flows/worker/test_harness_launch.py`).
 
 ## A command that would still put it on the command line is refused
 
@@ -29,6 +29,11 @@ command. When an argument would exceed the 128 KiB limit, specy-road refuses the
 names the size and the fix: use `{prompt}` (the prompt file's path), for example `agent -p --model <id> < {prompt}`
 or `codex exec -m <id> - < {prompt}`. A worker launch is refused before its record is created; a reviewer run
 becomes a rerun request; `prompt --channel cli` exits 1.
+
+The bundled OpenAI GPT profiles' `access.cli` (rendered from the `codex` executor template in `harness-facts.yaml`)
+ends `- < {prompt}`, so `prompt --role rca --channel cli --run` with one of them gives `codex exec` the prompt on
+standard input, however large. The other bundled profiles still pass `"<prompt>"`, so a prompt over 128 KiB on them
+is refused as above.
 
 ## Which harness binary runs
 

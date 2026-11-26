@@ -1,0 +1,285 @@
+"""PM Gantt API: planning writes, node CRUD, outline errors."""
+
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+import pytest
+from starlette.testclient import TestClient
+
+from tests.helpers import DOGFOOD
+from tests.support.extracted.set_gate_status import repo_with_gate
+from tests.support.same.mutation_headers_1fdfef6b66c9 import mutation_headers
+
+_M02_PLANNING = (
+    "planning/M0.2_roadmap-ci_e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208.md"
+)
+
+
+
+
+
+
+
+
+def test_api_planning_put_success_updates_file(
+    api_client: TestClient,
+    dogfood_copy: Path,
+) -> None:
+    path = _M02_PLANNING
+    sheet = dogfood_copy / path
+    before = sheet.read_text(encoding="utf-8")
+    updated = before + "\n"
+    r = api_client.put(
+        "/api/planning/file",
+        params={"path": path},
+        headers={**mutation_headers(api_client), "Content-Type": "application/json"},
+        json={"content": updated},
+    )
+    assert r.status_code == 200
+    assert sheet.read_text(encoding="utf-8") == updated
+
+
+def test_api_planning_put_orphan_file_unlinked_on_validation_failure(
+    api_client: TestClient,
+    dogfood_copy: Path,
+) -> None:
+    """Orphan planning file fails validation; rollback must unlink the new file."""
+    rel = "planning/pytest_gui_orphan_only.md"
+    target = dogfood_copy / rel
+    assert not target.exists()
+    r = api_client.put(
+        "/api/planning/file",
+        params={"path": rel},
+        headers={**mutation_headers(api_client), "Content-Type": "application/json"},
+        json={"content": "# orphan\n"},
+    )
+    assert r.status_code == 400
+    assert not target.exists()
+
+
+def test_api_planning_put_restores_content_when_validate_fails(
+    dogfood_copy: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = _M02_PLANNING
+    sheet = dogfood_copy / path
+    before = sheet.read_text(encoding="utf-8")
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
+
+    def _fail(_root: Path) -> None:
+        raise ValueError("forced validation failure for test")
+
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_planning.run_validate_raise",
+        _fail,
+    )
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r = client.put(
+        "/api/planning/file",
+        params={"path": path},
+        headers={**mutation_headers(client), "Content-Type": "application/json"},
+        json={"content": before + "\n# pytest touch\n"},
+    )
+    assert r.status_code == 400
+    assert sheet.read_text(encoding="utf-8") == before
+
+
+def test_api_patch_gate_status_roundtrip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_with_gate(tmp_path)
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(tmp_path))
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r0 = client.get("/api/roadmap")
+    assert r0.status_code == 200
+    gate = next(n for n in r0.json()["nodes"] if n["id"] == "M99.4")
+    assert gate["status"] == "Not Started"
+    r1 = client.patch(
+        "/api/nodes/M99.4",
+        headers={
+            **mutation_headers(client),
+            "Content-Type": "application/json",
+        },
+        json={"pairs": [{"key": "status", "value": "Complete"}]},
+    )
+    assert r1.status_code == 200
+    r2 = client.get("/api/roadmap")
+    gate2 = next(n for n in r2.json()["nodes"] if n["id"] == "M99.4")
+    assert gate2["status"] == "Complete"
+    r3 = client.patch(
+        "/api/nodes/M99.4",
+        headers={
+            **mutation_headers(client),
+            "Content-Type": "application/json",
+        },
+        json={"pairs": [{"key": "status", "value": "Not Started"}]},
+    )
+    assert r3.status_code == 200
+
+
+def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:
+    r0 = api_client.get("/api/roadmap")
+    assert r0.status_code == 200
+    node = next(n for n in r0.json()["nodes"] if n["id"] == "M0.2")
+    orig = node["title"]
+    r1 = api_client.patch(
+        "/api/nodes/M0.2",
+        headers={
+            **mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json={"pairs": [{"key": "title", "value": f"{orig} [pytest]"}]},
+    )
+    assert r1.status_code == 200
+    r2 = api_client.patch(
+        "/api/nodes/M0.2",
+        headers={
+            **mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json={"pairs": [{"key": "title", "value": orig}]},
+    )
+    assert r2.status_code == 200
+
+
+def test_api_patch_acceptance_reads_back(api_client: TestClient) -> None:
+    def patch_and_read(value: str) -> list[str] | None:
+        r = api_client.patch(
+            "/api/nodes/M0.2",
+            headers={**mutation_headers(api_client), "Content-Type": "application/json"},
+            json={"pairs": [{"key": "acceptance", "value": value}]},
+        )
+        assert r.status_code == 200, r.text
+        nodes = api_client.get("/api/roadmap").json()["nodes"]
+        return next(n for n in nodes if n["id"] == "M0.2").get("acceptance")
+
+    # acceptanceEdit.ts's value: criteria trimmed, empty ones dropped, joined by "\n".
+    assert patch_and_read("Second criterion\nFirst criterion") == [
+        "Second criterion",
+        "First criterion",
+    ]
+    assert patch_and_read("") is None  # an emptied list removes the field
+
+
+def test_api_patch_node_rejects_disallowed_key(api_client: TestClient) -> None:
+    r = api_client.patch(
+        "/api/nodes/M0.2",
+        headers={
+            **mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json={"pairs": [{"key": "not_whitelisted", "value": "x"}]},
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.parametrize(
+    "node_id, deps, detail",
+    [
+        (   # M0.2 waits on its own group M0, which completes only when M0.2 does.
+            "M0.2",
+            "81df7683-5e2f-5c97-b96c-fc9df4fac123 cd44fef1-715a-5b8d-b03f-1752a61a47cc",
+            "roadmap: dependency cycle: M0 -> M0.2 -> M0\n"
+            "  M0 -> M0.2: parent-child rollup: M0 completes when its child M0.2 does",
+        ),
+        ("M0", "e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208", "roadmap: inherited self-edge M0.2 via M0"),
+    ],
+)
+def test_api_patch_dependencies_refuses_inherited_cycle(
+    api_client: TestClient, dogfood_copy: Path, node_id: str, deps: str, detail: str
+) -> None:
+    roadmap = dogfood_copy / "roadmap"
+    before = {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()}
+    r = api_client.patch(
+        f"/api/nodes/{node_id}",
+        headers={**mutation_headers(api_client), "Content-Type": "application/json"},
+        json={"pairs": [{"key": "dependencies", "value": deps}]},
+    )
+    assert r.status_code == 400
+    assert r.json() == {"detail": detail}
+    assert {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()} == before
+
+
+def test_api_outline_reorder_rejects_incomplete_child_set(
+    api_client: TestClient,
+) -> None:
+    r = api_client.post(
+        "/api/outline/reorder",
+        headers={
+            **mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json={"parent_id": "M0", "ordered_child_ids": ["M0.1"]},
+    )
+    assert r.status_code == 400
+
+
+def test_api_post_nodes_add_task(api_client: TestClient) -> None:
+    r = api_client.post(
+        "/api/nodes/add",
+        headers={
+            **mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json={
+            "reference_node_id": "M0.1",
+            "position": "below",
+            "title": "pytest GUI add-node",
+            "type": "task",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("ok") == "true"
+    assert "id" in body
+
+
+def test_api_post_nodes_add_auto_routes_when_reference_chunk_full(
+    dogfood_copy: Path, api_client: TestClient
+) -> None:
+    """F-AUTO: GUI add-node falls back to a new chunk when the reference chunk is full."""
+    # Tighten the cap below the current size of M0.json so any append would
+    # overflow it; the router must auto-create a new chunk.
+    chunk = dogfood_copy / "roadmap" / "phases" / "M0.json"
+    cur_lines = sum(1 for _ in chunk.read_text(encoding="utf-8").splitlines())
+    (dogfood_copy / "constraints" / "file-limits.yaml").write_text(
+        f"roadmap_json_chunk_max_lines: {cur_lines + 5}\n", encoding="utf-8"
+    )
+    r = api_client.post(
+        "/api/nodes/add",
+        headers={
+            **mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json={
+            "reference_node_id": "M0.1",
+            "position": "below",
+            "title": "GUI overflow",
+            "type": "task",
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    new_id = body["id"]
+    # The new node lives outside M0.json (auto-routed).
+    from specy_road.roadmap_chunk_utils import find_chunk_path
+
+    chunk_path = find_chunk_path(dogfood_copy, new_id)
+    assert chunk_path is not None
+    assert chunk_path.name != "M0.json"
+
+
+def test_api_delete_leaf_node(api_client: TestClient) -> None:
+    r = api_client.delete(
+        "/api/nodes/M2",
+        headers=mutation_headers(api_client),
+    )
+    assert r.status_code == 200
+    assert r.json().get("node_id") == "M2"

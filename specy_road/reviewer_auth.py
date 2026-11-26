@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.claude_config import claude_config_dir
-from specy_road.orchestration_role_env import harness_env
+from specy_road.orchestration.guard.orchestration_role_env import harness_env
 
 API_KEY_ENV = "ANTHROPIC_API_KEY"
 #: The refusal and the plan notices start with this.

@@ -49,8 +49,14 @@ schema, so `validate` reports it; it is never read as "no footer". Likewise an
 - `commit` (the default): executor prompts (pickup's `work/prompt-<ID>.md` and
   `prompt --role executor`) say to commit `work/implementation-summary-<ID>.md`
   on the feature branch.
-- `local`: the prompts say to leave the summary uncommitted. `review-packet`
+- `local`: the prompts say to leave the summary uncommitted. `review packet`
   reads it from the worktree and labels it as working-tree text.
+
+New projects set `local`: the managed `.gitignore` block ignores `work/*`,
+so implementation summaries are not committed by default. **A reviewer in
+another clone does not see the summary**: the review packet reads it from the
+leaf's worktree. A project that wants summaries in git re-includes
+`!work/implementation-summary-*.md` after the block and sets `commit`.
 
 The prompts never tell a worker to force-add (`git add -f`) an ignored path.
 Git is asked about each leaf's own summary path
@@ -80,7 +86,7 @@ same for its repository (M14.4.1).
   then stops. Nothing is fetched or pushed. The rest of the landing is the same
   as `push`: nested repositories land first, bookkeeping conflicts in the
   registry and generated files are resolved deterministically, and
-  `land_check_cmd` runs on the merge commit (a failure puts the local branch
+  the land check (`checks:` entries with `when: land`) runs on the merge commit (a failure puts the local branch
   back). Where another worktree has the integration branch checked out, the
   merge runs there, and only while that worktree is clean. Finish says before
   and after that nothing was pushed. Push the integration branch yourself when

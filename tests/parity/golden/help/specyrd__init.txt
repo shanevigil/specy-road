@@ -1,0 +1,43 @@
+$ specyrd init --help
+exit: 0
+--- stdout ---
+usage: specyrd init [-h] [--here] --ai ID [--dry-run] [--force] [--ai-commands-dir REL_PATH]
+                    [--role ROLE] [--extras LIST] [--install-orchestration-hooks]
+                    [--install-pre-push-hook] [--no-prompt]
+                    [path]
+
+positional arguments:
+  path                  Target directory to resolve as the repo (default: .).
+
+options:
+  -h, --help            show this help message and exit
+  --here                Use the current working directory (same as path .).
+  --ai ID, --ide ID     Agent pack: cursor | claude-code | codex (skills under .agents/skills/) |
+                        generic
+  --dry-run             Print paths that would be written; do not modify files.
+  --force               Overwrite the command stubs and .specyrd/README.md that this tool
+                        installed — exactly the paths .specyrd/manifest.json records, and nothing
+                        else. Consumer-owned files (CLAUDE.md, .gitignore, .cursorindexingignore)
+                        are always merged inside their managed block, never replaced, with or
+                        without this flag. To refresh an already-initialized repo, prefer specy-
+                        road refresh-stubs.
+  --ai-commands-dir REL_PATH
+                        Required for --ai generic: relative path under repo root for command .md
+                        files.
+  --role ROLE           Install only the stubs relevant to a role: pm (validate, export, author,
+                        constitution, sync, list-nodes, show-node, add-node, review-node,
+                        orchestrate, brainstorm, search, digest, history), dev (validate, brief,
+                        claim, mark-reviewed, review-packet, review-record, handoff-status,
+                        prompt, orchestrate, finish, do-next-task, grind-session, abort-task-
+                        pickup, search, digest, history), or both (same as omitting --role: every
+                        stub). With --no-prompt this flag is required.
+  --extras LIST         Comma-separated optional installs: review, gui (pip install specy-
+                        road[...]).
+  --install-orchestration-hooks
+                        Merge orchestration guard hook snippets into the harness config for --ai
+                        claude-code, codex or cursor.
+  --install-pre-push-hook
+                        Install .git/hooks/pre-push to refuse pushes from work/.worktrees/ linked
+                        worktrees.
+  --no-prompt           Non-interactive: do not prompt; requires --role; use --extras as given.
+--- stderr ---

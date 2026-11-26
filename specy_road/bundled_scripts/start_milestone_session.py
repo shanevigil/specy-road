@@ -9,8 +9,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.cli_args import add_base_arg, add_remote_arg
+from specy_road.roadmap_load import load_roadmap
+from specy_road.git_subprocess import git_run
 from specy_road.milestone_chunk_io import (
     build_active_milestone_execution,
     write_milestone_execution,
@@ -20,21 +21,16 @@ from specy_road.milestone_session import (
     write_milestone_session,
 )
 from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.cli_entry import integration_defaults
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch
+from specy_road.repo_ops import sync_integration_branch
 
 _CODENAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-#: Rebound by :func:`main` before any helper runs; this is only a placeholder
-#: so the name exists at import. Resolving the real root here would make
-#: importing the module shell out to git.
-ROOT = Path.cwd()
-
-
-def _branch_exists(name: str) -> bool:
+def _branch_exists(root: Path, name: str) -> bool:
     r = subprocess.run(
         ["git", "rev-parse", "--verify", name],
-        cwd=ROOT,
+        cwd=root,
         capture_output=True,
         check=False,
     )
@@ -73,15 +69,15 @@ def _validate_parent(nodes: list[dict], parent_id: str) -> dict:
     return node
 
 
-def _ensure_rollup_branch(rollup: str, base: str, remote: str) -> None:
-    if not _branch_exists(rollup):
-        git_run(ROOT, "checkout", "-b", rollup)
+def _ensure_rollup_branch(root: Path, rollup: str, base: str, remote: str) -> None:
+    if not _branch_exists(root, rollup):
+        git_run(root, "checkout", "-b", rollup)
         print(f"[ok] created branch {rollup!r} from {base!r}")
-        git_run(ROOT, "checkout", base)
+        git_run(root, "checkout", base)
         return
-    git_run(ROOT, "checkout", rollup)
+    git_run(root, "checkout", rollup)
     try:
-        git_run(ROOT, "merge", "--ff-only", f"{remote}/{base}")
+        git_run(root, "merge", "--ff-only", f"{remote}/{base}")
     except subprocess.CalledProcessError:
         print(
             f"error: could not fast-forward {rollup!r} to {remote}/{base}.",
@@ -91,13 +87,14 @@ def _ensure_rollup_branch(rollup: str, base: str, remote: str) -> None:
             "  Resolve manually (e.g. merge or reset the rollup branch), then retry.",
             file=sys.stderr,
         )
-        git_run(ROOT, "checkout", base)
+        git_run(root, "checkout", base)
         raise SystemExit(1)
     print(f"[ok] fast-forwarded {rollup!r} to match {remote}/{base}")
-    git_run(ROOT, "checkout", base)
+    git_run(root, "checkout", base)
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road milestone start`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Sync integration branch, ensure rollup branch feature/rm-<parent-codename>, "
@@ -110,34 +107,17 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Roadmap id of the milestone parent (e.g. M7).",
     )
     add_repo_root_arg(p)
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
-        help="Integration branch (default: roadmap/git-workflow.yaml).",
-    )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
-        help="Git remote (default: roadmap/git-workflow.yaml).",
-    )
-    return p.parse_args(argv)
+    add_base_arg(p, help="Integration branch (default: roadmap/git-workflow.yaml).")
+    add_remote_arg(p, help="Git remote (default: roadmap/git-workflow.yaml).")
+    return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT
-    args = _parse_args(argv)
-    ROOT = resolve_repo_root(args)
-    base, remote, gw_warns = resolve_integration_defaults(
-        ROOT,
-        explicit_base=args.base,
-        explicit_remote=args.remote,
-    )
-    for w in gw_warns:
-        print(f"warning: {w}", file=sys.stderr)
+    args = build_parser().parse_args(argv)
+    root = resolve_repo_root(args)
+    base, remote = integration_defaults(root, args)
 
-    data = load_roadmap(ROOT)
+    data = load_roadmap(root)
     nodes = data["nodes"]
     _validate_parent(nodes, args.parent_node_id)
     parent = next(n for n in nodes if n.get("id") == args.parent_node_id)
@@ -149,7 +129,7 @@ def main(argv: list[str] | None = None) -> None:
         print(
             "error: parent already has milestone_execution in "
             f"{existing.get('state')!r} — close it with "
-            "`specy-road reconcile-milestone-status --apply` after delivery, "
+            "`specy-road milestone status --apply` after delivery, "
             "or clear milestone_execution manually before restarting.",
             file=sys.stderr,
         )
@@ -158,14 +138,14 @@ def main(argv: list[str] | None = None) -> None:
     rollup = f"feature/rm-{codename}"
 
     sync_integration_branch(
-        ROOT,
+        root,
         base,
         remote,
-        retry_hint="retry start-milestone-session",
+        retry_hint="retry milestone start",
     )
-    _ensure_rollup_branch(rollup, base, remote)
+    _ensure_rollup_branch(root, rollup, base, remote)
 
-    work_dir = ROOT / "work"
+    work_dir = root / "work"
     write_milestone_session(
         milestone_session_path(work_dir),
         parent_node_id=args.parent_node_id,
@@ -173,9 +153,9 @@ def main(argv: list[str] | None = None) -> None:
         integration_branch=base,
         remote=remote,
     )
-    print(f"\n[ok] wrote {milestone_session_path(work_dir).relative_to(ROOT)}")
+    print(f"\n[ok] wrote {milestone_session_path(work_dir).relative_to(root)}")
     chunk = write_milestone_execution(
-        ROOT,
+        root,
         args.parent_node_id,
         build_active_milestone_execution(
             rollup_branch=rollup,
@@ -185,7 +165,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     print(
         f"[ok] wrote milestone_execution on {args.parent_node_id!r} in "
-        f"{chunk.relative_to(ROOT)} (commit this with your roadmap change).",
+        f"{chunk.relative_to(root)} (commit this with your roadmap change).",
     )
     print(f"     rollup branch: {rollup}")
     print(f"     integration:   {base} @ {remote}")

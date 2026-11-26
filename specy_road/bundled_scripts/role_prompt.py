@@ -58,26 +58,33 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_model_arg, add_ref_arg
+from specy_road.cli_entry import run_reporting
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
-from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
-from specy_road.bundled_scripts.review_packet import build_packet
-from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
+from specy_road.brief_generation import index, render_brief
+from specy_road.checks_config import verify_cmd_lines
+from specy_road.brief_acceptance import acceptance_ids
+from specy_road.bundled_scripts.review_packet import _fence, build_packet
+from specy_road.orchestration import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
                                                         reviewer_launch_block, reviewer_turn, run_plain_cli)
-from specy_road.bundled_scripts.role_prompt_rca import (
+from specy_road.orchestration import (
     DATA_LINE,
     coordinator_preamble,
     executor_preamble,
+    fix_check_lines,
     precondition,
     profile_lines,
     reviewer_preamble,
 )
-from specy_road.bundled_scripts.role_prompt_rework import rework_lines
-from specy_road.decisions import coordinator_decision_lines
-from specy_road.model_profiles import ROLES, Profile
-from specy_road.orchestrate_plan import (
+from specy_road import safe_write
+from specy_road.orchestration import rework_lines
+from specy_road.orchestration import coordinator_decision_lines
+from specy_road.orchestration import ROLES, Profile
+from specy_road.orchestration import (
     ANY,
     entry_may_process,
     guidance_bypass_refusal,
@@ -90,12 +97,13 @@ from specy_road.orchestrate_plan import (
 )
 from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.review_files import PACKET_NAME, reviews_dir
+from specy_road.roadmap_load import load_roadmap
+from specy_road.git_subprocess import git_stdout
+from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_record_write import Outcome, ReviewRunBusy, review_run_lock, schema_lines
-from specy_road.review_gate import delta_basis
-from specy_road.review_lessons import reviewer_lesson_lines
-from specy_road.review_resumed_delta import resumed_delta_on
+from specy_road.review_gate import delta_basis, fix_of_for
+from specy_road.orchestration import reviewer_lesson_lines
+from specy_road.review_gate import resumed_delta_on
 from specy_road.review_record_rules import PROBE_RULES_LINES, REMOVED_TEXT_LINES
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
@@ -105,7 +113,7 @@ CHANNELS = ("cli", "paste", "subagent")
 # `rca` is not a roster role or a profile score: any rostered reviewer that is not a party may analyse.
 PROMPT_ROLES = (*ROLES, "rca")
 # Opt-in pilot (`--context-feedback`): three structured lines on what the brief and prompt got wrong, before
-# the question is asked of every implementation summary (docs/design-notes/context-feedback-pilot.md).
+# the question is asked of every implementation summary.
 CONTEXT_FEEDBACK_LINES = [
     "## Context feedback (pilot)",
     "",
@@ -151,6 +159,28 @@ PASTED_LINES = [
 ]
 
 
+def stream_and_capture(cmd, *, cwd: Path, transcript: list[str], stdin: str | None = None,
+                        shell: bool = False, env: dict[str, str] | None = None) -> int:
+    """Run a reviewer or CLI-channel command to its end, writing each line to stderr and ``transcript``
+    as it arrives."""
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, shell=shell, env=env, text=True, encoding="utf-8", errors="replace",
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+    )
+    if stdin is not None and proc.stdin:
+        try:
+            proc.stdin.write(stdin)
+            proc.stdin.close()
+        except OSError as e:   # the harness quit before reading its prompt
+            sys.stderr.write(f"harness closed stdin early: {e}\n")
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        sys.stderr.write(line)
+        transcript.append(line.rstrip("\n"))
+    return proc.wait()
+
+
 def has_subagents(prof: Profile | None) -> bool:
     """``access.subagents`` starts with ``yes`` (YAML reads a bare ``yes`` as true)."""
     access = prof.data.get("access") if prof is not None else None
@@ -162,13 +192,13 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
                     ref: str | None = None) -> tuple[str | None, str]:
     """``(packet text, error)``. ``model``'s own delta packet, written now to ``PACKET-<model>.md``, when
     ``policy.delta_review`` lets its fix round be reviewed from one (``review_gate.delta_basis``, which
-    also honours ``review-packet --full``); else ``PACKET.md``, the full packet."""
+    also honours ``review packet --full``); else ``PACKET.md``, the full packet."""
     packet, own = reviews_dir(root, node_id) / PACKET_NAME, reviews_dir(root, node_id) / f"PACKET-{model}.md"
     own.unlink(missing_ok=True)   # a stale delta packet never stands in for this round's
     if not packet.is_file():
-        return None, f"no review packet at {packet}; run `specy-road review-packet {node_id}` first"
+        return None, f"no review packet at {packet}; run `specy-road review packet {node_id}` first"
     text = packet.read_text(encoding="utf-8")
-    prior = delta_basis(root, t.node, model, t.commit)[0]   # None under `review-packet --full`
+    prior = delta_basis(root, t.node, model, t.commit)[0]   # None under `review packet --full`
     if prior is None:
         return text, ""
     text = build_packet(root, node_id, ref=ref, verify_cmds=[], max_diff_lines=0, max_diff_bytes=0, prior=prior)
@@ -176,6 +206,17 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
     print(f"note: {model} reviews the change since its approval of {prior.data['commit']} from {own}",
           file=sys.stderr)
     return text, ""
+
+
+def fix_check_section(root: Path, model: str, t: ReviewTarget) -> list[str]:
+    """The fix-check section when the current READY's ``fix_of`` names ``model``'s block of the fix's parent
+    (``review_gate.fix_of_for``); every other reviewer, and a READY without ``fix_of``, gets none."""
+    ready = latest_ready(root, t.node_id, (t.entry or {}).get("branch"), acceptance_ids(t.node))
+    fix = fix_of_for(root, t.node, ready, t.commit)
+    if fix is None or fix.block is None or fix.blocker != model:
+        return []
+    diff = git_stdout(["diff", f"{fix.blocked}..{fix.fix}"], root)
+    return fix_check_lines(fix, _fence(diff if diff is not None else "(git could not produce the diff)", "diff"))
 
 
 def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: str | None,
@@ -193,7 +234,8 @@ def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: s
     resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
     return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed, signed=signed) + REMOVED_TEXT_LINES
             + PROBE_RULES_LINES + LAUNCH_MODE_LINES + verify_cmd_lines(root) + reviewer_lesson_lines(root)
-            + escalated_note(loop, node_id) + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
+            + escalated_note(loop, node_id) + fix_check_section(root, model, t)
+            + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
 
 
 def role_check(root: Path, node_id: str, role: str, model: str) -> tuple[dict, dict, str | None]:
@@ -218,13 +260,13 @@ def role_check(root: Path, node_id: str, role: str, model: str) -> tuple[dict, d
 
 def _target_node(root: Path, node_id: str, role: str, ref: str | None):
     """``(target, nodes, node, error)``; a coordinator's leaf need not be claimed yet (its prompt picks it up)."""
+    nodes = load_roadmap(root)["nodes"]
     try:
-        t = resolve_target(root, node_id, ref)
+        t = resolve_target(root, node_id, ref, nodes=nodes)
     except ReviewTargetError as e:
         if role != "coordinator":
             return None, [], None, str(e)
         t = None   # the coordinator's prompt is what picks the leaf up
-    nodes = t.nodes if t else load_roadmap(root)["nodes"]
     node = t.node if t else next((n for n in nodes if n.get("id") == node_id), None)
     return t, nodes, node, None if node is not None else f"unknown node id: {node_id}"
 
@@ -261,7 +303,7 @@ def _role_lines(root: Path, node_id: str, role: str, model: str, entry: dict, t,
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,
                  ref: str | None = None, context_feedback: bool = False, read_back: bool = True,
                  force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
-    """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``;
+    """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review packet --ref``;
     ``context_feedback`` adds the pilot's three-line block to an executor prompt; ``read_back``: :func:`reviewer_lines`;
     ``force_reason`` starts an ``rca`` prompt although the loop is not escalated (:func:`review_rca.rca_trigger`)."""
     config, entry, err = role_check(root, node_id, role, model)
@@ -325,11 +367,12 @@ def show_cli(prof: Profile | None, prompt_path: Path, entry_cli: str | None, har
     return 0
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road prompt`` parser."""
     p = argparse.ArgumentParser(prog="specy-road prompt", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("node_id")
-    p.add_argument("--model", required=True, help="Roster id")
+    add_model_arg(p, required=True)
     p.add_argument("--role", required=True, choices=PROMPT_ROLES)
     p.add_argument("--channel", choices=CHANNELS, default="paste",
                    help="cli writes the prompt and prints the command it would run (the roster's channels.cli, "
@@ -342,8 +385,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--worktree", type=Path, metavar="PATH",
                    help="Reviewer --channel cli: run in this checkout instead of the worktree that has the leaf's "
                         "claimed branch checked out")
-    p.add_argument("-o", "--output", type=Path)
-    p.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    p.add_argument("-o", "--output", type=Path,
+                   help="Prompt file. A relative path is relative to the current directory; after that, a path "
+                        "inside the project follows the safe-write rule and a path outside is a plain write")
+    add_ref_arg(p)
     p.add_argument("--context-feedback", action="store_true",
                    help="Executor only: ask for the pilot's three-line context-feedback block "
                         "(missing / wrong / unused) at the end of the implementation summary")
@@ -355,6 +400,16 @@ def main(argv: list[str] | None = None) -> None:
                    help="Reviewer --channel cli: sign the filed record with this OpenSSH private key "
                         "(`review record --sign-key`; needed under policy.signed_reviews)")
     add_repo_root_arg(p)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Write a role prompt. A command error is printed once and becomes its exit code."""
+    run_reporting(lambda: _prompt_command(argv))
+
+
+def _prompt_command(argv: list[str] | None) -> None:
+    p = build_parser()
     ns = p.parse_args(argv)
     if ns.force and ns.role != "rca":
         p.error("--force applies only to --role rca")
@@ -364,19 +419,60 @@ def main(argv: list[str] | None = None) -> None:
         p.error("--run applies only to --channel cli")
     root = resolve_repo_root(ns)
     lock = contextlib.ExitStack()
-    if ns.role == "reviewer" and ns.channel == "cli" and ns.run:   # bare-mode auth only: the roster preflight still runs after the RUN opens
-        config, _err = pinned_config(root)
-        entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
-        blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)
-        if blocked is not None:
-            raise SystemExit(blocked.exit or 1)
-        try:   # the leaf's run lock before the run writes any of its files
-            lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))
-        except ReviewRunBusy as e:
-            print(f"error: {e}", file=sys.stderr)
-            raise SystemExit(1) from None
-    with lock:
-        _run(ns, root)
+    try:
+        if ns.role == "reviewer" and ns.channel == "cli" and ns.run:   # bare-mode auth only: the roster preflight still runs after the RUN opens
+            config, _err = pinned_config(root)
+            entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
+            blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)
+            if blocked is not None:
+                raise SystemExit(blocked.exit or 1)
+            lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))   # before the run writes any file
+        with lock:
+            _run(ns, root)
+    except ReviewRunBusy as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+    except safe_write.SafeWriteError as e:   # a symlink at the lock or at the prompt file: nothing was launched
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
+def _spelled(path: Path) -> Path:
+    """``path`` with ``.`` and ``..`` collapsed, without following a symlink.
+
+    A relative path is relative to the cwd, which is where a plain write creates it. An absolute path stays
+    absolute. The inside-project choice is made only after this, so ``-o relative.md`` is never joined to the
+    project first.
+    """
+    full = path if path.is_absolute() else Path.cwd() / path
+    parts: list[str] = []
+    for name in full.parts:
+        if name == "..":
+            if len(parts) > 1:
+                parts.pop()
+        elif name != ".":
+            parts.append(name)
+    return Path(*parts)
+
+
+def _in_project(root: Path, path: Path) -> bool:
+    """``path`` after :func:`_spelled` lies under the spelled project root."""
+    base = _spelled(root)
+    full = _spelled(path)
+    return full == base or base in full.parents
+
+
+def _write_prompt(root: Path, out: Path, text: str) -> None:
+    """Write the prompt at its cwd-relative destination.
+
+    Inside the project the spelled path goes through the safe-write rule; outside, it is the caller's own write.
+    """
+    dest = _spelled(out)
+    if _in_project(root, dest):
+        safe_write.write(_spelled(root), dest, text)
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text, encoding="utf-8")
 
 
 def _launch_warning(ns: argparse.Namespace, config: dict, entry: dict, prof: Profile | None, root: Path) -> None:
@@ -399,8 +495,7 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
     out = ns.output or root / "work" / f"prompt-{ns.node_id}-{ns.role}-{ns.model}.md"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text, encoding="utf-8")
+    _write_prompt(root, out, text)
     print(f"Wrote {out}", file=sys.stderr)
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)

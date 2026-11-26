@@ -6,7 +6,7 @@
 **Not for:** using specy-road in an application repo ([`install-and-usage.md`](install-and-usage.md)) or cutting a release ([`release-runbook.md`](release-runbook.md)).
 
 **Must know without reading on:**
-- Feature work targets `dev`; `main` takes release-marker PRs only. Branch names must match `^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$`, and non-`chore/` PRs need a `Closes #N` / `Fixes #N` / `Refs #N` line.
+- Which branch to start from and merge into: the [branch policy](toolkit-development.md#maintainer-workflow-vs-consumer-workflow). Branch names must match `^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$`, and non-`chore/` PRs need a `Closes #N` / `Fixes #N` / `Refs #N` line.
 - Local CI parity before pushing: `pytest -n auto -q`, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`.
 - After React/TypeScript changes, from `gui/pm-gantt/`: `npm ci && npm run lint && npm test && npm run build`.
 - Never run `specy-road init project` with no path in this repo; scaffold into `/tmp/specy-consumer-sandbox` or `playground/`.
@@ -16,11 +16,11 @@
 - issue links, exemptions, the malicious-code policy, what a refusal must print → "Project stewardship"
 - branch names, release pointers, Trusted Publisher setup, review rounds → "Branching, tagging, and release process"
 - the exact gate commands → "Local CI parity"
-- building the SPA, updating a clone, hooks, IDE stubs → "PM Gantt UI: build and install", "Updating an editable clone", "Pre-commit hook", "IDE command stubs (`specyrd`)"
+- building the SPA, updating a clone, hooks, agent skills → "PM Gantt UI: build and install", "Updating an editable clone", "Pre-commit hook", "Agent skills (`specyrd`)"
 - pip and npm audits → "Supply-chain & dependency audits"
 - a safe scaffold target and further reading → "Trying `init project` safely", "Pointers to deeper docs"
 
-**Related:** [`release-runbook.md`](release-runbook.md), [`supply-chain-security.md`](supply-chain-security.md), [`architecture.md`](architecture.md), [`pm-gui.md`](pm-gui.md).
+**Related:** [`release-runbook.md`](release-runbook.md), [`supply-chain-security.md`](supply-chain-security.md), [`pm-gui.md`](pm-gui.md).
 
 > The link from README to this guide will only be added **post-release**
 > (per F-001 / F-002). Until then, open this file directly from the
@@ -88,21 +88,18 @@ A command that exits non-zero prints what failed, why, and the next command
 to run: a `specy-road …` or `git …` command, in backticks or at the start of a
 line, that a user can copy as written. A refusal that only says "no" costs a
 round trip to diagnose. Where the cause is a set of paths or ids, name them
-(a long list is capped, then counted). [`tests/test_refusals_name_their_fix.py`](../tests/test_refusals_name_their_fix.py)
+(a long list is capped, then counted). [`tests/flows/review/test_refusals_name_their_fix.py`](../tests/flows/review/test_refusals_name_their_fix.py)
 runs the refusals covered so far through the CLI and checks each names its fix.
 
 ---
 
 ## Branching, tagging, and release process
 
-### Default branch is `dev`
+### Branch policy
 
-- All feature work targets **`dev`**.
-- The **`main`** branch is reserved for tagged releases. The
-  [`main-release-tag-gate.yml`](../.github/workflows/main-release-tag-gate.yml)
-  workflow rejects pushes to `main` that aren't release-marker PRs and
-  auto-tags merge commits.
-- `main` is intentionally minimal (README + workflows) until v0.1.
+Which branch to start from, where topic branches merge, when a PR is
+required and how `main` is promoted are stated once, in
+[toolkit-development.md](toolkit-development.md#maintainer-workflow-vs-consumer-workflow).
 
 ### Branch-naming convention (enforced)
 
@@ -169,7 +166,7 @@ maintainer setup:
 
 Renaming the workflow file or the environments will break publishing
 until the trust on `pypi.org` and `test.pypi.org` is updated. The
-[`tests/test_release_harness.py`](../tests/test_release_harness.py)
+[`tests/repo/test_release_harness.py`](../tests/repo/test_release_harness.py)
 suite asserts the workflow names and env names are stable; if a
 maintainer renames any of them, those tests will fail before the
 release does.
@@ -207,9 +204,7 @@ for the worker layer; fixtures in `tests/review_repo_helpers.py`), one
 CHANGELOG `[Unreleased]` bullet "**<Nth> independent review (<model>):**"
 listing the fixes, an edit to the design note wherever a claim changed, and
 a stated limit in the reference doc wherever a finding is accepted rather
-than fixed. A fix restarts the round at the new SHA. The rounds' origin and
-the evidence discipline behind them:
-[design-notes/sre-for-ai-triage.md](design-notes/sre-for-ai-triage.md).
+than fixed. A fix restarts the round at the new SHA.
 
 ---
 
@@ -223,7 +218,7 @@ The `--repo-root tests/fixtures/specy_road_dogfood` checks exercise the dogfood 
 
 ```bash
 source .venv/bin/activate
-pip install -e ".[dev,gui-next]"
+pip install -e ".[dev,gui]"
 specy-road --version   # which build you are actually running
 pytest -n auto -q
 specy-road validate    --repo-root tests/fixtures/specy_road_dogfood
@@ -299,43 +294,90 @@ server from `gui/pm-gantt/` (port 5173) alongside a separate
 ## Updating an editable clone
 
 ```bash
-specy-road update --install-gui-stack          # fast-forward + reinstall
-specy-road update --dry-run --install-gui-stack
+specy-road self-update --install-gui-stack          # fast-forward + reinstall
+specy-road self-update --dry-run --install-gui-stack
 ```
 
 Use `--reset-to-origin` only when you intentionally want your tree to
 match the server (it discards local commits and uncommitted changes; see
-warning in `specy-road update --help`).
+warning in `specy-road self-update --help`). `specy-road update` is its deprecated
+alias until the release after 0.3.1.
 
 ---
 
 ## Pre-commit hook
 
-The repo ships with a `.pre-commit-config.yaml`. Install once per clone:
+The repo ships with a `.pre-commit-config.yaml`. Install both hook types once
+per clone:
 
 ```bash
 pip install pre-commit
 pre-commit install
+pre-commit install --hook-type commit-msg
 ```
 
 Hooks mirror CI minus `pytest` and supply-chain audits: roadmap validate,
-markdown export drift, file line-count limits.
+markdown export drift, file line-count limits, the lean-code gates and the
+public-hygiene file check. The commit-msg hook runs the public-hygiene check
+on each commit message.
+
+### Public-hygiene gate
+
+`scripts/check_public_hygiene.py` keeps personal data, one machine's setup
+and development-process content out of the public tree and its history. Its
+docstring lists every rule; in short:
+
+- **Personal data:** an email address not in
+  [`scripts/public_hygiene_allow.txt`](../scripts/public_hygiene_allow.txt)
+  (an entry exempts only the address, never its line), and the name tokens and
+  username of your local list as whole words.
+- **Machine setup:** home, temp and hostname paths, a home path into one of
+  your local list's account directories (`~/.<tool>` config paths pass),
+  home-prefixed conda and venv paths, a literal `CLAUDE_CONFIG_DIR` path, a
+  literal apparmor sysctl value, and your local list's machine and profile
+  names. Variable references and placeholders pass.
+- **Process content:** research-report and Claude Code session mentions and
+  your local list's phrases; in commit messages also `sr/work`, `sr/planning`,
+  `sr/roadmap` and `sr/tools` mentions.
+
+Default mode (pre-commit, the WIP line) scans tracked files outside `sr/`.
+CI adds the messages of the pushed or pull-request range, and on `main` adds
+`--promotion`: a path denylist (`sr/`, design notes, research and prompt
+files, except under `specy_road/templates/` and `tests/parity/`) and an
+author and committer identity check against the allow file's `public:` and
+`bot:` entries. The identity check only reports while `public:` reads
+`PUBLIC_IDENTITY_UNSET`.
+
+The values that must never be written down live in a **local list**, never
+tracked: `<kind>: <value>` lines (kinds `name`, `handle`, `home`, `machine`,
+`phrase`) in `$(git rev-parse --git-common-dir)/info/public-hygiene-local.txt`,
+which every linked worktree shares. CI reads the same format from the
+`PUBLIC_HYGIENE_LOCAL` repository secret. With neither, the local-list rules
+are skipped and the rest still run.
+
+A `handle` entry is the repo-owner GitHub handle: a `github.com/<handle>` URL
+is not a name hit.
+
+The gate's script and tests build each denied literal by concatenation
+(`"Claude-" + "Session:"`) and its docs describe the rules without one, so
+they pass with no allow entry.
 
 ---
 
-## IDE command stubs (`specyrd`)
+## Agent skills (`specyrd`)
 
-`specyrd init` writes thin slash-command stubs into your IDE's command
-directory so you can call `specy-road` from the command palette.
+`specyrd init` installs one thin skill per command under
+`.agents/skills/<name>/SKILL.md` (Cursor and Codex read that directory;
+`--ai claude-code` adds `.claude/skills/` links), each running `specy-road`.
 
 ```bash
-specyrd init . --ai cursor               # or --ai claude-code
+specyrd init . --ai cursor               # or --ai claude-code, --ai codex
 specyrd init . --ai cursor --role dev    # validate, brief, claim, finish, …
 specyrd init . --ai cursor --role pm     # validate, export, author, …
 ```
 
 These are wrappers — the canonical behavior lives in `specy-road`, not
-the stubs.
+the skills. Details: [install-and-usage.md](install-and-usage.md#skills-specyrd-init).
 
 ---
 
@@ -394,7 +436,7 @@ Then validate against that sandbox: `specy-road validate --repo-root /tmp/specy-
   manifest order, generated `roadmap.md`.
 - [philosophy-and-scope.md](philosophy-and-scope.md) — what the toolkit
   promises and what it leaves to the consumer.
-- [architecture.md](architecture.md) — code-level architecture for
-  contributors.
+- [roadmap-authoring.md](roadmap-authoring.md#project-layout-and-flow) — the
+  project layout and the author → validate → brief flow.
 - [supply-chain-security.md](supply-chain-security.md) — dependency
   policy.

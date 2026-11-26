@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TextIO
 import yaml
 
-from specy_road.file_limits_js import JS_SUFFIXES, js_function_metrics
+from specy_road.git_subprocess import DEFAULT_TIMEOUT
 
 
 SKIP_DIR_NAMES = frozenset(
@@ -211,6 +211,8 @@ def function_metrics(path: Path) -> list[tuple[str, int, int]]:
     """Per-function spans for the languages the function cap covers; else none."""
     if path.suffix == ".py":
         return python_function_metrics(path)
+    from specy_road.file_limits_js import JS_SUFFIXES, js_function_metrics   # loaded on demand
+
     if path.suffix in JS_SUFFIXES:
         return js_function_metrics(path)
     return []
@@ -249,8 +251,9 @@ def git_ignored_paths(root: Path, rel_paths: list[str]) -> frozenset[str]:
 
     ``git check-ignore`` consults the index by default, so a tracked file is
     never reported even when a rule would otherwise match it. Returns an empty
-    set when ``root`` is not a git worktree or git is unavailable, so the scan
-    degrades to plain filesystem behavior.
+    set when ``root`` is not a git worktree, git is unavailable, or the call
+    times out, so the scan degrades to plain filesystem behavior (it counts
+    those files, which never hides one that is over its cap).
     """
     if not rel_paths:
         return frozenset()
@@ -261,8 +264,9 @@ def git_ignored_paths(root: Path, rel_paths: list[str]) -> frozenset[str]:
             capture_output=True,
             text=True,
             check=False,
+            timeout=DEFAULT_TIMEOUT,
         )
-    except (OSError, ValueError):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         return frozenset()
     # 0 = some paths ignored, 1 = none ignored; anything else (128 = not a
     # repo) means we cannot trust the answer.

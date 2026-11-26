@@ -5,8 +5,8 @@ Each finding is one line, ``<class>: <path>:<line>: <detail>``, with git-root-re
 - ``stale-command``: ``docs/**/*.md`` or an agent file names a ``specy-road`` / ``specyrd``
   command this version does not register (the scanner ``validate`` runs on agent files).
 - ``advisory-rule``: a provenance comment marked ``enforced: advisory`` in a managed agent
-  file, or in the templates they are rendered from when those are in this checkout
-  (rendering strips the comments): a rule nothing checks.
+  file, or in ``specy_road/agent_rule_provenance.md`` (the maintainers' copy of the templates
+  they are rendered from, which no wheel ships) when it is in this checkout: a rule nothing checks.
 - ``ratchet-grew``: a ``policy.ratchet_paths`` baseline with lines added since the newest tag.
 
 :func:`open_chores` files each class as at most one leaf through the add-node write; nothing
@@ -20,26 +20,32 @@ import contextlib
 import io
 import json
 import re
-import sys
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.fs_atomic import atomic_write_text
 from specy_road.agent_guide_block import PROVENANCE
-from specy_road.bundled_scripts.chore_cli import chores_dir
-from specy_road.bundled_scripts.validate_stale_commands import (
+from specy_road.bundled_scripts.roadmap_crud import main
+from specy_road.orchestration.records.chore_garden_due import (
+    garden_due,
+    record_path,
+    warn_garden_due,
+)
+from specy_road.orchestration.records.chore_records import chores_dir
+from specy_road.validate_stale_commands import (
     agent_files,
+    line_unknown_flags,
     line_unregistered_commands,
     stale_command_advice,
+    unknown_flag_advice,
 )
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import git_root, git_text
 from specy_road.harness_instruction_files import RULES_MD
 from specy_road.integrity import _ratchet_findings, integration_ratchet_paths
-from specy_road.orchestration_config import effective_config
-from specy_road.review_policy_ref import policy_source
-from specy_road.runtime_paths import git_root
-from specy_road.worker_state import WorkerError, _write_atomic
+from specy_road.review_policy_pin import policy_source
+from specy_road.orchestration.workers.worker_state import WorkerError
 
 #: Finding class -> the title of the chore leaf ``--open-chores`` files for it.
 CLASSES = {
@@ -55,8 +61,7 @@ _ACCEPTANCE = {
     "ratchet-grew": "`{path}` is back to its size at the last tag, or the summary says why it grew",
 }
 ACCEPTANCE_CAP = 10
-_TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "specyrd"
-_RULE_TEMPLATES = ("agents-md-block.md", "agents-rules.md", "claude-md-block.md")
+_PROVENANCE_FILE = Path(__file__).resolve().parents[1] / "agent_rule_provenance.md"
 
 
 @dataclass(frozen=True)
@@ -87,20 +92,28 @@ def _numbered_lines(path: Path) -> list[tuple[int, str]]:
 
 
 def stale_command_findings(root: Path) -> list[Finding]:
+    """Commands this version does not register, then long flags their command refuses."""
     root, checkout = _roots(root)
     docs = [p for base in (root, checkout) for p in sorted((base / "docs").rglob("*.md"))]
-    return list(dict.fromkeys(   # a line naming one command twice is one finding
+    commands = (
         Finding("stale-command", path.relative_to(checkout).as_posix(), lineno,
                 f"`{mention}` is not a command in specy-road {__version__}; {stale_command_advice(mention)}")
         for path in dict.fromkeys([*docs, *agent_files(root), root / RULES_MD])   # validate's set, plus the rules
-        for lineno, mention in line_unregistered_commands(_numbered_lines(path))))
+        for lineno, mention in line_unregistered_commands(_numbered_lines(path)))
+    flags = (
+        Finding("stale-command", path.relative_to(checkout).as_posix(), lineno,
+                unknown_flag_advice(*found))
+        for path in dict.fromkeys([*docs, *agent_files(root)])   # validate's set, plus docs/
+        for lineno, *found in line_unknown_flags(_numbered_lines(path)))
+    # a line naming one command twice is one finding
+    return list(dict.fromkeys([*commands, *flags]))
 
 
 def advisory_rule_findings(root: Path) -> list[Finding]:
     root, checkout = _roots(root)
-    templates = [t for t in (_TEMPLATES / n for n in _RULE_TEMPLATES) if t.is_relative_to(checkout)]
+    provenance = [_PROVENANCE_FILE] if _PROVENANCE_FILE.is_relative_to(checkout) else []
     out: list[Finding] = []
-    for path in dict.fromkeys([*agent_files(root), root / RULES_MD, *templates]):
+    for path in dict.fromkeys([*agent_files(root), root / RULES_MD, *provenance]):
         for lineno, line in _numbered_lines(path):
             line = line.strip()
             if PROVENANCE.fullmatch(line) and "| enforced: advisory" in line:
@@ -154,8 +167,6 @@ def _generation(cls: str, codename: object, title: object) -> int | None:
 
 def _add_node(root: Path, argv: list[str]) -> str | None:
     """Run the ``add-node`` command itself (every check it makes); its refusal, or ``None`` once written."""
-    from specy_road.bundled_scripts.roadmap_crud import main  # noqa: PLC0415 — via validate_roadmap, it imports this
-
     err = io.StringIO()
     try:
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):   # its write report
@@ -175,8 +186,8 @@ def open_chores(root: Path, findings: list[Finding], under: str) -> list[str]:
     than the highest any live or archived node of the class carries, so a number is never reused.
     """
     from specy_road.archive_index import iter_archived_summaries  # noqa: PLC0415
-    from specy_road.bundled_scripts.roadmap_layout import next_child_id  # noqa: PLC0415
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap  # noqa: PLC0415
+    from specy_road.roadmap_layout import next_child_id  # noqa: PLC0415
+    from specy_road.roadmap_load import load_roadmap  # noqa: PLC0415
 
     done: list[str] = []
     for cls, title in CLASSES.items():
@@ -203,44 +214,14 @@ def open_chores(root: Path, findings: list[Finding], under: str) -> list[str]:
     return done
 
 
-def record_path(root: Path) -> Path:
-    """A dot-file: a chore slug starts with a letter or digit, so no chore record can be this file."""
-    return chores_dir(root) / ".garden.json"
-
-
 def garden(root: Path, under: str | None = None) -> dict:
     """Scan, file chore leaves under ``under`` when given, and record the run; the report."""
     findings, notes = scan(root)
     chores = open_chores(root, findings, under) if under else []
     chores_dir(root).mkdir(parents=True, exist_ok=True)
-    _write_atomic(record_path(root), json.dumps({"last_run": date.today().isoformat()}) + "\n")
+    atomic_write_text(record_path(root), json.dumps({"last_run": date.today().isoformat()}) + "\n")
     return {"findings": findings, "notes": notes, "chores": chores}
 
 
 def as_json(report: dict) -> str:
     return json.dumps({**report, "findings": [asdict(f) for f in report["findings"]]}, indent=2)
-
-
-def garden_due(root: Path, today: date) -> str | None:
-    """Why gardening is due under ``policy.garden_cadence_days``; ``None`` when it is not or the key is unset.
-
-    The arithmetic of a research register entry: due when more than the cadence's days have passed.
-    """
-    cadence = effective_config(root)[0]["policy"].get("garden_cadence_days")
-    if not cadence:
-        return None
-    try:
-        last = date.fromisoformat(json.loads(record_path(root).read_text(encoding="utf-8"))["last_run"])
-    except (OSError, ValueError, KeyError, TypeError):
-        last = None
-    if last is not None and (today - last).days <= cadence:
-        return None
-    when = "never run" if last is None else f"last run {last}"
-    return f"gardening due: {when}, every {cadence} days; run `specy-road chore garden`"
-
-
-def warn_garden_due(root: Path, today: date | None = None) -> None:
-    """One non-fatal ``validate`` line when gardening is due."""
-    why = garden_due(root, today or date.today())
-    if why:
-        print(f"garden: warning — {why} (see docs/orchestration-chores.md)", file=sys.stderr)

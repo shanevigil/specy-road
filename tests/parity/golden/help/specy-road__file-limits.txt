@@ -1,0 +1,18 @@
+$ specy-road file-limits --help
+exit: 0
+--- stdout ---
+usage: specy-road file-limits [-h] [--repo-root DIR] [--strict-hard-alerts]
+                              [--no-respect-gitignore]
+
+Enforce file-limits.yaml (per-file counts; optional Python and TS/JS function counts).
+
+options:
+  -h, --help            show this help message and exit
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --strict-hard-alerts  Treat hard_alerts warnings as failures (exit 1).
+  --no-respect-gitignore
+                        Also check files git ignores. Default: skip them, since CI never sees them
+                        (has no effect outside a git worktree).
+--- stderr ---

@@ -10,14 +10,15 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import shutil
 import sys
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_chunk_utils import find_chunk_path
+from specy_road.roadmap_crud_ops import (
     deferred_validation,
     edit_node_set_pairs,
     repo_root,
@@ -25,9 +26,9 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     unknown_node_msg,
 )
 from specy_road.bundled_scripts.roadmap_apply_entries import id_map_lines, parse_change_file
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir
+from specy_road.planning_artifacts import normalize_planning_dir
 from specy_road.bundled_scripts.effective_dependency_checks import newly_waiting_suffix
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 
 
 def merged_node_by_id(root: Path, node_id: str) -> dict | None:
@@ -264,8 +265,27 @@ def _dirs_under(paths: list[Path]) -> set[Path]:
     return {d for p in paths if p.is_dir() for d in [p, *p.rglob("*")] if d.is_dir()}
 
 
-def _restore(paths: list[Path], before: dict[Path, bytes], dirs: set[Path]) -> None:
-    """Put ``paths`` back byte-for-byte: drop new files, rewrite changed ones.
+def _snapshot(paths: list[Path], root: Path) -> dict[Path, bytes | str]:
+    """Each file under ``paths`` as its bytes, each link to a file as its text.
+
+    An archive moves a linked sheet's target and unlinks the link, so a target
+    in the repo is kept too, wherever it is. One outside the repo is never
+    moved (the archive refuses it) and never written back.
+    """
+    out: dict[Path, bytes | str] = {}
+    for f in _files_under(paths):
+        if f.is_symlink():
+            out[f] = os.readlink(f)
+            target = f.resolve()
+            if target.is_relative_to(root.resolve()):
+                out[target] = target.read_bytes()
+        else:
+            out[f] = f.read_bytes()
+    return out
+
+
+def _restore(paths: list[Path], before: dict[Path, bytes | str], dirs: set[Path]) -> None:
+    """Put ``paths`` back as they were: drop new files, rewrite changed ones, recreate links as links.
 
     Folders the batch created (``roadmap/archive/`` on a first archive) go too,
     once emptied; ``dirs`` are the ones that were there before.
@@ -273,10 +293,15 @@ def _restore(paths: list[Path], before: dict[Path, bytes], dirs: set[Path]) -> N
     for f in _files_under(paths):
         if f not in before:
             f.unlink()
-    for f, data in before.items():
-        if not f.is_file() or f.read_bytes() != data:
+    for f, was in before.items():
+        if isinstance(was, str):
+            if not f.is_symlink() or os.readlink(f) != was:
+                f.unlink(missing_ok=True)
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.symlink_to(was)
+        elif not f.is_file() or f.read_bytes() != was:
             f.parent.mkdir(parents=True, exist_ok=True)
-            f.write_bytes(data)
+            f.write_bytes(was)
     for d in sorted(_dirs_under(paths) - dirs, key=lambda d: len(d.parts), reverse=True):
         if not any(d.iterdir()):
             d.rmdir()
@@ -290,7 +315,7 @@ def _apply_in_place(changes: list[object], root: Path) -> str:
     graph does not validate.
     """
     paths = _batch_paths(root)
-    before = {f: f.read_bytes() for f in _files_under(paths)}
+    before = _snapshot(paths, root)
     dirs = _dirs_under(paths)
     try:
         return _run_changes(changes, root)
@@ -310,7 +335,7 @@ def _scratch_root(root: Path) -> Iterator[Path]:
     copy (:func:`_rebase_graph_symlinks`), so no rehearsal reads or writes a
     live file and every rehearsal sees the layout a real run writes.
     """
-    from specy_road.bundled_scripts.roadmap_crud_delete import _rebase_graph_symlinks
+    from specy_road.roadmap_crud_ops import _rebase_graph_symlinks
 
     copied = {p.name for p in _batch_paths(root)}
     with tempfile.TemporaryDirectory(prefix="specy-road-apply-") as tmp:
@@ -335,8 +360,8 @@ def _scratch_root(root: Path) -> Iterator[Path]:
 
 def wave_preview(root: Path) -> list[str]:
     """Ready / waves / blocked for the graph under ``root``, as ``grind-session --plan`` computes them."""
-    from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
-    from specy_road.bundled_scripts.session_plan import compute_session_plan
+    from specy_road.planning_sheet_bootstrap import unauthored_leaves
+    from specy_road.orchestration.grind.session_plan import compute_session_plan
     from specy_road.registry_yaml import read_registry, registry_path
 
     nodes = load_roadmap(root)["nodes"]

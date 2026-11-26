@@ -1,0 +1,11 @@
+$ specy-road worktree --help
+exit: 0
+--- stdout ---
+usage: specy-road worktree [-h] {prune} ...
+
+positional arguments:
+  {prune}
+
+options:
+  -h, --help  show this help message and exit
+--- stderr ---

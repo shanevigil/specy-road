@@ -1,0 +1,21 @@
+$ specy-road session --help
+exit: 0
+--- stdout ---
+usage: specy-road session [-h] {start,touch,end,list,check,guard} ...
+
+positional arguments:
+  {start,touch,end,list,check,guard}
+    start               Announce this session and the paths it will edit (renews an existing
+                        record)
+    touch               Renew this session's expiry (same as start)
+    end                 Remove this session's record, or an expired <id>'s; never another agent's
+                        live one
+    list                Live sessions (--all includes expired)
+    check               Exit 1 if staged paths (or --path) overlap another live session; a pre-
+                        commit guard
+    guard               Deny a shell command that is destructive in a shared checkout; the harness
+                        hook body
+
+options:
+  -h, --help            show this help message and exit
+--- stderr ---

@@ -6,6 +6,8 @@ should only ever prevent a test from damaging the checkout.
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -16,6 +18,14 @@ from tests.fixture_guard import (
     record_session_start,
 )
 from tests.helpers import REPO
+from tests.support import cli_smoke_lane
+from tests.support.fixtures import (  # noqa: F401 — registered for every test
+    repo,
+    api_client,
+    dogfood_copy,
+    git_remote_repo,
+    git_template,
+)
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -25,6 +35,22 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     fail_if_fixtures_status_changed(session, REPO)
+
+
+@pytest.fixture(autouse=True)
+def environment_restored_after_each_test() -> Iterator[None]:
+    """What a test leaves in ``os.environ`` never reaches the next test in the same process.
+
+    Code under test writes the environment directly, not through ``monkeypatch`` (worker_runner's
+    ``main`` replaces ``PYTHONPATH``, the GUI settings loader sets provider keys, a grind session
+    marks itself). Left alone, each change reaches every later test the worker runs and every
+    child process those tests start, so what a test sees depends on what ran before it.
+    """
+    saved = dict(os.environ)
+    yield
+    if os.environ != saved:
+        os.environ.clear()
+        os.environ.update(saved)
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +71,10 @@ def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "real_review_caller: run `review record`'s caller check (M21.31) for real")
+    config.addinivalue_line("markers", "slow: this test took over 1 second at M16.6.4")
+    config.addinivalue_line("markers", "repo: checks this repository rather than a temporary one")
+    cli_smoke_lane.install()
+    config.pluginmanager.register(cli_smoke_lane, "cli_smoke_lane")
 
 
 @pytest.fixture(autouse=True)
@@ -75,7 +105,7 @@ def gui_settings_never_touch_the_real_home(
     was thousands of dead entries and megabytes long. It is a credential store,
     so the default has to be the safe one.
     """
-    import specy_road.bundled_scripts.roadmap_gui_settings as settings
+    import specy_road.roadmap_gui_settings as settings
 
     home = tmp_path_factory.mktemp("gui-settings-home")
     monkeypatch.setattr(settings, "SETTINGS_DIR", home)
@@ -113,7 +143,7 @@ def history_cache_stays_out_of_the_source_tree(monkeypatch: pytest.MonkeyPatch) 
 def codex_homes_stay_in_tmp(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     """A default Codex launch creates the profile's ``CODEX_HOME`` (and links the user's ``auth.json``):
     never under the developer's own ``~/.specy-road``."""
-    import specy_road.worker_adapter_codex as codex
+    import specy_road.orchestration.workers.worker_adapter_codex as codex
 
     homes = tmp_path_factory.mktemp("codex-homes")
     monkeypatch.setattr(codex, "codex_homes", lambda: homes)
@@ -124,7 +154,7 @@ def harness_binaries_are_not_looked_up(monkeypatch: pytest.MonkeyPatch) -> None:
     """A default launch resolves its harness binary (harness_binary): on a machine without the harness that is a
     refusal, and on one with it an absolute path. Every test gets the bare program name (or the entry's
     ``harness_bin``), which the fake-binary tests put on PATH; test_harness_launch.py calls the real resolver."""
-    import specy_road.harness_binary as hb
+    import specy_road.orchestration.harness.harness_binary as hb
 
     monkeypatch.setattr(hb, "resolve", lambda harness, harness_bin=None: harness_bin or hb.PROGRAMS[harness])
 
@@ -133,6 +163,6 @@ def harness_binaries_are_not_looked_up(monkeypatch: pytest.MonkeyPatch) -> None:
 def cursor_chats_are_never_created(monkeypatch: pytest.MonkeyPatch) -> None:
     """A default Cursor launch runs ``agent create-chat`` first: on a machine with Cursor's CLI that would create a
     real chat per test. Every test gets a fixed id instead; the fake-binary test calls the real function."""
-    import specy_road.worker_adapter_cursor as cursor
+    import specy_road.orchestration.workers.worker_adapters as cursor
 
     monkeypatch.setattr(cursor, "create_chat", lambda worktree, program="agent": "chat-under-test")

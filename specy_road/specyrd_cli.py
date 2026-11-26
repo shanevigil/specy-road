@@ -182,7 +182,7 @@ def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
     )
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
     from specy_road import __version__
 
     p = argparse.ArgumentParser(
@@ -202,7 +202,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     argv = list(sys.argv[1:] if argv is None else argv)
-    parser = _build_parser()
+    parser = build_parser()
     args = parser.parse_args(argv)
     if args.command != "init":
         parser.print_help()

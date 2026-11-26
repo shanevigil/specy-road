@@ -1,0 +1,24 @@
+$ specy-road refresh-schemas --help
+exit: 0
+--- stdout ---
+usage: specy-road refresh-schemas [-h] [--repo-root DIR] [--dry-run]
+
+Refresh a consumer repository's ``schemas/`` from the installed toolkit.
+
+``init project`` copies the JSON schemas into the consumer repo and never
+touches them again, so a repo scaffolded before a schema grew (``type: gate``,
+``implementation_review``) rejects output that the current ``add-node``,
+``set-gate-status``, and ``mark-implementation-reviewed`` legitimately produce.
+The only command that looked like a fix was ``init project --force``, which
+overwrites *every* template file — including ``roadmap/manifest.json`` and the
+phase chunks — and would destroy the roadmap it was meant to repair.
+
+This command touches ``schemas/`` and nothing else.
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --dry-run        Print what would be written; do not modify files.
+--- stderr ---

@@ -1,0 +1,314 @@
+{
+  "generated": "2026-11-11",
+  "tool": "ast import scan (nested imports included)",
+  "components": [
+    {
+      "size": 33,
+      "modules": [
+        "specy_road.orchestration.records.decisions",
+        "specy_road.orchestration.harness.harness_binary",
+        "specy_road.integrity",
+        "specy_road.integrity_gate",
+        "specy_road.orchestration.model_names",
+        "specy_road.orchestration.model_profiles",
+        "specy_road.orchestration.orchestrate_assign",
+        "specy_road.orchestration_config",
+        "specy_road.orchestration_pinned",
+        "specy_road.orchestration_routing",
+        "specy_road.red_green",
+        "specy_road.review_answer",
+        "specy_road.review_defer_rules",
+        "specy_road.review_files",
+        "specy_road.review_gate",
+        "specy_road.review_gate_ready",
+        "specy_road.review_lock",
+        "specy_road.review_model_check",
+        "specy_road.review_override",
+        "specy_road.review_policy_pin",
+        "specy_road.review_pre_existing",
+        "specy_road.review_rca",
+        "specy_road.review_tally",
+        "specy_road.review_trend",
+        "specy_road.review_write_check",
+        "specy_road.orchestration.roster_local",
+        "specy_road.orchestration.roster_profile_check",
+        "specy_road.orchestration.workers.worker_adapter_base",
+        "specy_road.orchestration.workers.worker_adapter_parsers",
+        "specy_road.orchestration.workers.worker_lock",
+        "specy_road.orchestration.workers.worker_models",
+        "specy_road.orchestration.workers.worker_outbox",
+        "specy_road.orchestration.workers.worker_state"
+      ]
+    },
+    {
+      "size": 19,
+      "modules": [
+        "specy_road.bundled_scripts.review_cli",
+        "specy_road.bundled_scripts.role_prompt",
+        "specy_road.orphaned_claims",
+        "specy_road.review_delegate",
+        "specy_road.review_delegate_harness",
+        "specy_road.review_record_write",
+        "specy_road.review_rejected",
+        "specy_road.review_run_status",
+        "specy_road.review_usage",
+        "specy_road.orchestration.role_prompt_cli",
+        "specy_road.orchestration.workers.worker_cli_render",
+        "specy_road.orchestration.workers.worker_lease",
+        "specy_road.orchestration.workers.worker_ops",
+        "specy_road.orchestration.workers.worker_orphans",
+        "specy_road.orchestration.workers.worker_process",
+        "specy_road.orchestration.workers.worker_reconcile",
+        "specy_road.orchestration.workers.worker_runner",
+        "specy_road.orchestration.workers.worker_runner_ready",
+        "specy_road.orchestration.workers.worker_turn_check"
+      ]
+    },
+    {
+      "size": 17,
+      "modules": [
+        "specy_road.archive_ops",
+        "specy_road.archive_restore",
+        "specy_road.bundled_scripts.archive_cli",
+        "specy_road.bundled_scripts.planning_rename",
+        "specy_road.bundled_scripts.roadmap_apply_entries",
+        "specy_road.bundled_scripts.roadmap_chunk_router",
+        "specy_road.bundled_scripts.roadmap_crud_argparse",
+        "specy_road.bundled_scripts.roadmap_crud_chunk_report",
+        "specy_road.bundled_scripts.roadmap_crud_dependency_ops",
+        "specy_road.bundled_scripts.roadmap_crud_prepare",
+        "specy_road.bundled_scripts.roadmap_id_rewrite_staging",
+        "specy_road.bundled_scripts.roadmap_move_node",
+        "specy_road.bundled_scripts.roadmap_outline_group",
+        "specy_road.bundled_scripts.validate_self_heal",
+        "specy_road.roadmap_crud_ops",
+        "specy_road.roadmap_outline_ops",
+        "specy_road.validate_roadmap_runner"
+      ]
+    },
+    {
+      "size": 3,
+      "modules": [
+        "specy_road.bundled_scripts.do_next_task_pickup_helpers",
+        "specy_road.bundled_scripts.do_next_task_register",
+        "specy_road.bundled_scripts.do_next_task_self_heal"
+      ]
+    },
+    {
+      "size": 3,
+      "modules": [
+        "specy_road.bundled_scripts.export_roadmap_md",
+        "specy_road.digest",
+        "specy_road.generated_files"
+      ]
+    },
+    {
+      "size": 3,
+      "modules": [
+        "specy_road.bundled_scripts.roadmap_gui_settings_scope",
+        "specy_road.pm_gui_git_remote_verify",
+        "specy_road.roadmap_gui_settings"
+      ]
+    },
+    {
+      "size": 3,
+      "modules": [
+        "specy_road.feature_rm_registry",
+        "specy_road.finish_milestone_rollout",
+        "specy_road.finish_modes"
+      ]
+    },
+    {
+      "size": 3,
+      "modules": [
+        "specy_road.pm_integration_registry",
+        "specy_road.registry_remote_overlay",
+        "specy_road.registry_remote_overlay_merge"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
+        "specy_road.brainstorm_promote",
+        "specy_road.brainstorm_prompt"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
+        "specy_road.brainstorm_session",
+        "specy_road.bundled_scripts.brainstorm_fields"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
+        "specy_road.bundled_scripts.brainstorm_cli_revise",
+        "specy_road.bundled_scripts.brainstorm_cli_v2"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
+        "specy_road.bundled_scripts.roadmap_codename_cap",
+        "specy_road.bundled_scripts.roadmap_edit_fields"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
+        "specy_road.orchestration.grind.session_plan",
+        "specy_road.orchestration.grind.session_plan_render"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
+        "specy_road.roadmap_index",
+        "specy_road.roadmap_layout"
+      ]
+    }
+  ],
+  "entry_point_edges": [
+    {
+      "from": "specy_road.brainstorm_chat",
+      "to": "specy_road.bundled_scripts.review_node"
+    },
+    {
+      "from": "specy_road.bundled_scripts.chore_garden",
+      "to": "specy_road.bundled_scripts.roadmap_crud"
+    },
+    {
+      "from": "specy_road.bundled_scripts.do_next_task_register",
+      "to": "specy_road.bundled_scripts.export_roadmap_md"
+    },
+    {
+      "from": "specy_road.bundled_scripts.doctor",
+      "to": "specy_road.bundled_scripts.branches_cli"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_apply_entries",
+      "to": "specy_road.bundled_scripts.archive_cli"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_apply_entries",
+      "to": "specy_road.bundled_scripts.roadmap_move_node"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_apply_entries",
+      "to": "specy_road.bundled_scripts.roadmap_outline_group"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_id_rewrite_staging",
+      "to": "specy_road.bundled_scripts.planning_rename"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_move_node",
+      "to": "specy_road.bundled_scripts.planning_rename"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_move_node",
+      "to": "specy_road.bundled_scripts.roadmap_outline_group"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_outline_group",
+      "to": "specy_road.bundled_scripts.planning_rename"
+    },
+    {
+      "from": "specy_road.bundled_scripts.roadmap_outline_group",
+      "to": "specy_road.bundled_scripts.roadmap_move_node"
+    },
+    {
+      "from": "specy_road.bundled_scripts.role_prompt",
+      "to": "specy_road.bundled_scripts.review_packet"
+    },
+    {
+      "from": "specy_road.bundled_scripts.upgrade",
+      "to": "specy_road.bundled_scripts.digest_cli"
+    },
+    {
+      "from": "specy_road.bundled_scripts.upgrade",
+      "to": "specy_road.bundled_scripts.refresh_profiles"
+    },
+    {
+      "from": "specy_road.bundled_scripts.upgrade",
+      "to": "specy_road.bundled_scripts.refresh_schemas"
+    },
+    {
+      "from": "specy_road.bundled_scripts.upgrade",
+      "to": "specy_road.bundled_scripts.refresh_stubs"
+    },
+    {
+      "from": "specy_road.bundled_scripts.upgrade_generated",
+      "to": "specy_road.bundled_scripts.export_roadmap_md"
+    },
+    {
+      "from": "specy_road.bundled_scripts.validate_roadmap",
+      "to": "specy_road.bundled_scripts.refresh_schemas"
+    },
+    {
+      "from": "specy_road.bundled_scripts.validate_self_heal",
+      "to": "specy_road.bundled_scripts.planning_rename"
+    },
+    {
+      "from": "specy_road.finish_land_deterministic",
+      "to": "specy_road.bundled_scripts.export_roadmap_md"
+    },
+    {
+      "from": "specy_road.generated_files",
+      "to": "specy_road.bundled_scripts.export_roadmap_md"
+    },
+    {
+      "from": "specy_road.grind_status",
+      "to": "specy_road.bundled_scripts.review_cli"
+    },
+    {
+      "from": "specy_road.gui_app_routes_brainstorm",
+      "to": "specy_road.bundled_scripts.review_node"
+    },
+    {
+      "from": "specy_road.gui_app_routes_nodes",
+      "to": "specy_road.bundled_scripts.roadmap_outline_group"
+    },
+    {
+      "from": "specy_road.gui_app_routes_planning",
+      "to": "specy_road.bundled_scripts.scaffold_planning"
+    },
+    {
+      "from": "specy_road.gui_app_routes_workspace",
+      "to": "specy_road.bundled_scripts.review_node"
+    },
+    {
+      "from": "specy_road.review_delegate",
+      "to": "specy_road.bundled_scripts.role_prompt"
+    },
+    {
+      "from": "specy_road.review_delegate_packet",
+      "to": "specy_road.bundled_scripts.review_packet"
+    },
+    {
+      "from": "specy_road.review_record_write",
+      "to": "specy_road.bundled_scripts.review_cli"
+    },
+    {
+      "from": "specy_road.roadmap_gui_remote",
+      "to": "specy_road.bundled_scripts.review_node"
+    },
+    {
+      "from": "specy_road.roadmap_outline_ops",
+      "to": "specy_road.bundled_scripts.roadmap_move_node"
+    },
+    {
+      "from": "specy_road.validate_roadmap_runner",
+      "to": "specy_road.bundled_scripts.refresh_schemas"
+    },
+    {
+      "from": "specy_road.orchestration.workers.worker_ops",
+      "to": "specy_road.bundled_scripts.role_prompt"
+    },
+    {
+      "from": "specy_road.orchestration.workers.worker_reconcile",
+      "to": "specy_road.bundled_scripts.role_prompt"
+    }
+  ]
+}

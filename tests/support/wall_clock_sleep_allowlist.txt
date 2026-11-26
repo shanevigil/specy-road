@@ -1,0 +1,25 @@
+# Child-process fixtures that block with a wall-clock sleep.
+# One entry per occurrence: path, then the source line.
+# A moved fixture still matches. A new or edited sleep does not.
+# tests/unit/test_clock_and_atomic_write.py fails when the lists differ.
+tests/flows/review/test_review_concurrent_writers.py: time.sleep(0.05)
+tests/flows/review/test_review_concurrent_writers.py: time.sleep(float(sys.argv[3]))
+tests/flows/worker/test_worker_cli.py: "time.sleep(30)\n")
+tests/flows/worker/test_worker_cli.py: child.write_text(f"import time\nwhile True:\n    open({str(marker)!r}, 'a').write('x')\n    time.sleep(0.1)\n")
+tests/flows/worker/test_worker_cli_fixes.py: time.sleep(30)
+tests/flows/worker/test_worker_max_workers_global.py: time.sleep(0.05)
+tests/flows/worker/test_worker_queue_message.py: time.sleep(0.05)
+tests/flows/worker/test_worker_queue_message.py: time.sleep(0.05)
+tests/flows/worker/test_worker_queue_message.py: time.sleep(2 if turn == 0 else 0)
+tests/flows/worker/test_worker_stall_recovery.py: p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)", "specy_road.worker_runner", str(deep), "w-0042", "{}"],
+tests/flows/worker/test_worker_stall_recovery.py: p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)", *argv],
+tests/flows/worker/test_worker_turn_check.py: time.sleep(spec.get("sleep", 0))
+tests/sandbox/pm_gui_orchestration/sandbox_setup.py: INERT = "import os, sys, time\nwhile os.getppid() == int(sys.argv[3]):\n    time.sleep(1)\n"
+tests/support/harness.py: time.sleep(spec.get("sleep", 0))
+tests/unit/test_prerelease_workers.py: return subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True)
+tests/unit/test_worker_terminate_descendants.py: starter = ("import subprocess, sys; print(subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], "
+tests/unit/test_worker_terminate_descendants.py: time.sleep(1)
+tests/unit/test_worker_terminate_descendants.py: time.sleep(120)
+tests/unit/test_worker_terminate_descendants.py: time.sleep(120)
+tests/unit/test_worker_terminate_descendants.py: time.sleep(120)
+tests/unit/test_worker_terminate_descendants.py: time.sleep(120)

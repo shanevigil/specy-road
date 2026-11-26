@@ -1,0 +1,44 @@
+$ specy-road add-node --help
+exit: 0
+--- stdout ---
+usage: specy-road add-node [-h] [--chunk CHUNK] --id ID --type {vision,phase,milestone,task,gate}
+                           --title TITLE --parent-id PARENT_ID [--codename CODENAME]
+                           [--status STATUS] [--execution-milestone EXECUTION_MILESTONE]
+                           [--parallel-tracks PARALLEL_TRACKS] [--touch-zone TOUCH_ZONE]
+                           [--dependency DEPENDENCY] [--acceptance ACCEPTANCE]
+                           [--planned-test-change PLANNED_TEST_CHANGE] [--sensitivity SENSITIVITY]
+                           [--executor-eligibility EXECUTOR_ELIGIBILITY]
+                           [--sibling-order SIBLING_ORDER]
+
+options:
+  -h, --help            show this help message and exit
+  --chunk CHUNK         Optional chunk hint under roadmap/ (e.g. phases/M1.json). If omitted or
+                        full, specy-road auto-routes to a valid chunk in the same phase (creating
+                        one if needed).
+  --id ID               Node id, e.g. M1.2.1
+  --type {vision,phase,milestone,task,gate}
+  --title TITLE
+  --parent-id PARENT_ID
+                        Parent id, or 'null' for phase roots
+  --codename CODENAME   Kebab-case codename. Optional: if omitted, it is derived from --title for
+                        every new node (collisions get a short suffix).
+  --status STATUS
+  --execution-milestone EXECUTION_MILESTONE
+  --parallel-tracks PARALLEL_TRACKS
+  --touch-zone TOUCH_ZONE
+  --dependency DEPENDENCY
+                        Node this one depends on: display id (M1.2) or node_key; stored as the
+                        node_key. Repeatable.
+  --acceptance ACCEPTANCE
+                        One acceptance criterion; repeat for each ('|' is not a separator).
+  --planned-test-change PLANNED_TEST_CHANGE
+                        One approved test removal or weakening, as `specy-road integrity` prints
+                        it (removed-test: tests/test_x.py::test_old); repeat for each.
+  --sensitivity SENSITIVITY
+                        Data-sensitivity class (default public); see roadmap/orchestration.yaml
+                        may_process
+  --executor-eligibility EXECUTOR_ELIGIBILITY
+                        any (default) or a roster class tag such as senior
+  --sibling-order SIBLING_ORDER
+                        Position among siblings (default: after the current last sibling).
+--- stderr ---

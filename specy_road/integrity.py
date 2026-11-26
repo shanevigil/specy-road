@@ -3,23 +3,25 @@
 Compares a merge base to a leaf head: removed tests, new skips, lost asserts,
 pytest-related config edits, added lint suppressions, and lines added to the
 baseline files the integration branch lists in ``policy.ratchet_paths``.
-Python per-function checks use AST over ``git show <commit>:<path>``; no
-checkout and no writes.
+A rename is followed only when the new path is still a test file: its tests
+are compared there, so a pure move is clean and a test dropped or weakened
+in the move is still reported there. A test file renamed to a non-test name
+is a removed test file, and its tests are removed tests. Python per-function
+checks use AST over ``git show <commit>:<path>``; no checkout and no writes.
 """
 
 from __future__ import annotations
 
 import ast
 import re
-import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_stdout
+from specy_road.git_subprocess import git_bytes, git_stdout
 from specy_road.orchestration_config import effective_config
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_pin import policy_source
 
 _CONFIG_NAMES = frozenset({"pytest.ini", "tox.ini", "setup.cfg"})
 # Lint and coverage suppression markers of Python, TypeScript/JavaScript and Go linters,
@@ -67,15 +69,19 @@ class Finding:
 
 
 def compare_integrity(repo_root: Path, base: str, ref: str) -> list[Finding]:
-    """Findings for ``base..ref``; sorted by their printed line."""
+    """Findings for ``base..ref``; sorted by their printed line.
+
+    A rename to another test file is compared at the new path. A rename to a
+    non-test name is reported as a removal.
+    """
     root = repo_root.resolve()
     findings: list[Finding] = []
     base_files = _tree_paths(root, base)
     ref_files = _tree_paths(root, ref)
-    findings.extend(_removed_test_files(base_files, ref_files))
-    py_paths = sorted(p for p in base_files | ref_files if _is_python_test_module(p))
-    for path in py_paths:
-        base_src = _file_at(root, base, path)
+    renamed = _renames(root, base, ref)
+    findings.extend(_removed_test_files(base_files, ref_files, renamed))
+    for path, base_path in _python_test_pairs(base_files, ref_files, renamed):
+        base_src = _file_at(root, base, base_path)
         ref_src = _file_at(root, ref, path)
         base_tests = _test_functions(base_src) if base_src is not None else {}
         ref_tests = _test_functions(ref_src) if ref_src is not None else {}
@@ -128,10 +134,62 @@ def _is_removed_test_file(path: str) -> bool:
     return name.endswith("_test.go")
 
 
-def _removed_test_files(base_files: set[str], ref_files: set[str]) -> list[Finding]:
+def _renames(root: Path, base: str, ref: str) -> dict[str, str]:
+    """``old path -> new path`` for every rename ``git diff --find-renames`` reports.
+
+    Read from the same ``--raw -z`` records as ``_changed_files``. That helper
+    still returns ``(path at ref, old blob, new blob)`` for its other callers.
+    """
+    args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", "--find-renames", base, ref]
+    fields = git_bytes(args, root).split(b"\0")
+    out: dict[str, str] = {}
+    i = 0
+    while i < len(fields) and fields[i].startswith(b":"):
+        status = fields[i][1:].split(b" ")[4]
+        width = 2 if status[:1] in (b"R", b"C") else 1
+        if status[:1] == b"R" and i + width < len(fields):
+            source, path = _utf8(fields[i + 1]), _utf8(fields[i + width])
+            if source is not None and path is not None:
+                out[source] = path
+        i += 1 + width
+    return out
+
+
+def _python_test_pairs(
+    base_files: set[str], ref_files: set[str], renamed: dict[str, str],
+) -> list[tuple[str, str]]:
+    """``(path at ref, path read at base)`` for each Python test file to compare.
+
+    A rename is followed only when the new path is still a Python test module.
+    Those tests are read at the old path and reported at the new one. A rename
+    to a non-test name is compared as a deletion at the old path.
+    """
+    followed = {
+        new: old
+        for old, new in renamed.items()
+        if _is_python_test_module(old) and _is_python_test_module(new)
+    }
+    followed_away = set(followed.values())
+    paths = {
+        p for p in base_files | ref_files
+        if _is_python_test_module(p) and p not in followed_away
+    }
+    paths.update(followed)
+    return [(path, followed.get(path, path)) for path in sorted(paths)]
+
+
+def _removed_test_files(
+    base_files: set[str], ref_files: set[str], renamed: dict[str, str],
+) -> list[Finding]:
+    """Test files present at base and gone at ref.
+
+    A rename is skipped only when the new path is still a test file.
+    """
     out: list[Finding] = []
     for path in sorted(base_files):
-        if path not in ref_files and _is_removed_test_file(path):
+        target = renamed.get(path)
+        kept = target is not None and _is_removed_test_file(target)
+        if path not in ref_files and not kept and _is_removed_test_file(path):
             out.append(Finding("removed-test-file", path))
     return out
 
@@ -182,29 +240,15 @@ def _blob_additions(root: Path, old: str | None, new: str) -> list[tuple[int, st
     every other file is still checked.
     """
     if old is not None:
-        patch = _utf8(_git_bytes(root, [*_BLOB_DIFF, old, new]))
+        patch = _utf8(git_bytes([*_BLOB_DIFF, old, new], root))
         return _hunk_additions(patch) if patch is not None else []
-    text = _utf8(_git_bytes(root, ["cat-file", "blob", new]))
+    text = _utf8(git_bytes(["cat-file", "blob", new], root))
     if text is None:
         return []
     lines = text.split("\n")
     if lines[-1] == "":
         lines.pop()
     return list(enumerate(lines, 1))
-
-
-def _git_bytes(root: Path, args: list[str]) -> bytes:
-    """``git <args>`` raw stdout; empty on failure.
-
-    Spawned here, not through :mod:`specy_road.git_subprocess`, because that decodes the
-    whole output strictly: one non-UTF-8 file name would hide every other path. Callers
-    decode each name or file's diff on its own.
-    """
-    try:
-        r = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
-    except (OSError, subprocess.SubprocessError):
-        return b""
-    return r.stdout if r.returncode == 0 else b""
 
 
 def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[str, str | None, str]]:
@@ -217,7 +261,7 @@ def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[
     skipped.
     """
     args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", renames, base, ref]
-    fields = _git_bytes(root, args).split(b"\0")
+    fields = git_bytes(args, root).split(b"\0")
     out: list[tuple[str, str | None, str]] = []
     i = 0
     while i < len(fields) and fields[i].startswith(b":"):

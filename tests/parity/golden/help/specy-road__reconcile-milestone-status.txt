@@ -1,0 +1,21 @@
+$ specy-road reconcile-milestone-status --help
+exit: 0
+--- stdout ---
+usage: specy-road reconcile-milestone-status [-h] [--repo-root DIR] [--apply]
+                                             [--fallback-head-delivery]
+
+Milestone delivery: default is MR-first (rollup branch merged into integration on remote-tracking
+refs). With --fallback-head-delivery, treat rollup-complete parents as delivered when git cannot
+prove merge (e.g. local-only merges). Dry-run prints planned actions unless --apply.
+
+options:
+  -h, --help            show this help message and exit
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --apply               Write chunk updates (otherwise print planned actions only).
+  --fallback-head-delivery
+                        When remote refs are missing or merge cannot be proven, still close
+                        milestones whose rollup_status is Complete (backup / integration-via-merge
+                        path).
+--- stderr ---

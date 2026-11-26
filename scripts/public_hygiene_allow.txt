@@ -1,0 +1,21 @@
+# Email addresses scripts/check_public_hygiene.py allows in tracked files and commit messages, one per line.
+# `*` matches any run of characters other than `@` and whitespace. An entry exempts only the address it
+# matches, never the rest of its line. No file or line is exempt as a whole.
+#
+# Under --promotion, a commit in the checked range may be authored or committed only by the `public:`
+# identity or a `bot:` entry. The operator sets `public:` to the public author address; while it reads
+# PUBLIC_IDENTITY_UNSET the identity check only reports.
+bot: noreply@anthropic.com
+*@users.noreply.github.com
+bot: noreply@github.com
+bot: cursoragent@cursor.com
+bot: 49699333+dependabot[bot]@users.noreply.github.com
+git@github.com
+*@specy-road.invalid
+*@example.com
+*@example.invalid
+*@e.com
+*@e.st
+security@pypi.org
+security@npmjs.com
+public: PUBLIC_IDENTITY_UNSET

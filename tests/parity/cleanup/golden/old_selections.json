@@ -1,0 +1,171 @@
+{
+  "branches prune": [
+    {
+      "action": "remove",
+      "reason": "merged into origin/dev and unclaimed",
+      "row": "complete-branch:local"
+    },
+    {
+      "action": "remove",
+      "reason": "merged into origin/dev and unclaimed",
+      "row": "complete-branch:origin"
+    },
+    {
+      "action": "remove",
+      "reason": "merged into origin/dev and unclaimed",
+      "row": "merged-branch:local"
+    },
+    {
+      "action": "remove",
+      "reason": "merged into origin/dev and unclaimed",
+      "row": "merged-branch:origin"
+    },
+    {
+      "action": "remove",
+      "reason": "merged into origin/dev and unclaimed",
+      "row": "merged-dirty-worktree:local"
+    },
+    {
+      "action": "remove",
+      "reason": "merged into origin/dev and unclaimed",
+      "row": "merged-dirty-worktree:origin"
+    }
+  ],
+  "doctor": [
+    {
+      "action": "remove",
+      "reason": "merged",
+      "row": "complete-branch:local"
+    },
+    {
+      "action": "remove",
+      "reason": "merged",
+      "row": "complete-branch:origin"
+    },
+    {
+      "action": "keep",
+      "reason": "branch feature/rm-thing live: claimed by M1.1, so --fix leaves it",
+      "row": "live-worktree"
+    },
+    {
+      "action": "remove",
+      "reason": "merged",
+      "row": "merged-branch:local"
+    },
+    {
+      "action": "remove",
+      "reason": "merged",
+      "row": "merged-branch:origin"
+    },
+    {
+      "action": "remove",
+      "reason": "branch feature/rm-merged is merged",
+      "row": "merged-clean-worktree"
+    },
+    {
+      "action": "remove",
+      "reason": "branch feature/rm-dirty is merged",
+      "row": "merged-dirty-worktree"
+    },
+    {
+      "action": "remove",
+      "reason": "merged",
+      "row": "merged-dirty-worktree:local"
+    },
+    {
+      "action": "remove",
+      "reason": "merged",
+      "row": "merged-dirty-worktree:origin"
+    },
+    {
+      "action": "remove",
+      "reason": "node M1.6: leaf Complete",
+      "row": "row-complete"
+    },
+    {
+      "action": "keep",
+      "reason": "node M1.7: feature/rm-ghost is in neither this clone nor origin (advisory: another clone's claim looks the same until it pushes its branch; confirm that clone no longer holds the claim, then specy-road registry-prune --remove ghost), so --fix leaves it",
+      "row": "row-no-branch"
+    },
+    {
+      "action": "remove",
+      "reason": "On dev: specy-road: temp stash work/ around pickup",
+      "row": "toolkit-stash"
+    },
+    {
+      "action": "remove",
+      "reason": "claim gone, not merged: 1 commit(s) origin/dev lacks",
+      "row": "unmerged-branch:local"
+    },
+    {
+      "action": "remove",
+      "reason": "claim gone, not merged: 1 commit(s) origin/dev lacks",
+      "row": "unmerged-branch:origin"
+    }
+  ],
+  "grind-session --delete-merged-branches": [
+    {
+      "action": "keep",
+      "reason": "branch_d",
+      "row": "claimed-branch:local"
+    },
+    {
+      "action": "remove",
+      "reason": "deleted",
+      "row": "complete-branch:local"
+    },
+    {
+      "action": "remove",
+      "reason": "deleted",
+      "row": "complete-branch:origin"
+    },
+    {
+      "action": "keep",
+      "reason": "branch_d",
+      "row": "merged-branch:local"
+    },
+    {
+      "action": "keep",
+      "reason": "branch_d",
+      "row": "merged-dirty-worktree:local"
+    },
+    {
+      "action": "keep",
+      "reason": "merge_base",
+      "row": "unmerged-branch:local"
+    }
+  ],
+  "registry-prune": [
+    {
+      "action": "list",
+      "reason": "no feature branch in this clone",
+      "row": "row-complete"
+    },
+    {
+      "action": "list",
+      "reason": "no feature branch in this clone",
+      "row": "row-no-branch"
+    }
+  ],
+  "worktree prune M1.1": [
+    {
+      "action": "remove",
+      "reason": "merged and holds no unsaved work",
+      "row": "live-worktree"
+    }
+  ],
+  "worktree prune M1.2": [
+    {
+      "action": "remove",
+      "reason": "merged and holds no unsaved work",
+      "row": "merged-clean-worktree"
+    }
+  ],
+  "worktree prune M1.3": [
+    {
+      "action": "keep",
+      "reason": "uncommitted or untracked: src/dirty.py",
+      "row": "merged-dirty-worktree"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/registry.schema.json",
+  "title": "specy-road in-progress registry",
+  "type": "object",
+  "required": ["version", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": ["codename", "node_id", "branch"],
+      "additionalProperties": false,
+      "properties": {
+        "codename": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "node_id": {
+          "type": "string",
+          "pattern": "^M[0-9]+(\\.[0-9]+)*$"
+        },
+        "node_key": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "Optional stable UUID mirroring the roadmap node (for tooling)."
+        },
+        "branch": { "type": "string", "pattern": "^feature/rm-[a-z0-9]+(-[a-z0-9]+)*$" },
+        "touch_zones": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional. PMs may not know touch zones at planning time; the agent prompt asks the implementer to discover them via codebase scan."
+        },
+        "started": { "type": "string", "description": "ISO 8601 date or datetime" },
+        "owner": { "type": "string" },
+        "implementation_review": {
+          "type": "string",
+          "enum": ["pending", "approved"],
+          "description": "When require_implementation_review_before_finish is set, tracks human review before finish-this-task."
+        },
+        "implementation_review_at": {
+          "type": "string",
+          "description": "ISO 8601 datetime when implementation review was approved."
+        }
+      }
+    }
+  }
+}

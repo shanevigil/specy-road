@@ -8,14 +8,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs, run_validate_raise
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.planning_artifacts import (
+from specy_road.roadmap_crud_ops import edit_node_set_pairs, run_validate_raise
+from specy_road.roadmap_load import load_roadmap
+from specy_road.planning_artifacts import (
     expected_planning_rel,
     normalize_planning_dir,
     resolve_planning_path,
 )
-from specy_road.bundled_scripts.planning_sheet_bootstrap import render_planning_sheet_template
+from specy_road.planning_sheet_bootstrap import render_planning_sheet_template
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
@@ -97,7 +97,8 @@ def _run_scaffold_folder(
     print(f"[ok] set planning_dir={result['planning_dir']!r} on {nid}")
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road planning scaffold`` parser."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "node_id",
@@ -115,7 +116,12 @@ def main() -> None:
         help="Overwrite existing feature sheet",
     )
     add_repo_root_arg(p)
-    args = p.parse_args()
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
+    args = p.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     nid = args.node_id.strip()
     by_id = {n["id"]: n for n in load_roadmap(root)["nodes"]}

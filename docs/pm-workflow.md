@@ -20,7 +20,7 @@
 - the command table, `sync` flags, terminal LLM review, copy-paste commands → "Command line: when and what to run", "Quick reference (copy-paste)"
 - runway depth, human gates, monitoring, tags, contracts → "Your role in the system", "Runway maintenance (ongoing)", "Human-gate decisions", "Monitoring execution (not approving PRs)", "Human-led vs agentic (short guide)", "Writing implementable contracts"
 
-**Related:** [`dev-workflow.md`](dev-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`pm-gui.md`](pm-gui.md), [`pm-llm-review.md`](pm-llm-review.md).
+**Related:** [`dev-workflow.md`](dev-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`pm-gui.md`](pm-gui.md), [`pm-gui.md`](pm-gui.md#llm-review) (LLM Review).
 
 This guide is for **product managers, program leads, and tech leads** who shape what gets built and in what order. You do not need to be a developer; you need a copy of the project on your machine and a way to run a few commands (or use the visual dashboard).
 
@@ -48,7 +48,7 @@ Creates starter files if they are missing. Existing files are left unchanged unl
 
 **Via Gantt PM UI:** After `specy-road gui`, open **Constitution** in the toolbar. You can edit both files and **Save both**, or use **Create starter files** if either file is missing (same behavior as the CLI scaffold).
 
-**Via IDE (optional):** Run `specyrd init …` so your editor gets slash-command stubs; the PM-oriented set includes **`specyrd-constitution`**, which points at `specy-road scaffold-constitution` and this doc. **specyrd** is not [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI — canonical artifacts remain these paths plus the roadmap/registry model ([README.md](../README.md)).
+**Via IDE (optional):** Run `specyrd init …` so your agent gets one skill per command (`.agents/skills/`); the PM-oriented set includes **`specyrd-constitution`**, which points at `specy-road scaffold-constitution` and this doc. **specyrd** is not [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI — canonical artifacts remain these paths plus the roadmap/registry model ([README.md](../README.md)).
 
 ### PM glossary (graph `type` values)
 
@@ -106,7 +106,7 @@ Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling 
 **Gates** are **PM hold points**: they document why work is paused, what clears the hold, and what was decided—see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate) for graph rules (leaf under `vision` or `phase`, list the gate’s `node_key` on a phase or ancestor’s `dependencies` to block downstream leaves until the gate is **Complete**).
 
 - **Not dev pickup** — `do-next-available-task` does not claim gates; **`roadmap/registry.yaml` must not** reference a gate’s `node_id`.
-- **Same editor as tasks** — Double-click the gate row (outline or Gantt bar) to open title + planning. **Create planning file** / `specy-road scaffold-planning` use a **gate-specific** Markdown template (why the gate exists, criteria to clear, decisions, resolution, references) instead of the full feature-sheet outline.
+- **Same editor as tasks** — Double-click the gate row (outline or Gantt bar) to open title + planning. **Create planning file** / `specy-road planning scaffold` use a **gate-specific** Markdown template (why the gate exists, criteria to clear, decisions, resolution, references) instead of the full feature-sheet outline.
 - **LLM Review** — When the selected node is a gate, the model is asked to follow the **gate** section outline (not Intent / Approach / Tasks).
 
 ### Gantt PM UI (FastAPI + React)
@@ -129,7 +129,7 @@ Steps 2–4 are new in 0.2.1. Before that the GUI read the environment variable 
 specy-road init gui --install-gui
 ```
 
-Run the same command later to **upgrade** the stack when you update the package. Without Node on `PATH`, npm is skipped and the packaged UI is still used. Use **`specy-road init gui --reinstall-gui`** if the environment looks corrupted. Equivalent manual install: `pip install --upgrade 'specy-road[gui-next]'`.
+Run the same command later to **upgrade** the stack when you update the package. Without Node on `PATH`, npm is skipped and the packaged UI is still used. Use **`specy-road init gui --reinstall-gui`** if the environment looks corrupted. Equivalent manual install: `pip install --upgrade 'specy-road[gui]'`.
 
 **Every session:**
 
@@ -139,7 +139,7 @@ specy-road gui
 
 The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:8765)**). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If **address already in use** on port 8765, stop the other process or run `specy-road gui --port 8766` and open that port in the browser.
 
-**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
+**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
 
 ### Multi-writer behavior (optimistic concurrency)
 
@@ -166,22 +166,24 @@ The PM UI does **not** take a global lock on the roadmap. Two people (or two bro
 
   This is **not** display-only elsewhere: the rollup is also what **dependency satisfaction** uses, so a phase whose leaves are all done never blocks the work downstream of it. And `specy-road finish-this-task` now closes rolled-up ancestors in the chunk file itself, so the stored value should stop lagging in the first place. If it does lag, `specy-road validate` warns and prints the `edit-node` command; `specy-road list-nodes` shows the stored `STATUS` and the computed `ROLLUP` side by side.
 
-- **Milestone rollup (`milestone_execution`)** — After **`specy-road start-milestone-session`**, the parent node carries **`milestone_execution`** in the roadmap JSON. The API wires **`rollup_status`** into the Status column for all node types (see server `load_roadmap` + `_apply_rollup_on_wire`), but **editing** the outline or statuses under an **`active`** or **`pending_mr`** milestone is **blocked** until delivery is reconciled (rollup branch merged into integration, then **`specy-road reconcile-milestone-status --apply`**, or the documented `--fallback-head-delivery` backup). See [git-workflow.md](git-workflow.md#committed-milestone-state).
+- **Milestone rollup (`milestone_execution`)** — After **`specy-road milestone start`**, the parent node carries **`milestone_execution`** in the roadmap JSON. The API wires **`rollup_status`** into the Status column for all node types (see server `load_roadmap` + `_apply_rollup_on_wire`), but **editing** the outline or statuses under an **`active`** or **`pending_mr`** milestone is **blocked** until delivery is reconciled (rollup branch merged into integration, then **`specy-road milestone status --apply`**, or the documented `--fallback-head-delivery` backup). See [git-workflow.md](git-workflow.md#branch-naming).
 - **Registry** — When a developer has claimed work, you may see **branch names** or **timestamps** on the relevant item (from `roadmap/registry.yaml`). When they finish their task, that overlay usually clears after the next refresh.
-- **Dev column** — The cell shows **who** (not the branch name): explicit **`owner`** in the registry row; else **PR/MR author** from GitHub/GitLab when configured; else the **last commit author** on the **remote-tracking** branch (`refs/remotes/<remote>/<registered-branch>`) after `git fetch`, or on a **local** branch of the same name (`refs/heads/<registered-branch>`) when the remote-tracking ref is missing; else **local `git config user.name`** only when your **current branch** matches that row’s registered branch (typical for **developers** on `feature/rm-*`, not for **PMs** who stay on the integration branch); else **—**. **Hover** the cell for the **branch name** and other registry/Git hints. See [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
-- **Git workflow status** — Next to the **settings** (gear) icon, a **read-only label** shows trunk/remote and current branch when healthy (**green**). **Red** means missing or invalid `roadmap/git-workflow.yaml`. **Yellow** means the folder is not a git clone, or the integration branch ref is not present locally yet (hover the label for details: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When **Fast-forward integration branch** is enabled and the server skips fast-forward (e.g. dirty tree), the label may show **yellow** with a short reason; **merged registry** from remote overlay can still reflect **`origin/<integration_branch>`** after `git fetch` — see [registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md). When your **current branch** matches a task’s registered feature branch **in the `roadmap/registry.yaml` present in this checkout**, that outline row gets a **green left accent** (hover the row for the exact rule).
+- **Dev column** — The cell shows **who** (not the branch name): explicit **`owner`** in the registry row; else **PR/MR author** from GitHub/GitLab when configured; else the **last commit author** on the **remote-tracking** branch (`refs/remotes/<remote>/<registered-branch>`) after `git fetch`, or on a **local** branch of the same name (`refs/heads/<registered-branch>`) when the remote-tracking ref is missing; else **local `git config user.name`** only when your **current branch** matches that row’s registered branch (typical for **developers** on `feature/rm-*`, not for **PMs** who stay on the integration branch); else **—**. **Hover** the cell for the **branch name** and other registry/Git hints.
+- **Git workflow status** — Next to the **settings** (gear) icon, a **read-only label** shows trunk/remote and current branch when healthy (**green**). **Red** means missing or invalid `roadmap/git-workflow.yaml`. **Yellow** means the folder is not a git clone, or the integration branch ref is not present locally yet (hover the label for details: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When **Fast-forward integration branch** is enabled and the server skips fast-forward (e.g. dirty tree), the label may show **yellow** with a short reason; **merged registry** from remote overlay can still reflect **`origin/<integration_branch>`** after `git fetch`. When your **current branch** matches a task’s registered feature branch **in the `roadmap/registry.yaml` present in this checkout**, that outline row gets a **green left accent** (hover the row for the exact rule).
 
 ### Monitoring in-progress work while on the integration branch
 
-The PM Gantt loads **`roadmap/registry.yaml` from the working tree** at HEAD, then (when **remote registry overlay** is active) **merges** rows from **`refs/remotes/<remote>/<integration_branch>`** and from remote-tracking **`feature/rm-*`** refs so you can stay on **`dev`** / **`main`** and still see in-flight claims. **Roadmap nodes** (the chart/outline) still come from merged JSON at **HEAD**; overlay updates **registry-driven** fields (claims, Dev, locks). The recommended **`do-next-available-task`** path **registers one actionable leaf on the integration branch first** (then branches); after **`git pull`**, HEAD’s file usually **already lists** in-progress rows. **Overlay** still fills gaps when local `registry.yaml` is behind **`origin/<integration_branch>`** or when registration exists only on feature-only commits (see [registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md)).
+The PM Gantt loads **`roadmap/registry.yaml` from the working tree** at HEAD, then (when **remote registry overlay** is active) **merges** rows from **`refs/remotes/<remote>/<integration_branch>`** and from remote-tracking **`feature/rm-*`** refs so you can stay on **`dev`** / **`main`** and still see in-flight claims. **Roadmap nodes** (the chart/outline) still come from merged JSON at **HEAD**; overlay updates **registry-driven** fields (claims, Dev, locks). The recommended **`do-next-available-task`** path **registers one actionable leaf on the integration branch first** (then branches); after **`git pull`**, HEAD’s file usually **already lists** in-progress rows. **Overlay** still fills gaps when local `registry.yaml` is behind **`origin/<integration_branch>`** or when registration exists only on feature-only commits.
 
-**Primary path:** configure **Git remote** in **Settings**, run **Test Git**, and keep **“Merge registry from remote feature branches”** enabled (default **on** for new GUI profiles). Ensure **`git fetch`** runs (automatically on a cooldown while overlay is active, or manually) so **`refs/remotes/<remote>/<integration_branch>`** and **`refs/remotes/<remote>/feature/rm-*`** exist. HEAD entries win on duplicate **`node_id`**; remote rows fill gaps in integration-then-feature order. See [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md).
+**Primary path:** configure **Git remote** in **Settings**, run **Test Git**, and keep **“Merge registry from remote feature branches”** enabled (default **on** for new GUI profiles). Ensure **`git fetch`** runs (automatically on a cooldown while overlay is active, or manually) so **`refs/remotes/<remote>/<integration_branch>`** and **`refs/remotes/<remote>/feature/rm-*`** exist. HEAD entries win on duplicate **`node_id`**; remote rows fill gaps in integration-then-feature order.
 
-The outline **green left accent** compares **`git branch --show-current`** to each row’s registered **`branch`**. PMs on the integration branch usually **do not** get that accent for someone else’s feature branch; use **status colors**, **Dev column**, and **MR** hints instead — see [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+The outline **green left accent** compares **`git branch --show-current`** to each row’s registered **`branch`**. PMs on the integration branch usually **do not** get that accent for someone else’s feature branch; use **status colors**, **Dev column**, and **MR** hints instead.
 
 **Optional:** check out **`feature/rm-*`**, use a **second worktree**, or open another clone if you need the literal on-disk files for that branch.
 
-See [git-workflow.md](git-workflow.md) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+**Reading the orchestration view.** A badge on a leaf's outline row says where it stands, most pressing first: `blocked` (a reviewer or the executor blocked it), `held` (on the hold list or behind an open gate), `exited_failed` or `stalled` (a worker needs a look), `running`, `READY awaiting review`, `approved`, `claimed`. Hover for the claim, workers, READY, reviews and holds; click to open the **Orchestration** drawer on that leaf, where **Detail** shows its worktrees (dirty, ahead / behind), the hand-off commit, each review's verdict and whether it is still fresh for HEAD, and the gate. `unknown` means the server could not read that source; **—** means there is nothing to show. The view only reads: to act, use its copy buttons and run the command in a terminal. Run the GUI from the main checkout, since workers and reviews live in that checkout's `work/` ([Which checkout to run the GUI from](#which-checkout-to-run-the-gui-from)); details in [pm-gui.md](pm-gui.md).
+
+See [git-workflow.md](git-workflow.md).
 
 ### Pick an item
 
@@ -192,7 +194,7 @@ See [git-workflow.md](git-workflow.md) and [design-notes/pm-gantt-registry-check
 
 - Use the sidebar **“Auto-refresh seconds”** slider. Set it above zero so the app checks for file changes on a timer (for example every 30 seconds).
 - Saving roadmap files on disk (by you or by tooling) updates what the app reads on the next load or refresh.
-- **Optional:** enable **“Fast-forward integration branch”** in **Settings** (under **This repository**) so that, while you are checked out on the integration branch from `roadmap/git-workflow.yaml` with a **clean** working tree, the server periodically runs **`git fetch`** and **`git merge --ff-only`** (throttled; same default cadence as registry fetch unless you override `SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S`). That keeps on-disk roadmap JSON aligned with the remote trunk without relying on `git fetch` alone (which does not update `HEAD`). See [design-notes/pm-gui-integration-branch-auto-ff.md](design-notes/pm-gui-integration-branch-auto-ff.md).
+- **Optional:** enable **“Fast-forward integration branch”** in **Settings** (under **This repository**) so that, while you are checked out on the integration branch from `roadmap/git-workflow.yaml` with a **clean** working tree, the server periodically runs **`git fetch`** and **`git merge --ff-only`** (throttled; same default cadence as registry fetch unless you override `SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S`). That keeps on-disk roadmap JSON aligned with the remote trunk without relying on `git fetch` alone (which does not update `HEAD`).
 
 ### Change status from the dashboard
 
@@ -204,7 +206,21 @@ In the detail panel, choose a **status** from the dropdown and click **Save stat
 
 Configure credentials in **Settings** (gear area in the sidebar) under the **LLM** tab, or set the same **environment variables** your team documents (see below). Use **Test LLM** before relying on it.
 
-For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-llm-review.md](pm-llm-review.md)**.
+For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-gui.md](pm-gui.md#llm-review)**.
+
+## Which checkout to run the GUI from
+
+The dashboard shows the clone its server runs in, and nothing else: it reads that checkout's files, plus remote-tracking refs for the registry overlay.
+
+- **A PM** runs the GUI from a dedicated clean clone on the integration branch, with **Merge registry from remote feature branches** on (Settings), and does no development in it. Claims made on other machines then show through the overlay after each fetch, and a stray local branch or edit never colours what the PM sees.
+- **An operator** runs it from the main checkout on the integration branch, not from a feature worktree: workers, reviews and presence records live under that checkout's `work/`. For a look from a feature worktree, use `specy-road gui --read-only`.
+
+| Such a checkout shows | It cannot show |
+| --- | --- |
+| The roadmap graph at its HEAD | Workers started from another clone (`work/.workers/` is per clone) |
+| Claims: `roadmap/registry.yaml` at HEAD, plus remote rows through the overlay | Reviews in progress elsewhere (`work/reviews/` is per clone) |
+| The decisions ledger, `roadmap/decisions.yaml` (and this clone's `decisions.local.yaml`) | Other clones' presence sessions (`work/.sessions/`) |
+| The grind status (**Status**), computed for this checkout | Operator markers (`OPERATOR-<commit>.yaml` under another clone's `work/reviews/`) |
 
 ## Optional dashboard settings (sidebar → Settings)
 
@@ -218,7 +234,7 @@ The file is a **versioned** JSON document: optional **global** LLM defaults, opt
 In **Settings**, use **This repository** toggles:
 
 - **Use global LLM settings for this repository** — when **on**, LLM fields you edit are saved as **global** defaults shared by any checkout that keeps this toggle on. When **off**, the LLM form is **empty for this repository** until you enter values; those values are stored **only** for this resolved root (not global).
-- **Use global PM GUI options for this repository** — when off, **Merge registry from remote feature branches** and **Fast-forward integration branch** are stored per checkout (see [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md) and [design-notes/pm-gui-integration-branch-auto-ff.md](design-notes/pm-gui-integration-branch-auto-ff.md)).
+- **Use global PM GUI options for this repository** — when off, **Merge registry from remote feature branches** and **Fast-forward integration branch** are stored per checkout.
 
 **Which tree am I editing?** The dashboard does **not** follow “the folder open in the IDE.” It uses the same **resolved project root** as the CLI, in this order: **`specy-road gui --repo-root DIR`**, else **`SPECY_ROAD_REPO_ROOT`**, else the root recorded in **`.specyrd/manifest.json`**, else discovery from the shell’s current directory (`roadmap/manifest.json` upward), else the git worktree root, else the working directory. In **Settings**, the line **Open repository:** shows the absolute path for the running server. If that path is not the checkout you meant (for example you wanted a nested `playground/` consumer tree but started the GUI from the parent clone), stop the server and relaunch with **`--repo-root`** or **`cd`** into the intended directory first.
 
@@ -263,14 +279,14 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road archive M0.1`                          | Move a **Complete** subtree out of the live roadmap into `roadmap/archive/`, reversibly. See [Archiving](archiving.md).                     |
 | `specy-road history M0.1`                          | How a node got here: status changes, dependency edges, renumbering, archived work. Derived from git. See [Roadmap history](roadmap-history.md). |
 | `specy-road list-archives`                         | What is archived. `show-archive <ID>` for detail, `restore-archive <ID>` to bring it back.                                                  |
-| `specy-road archive-node M0.1.1 --hard-remove`    | **Destructive**, and unrelated to `archive` above: removes the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema). |
+| `specy-road archive --hard-remove M0.1.1`    | **Destructive**, and unrelated to `archive` above: removes the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema). |
 | `specy-road list-dependencies M0.1.1`            | Print this node’s **explicit** `dependencies` as **node_key** values (with id/title); same field the PM GUI edits.                         |
 | `specy-road set-dependencies M0.1.1 --clear`      | Clear explicit dependencies on that node (runs validate after save).                                                                       |
 | `specy-road set-dependencies M0.1.1 --deps "…"`   | Replace explicit dependencies with a space/comma-separated list of **node_key** strings (same rules as `edit-node … dependencies=…`).       |
 | `specy-road add-dependency M0.1.1 <NODE_KEY>`     | Append one **node_key** dependency if it is not already listed.                                                                            |
 | `specy-road remove-dependency M0.1.1 <NODE_KEY>`  | Remove one **node_key** dependency if present.                                                                                               |
 | `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks). The brief carries `## 6. Dependency context (intent of upstream work)` with each effective dep's `## Intent` block — review it before authoring the planning sheet so you don't restate dep prose. |
-| `specy-road refresh-stubs --diff`                  | Preview a stub refresh after upgrading: a unified diff of every stub, skill, `.specyrd/README.md`, managed block (`AGENTS.md`, `CLAUDE.md`, `.gitignore`, `.cursorindexingignore`) and `.specyrd/AGENTS*.md` file it would change. Writes nothing (implies `--dry-run`). See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade). |
+| `specy-road upgrade --only stubs --diff`           | Preview a stub refresh after upgrading: a unified diff of every stub, skill, `.specyrd/README.md`, managed block (`AGENTS.md`, `CLAUDE.md`, `.gitignore`, `.cursorindexingignore`) and `.specyrd/AGENTS*.md` file it would change. Writes nothing (implies `--dry-run`). See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade). |
 
 **Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.
 

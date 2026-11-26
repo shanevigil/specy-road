@@ -5,8 +5,13 @@ The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
 that branch (local, remote-tracking, and on the remote itself, wherever each
 exists) are merged into the remote's actual integration tip, and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
-that could be its own (see below). Ignored files are deleted
-with it, so they are listed first.
+that could be its own (see below). The cleanup planner's live rule must not hold it
+either (:func:`specy_road.cleanup_plan.held_branches`, the rule ``doctor --prune``
+reads): no open claim or rollup on its branch, no worker or session on that branch
+or in it. Claims and rollups are read at the integration commit the remote has now,
+the one the merged check reads, never at a remote-tracking ref, which may be stale
+or outside the fetch refspec. Ignored files are deleted with it, so they are
+listed first.
 
 Each ``nested_repos`` repository inside the worktree is checked too. A linked
 worktree of the main checkout's copy shares its branches and stash, so only a
@@ -41,30 +46,26 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specy_road.bundled_scripts.grind_session_cleanup import merged_into
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.cleanup_plan import held_branches
+from specy_road.errors import SpecyError, inherited_init
+from specy_road.merged_branch import merged_into
+from specy_road.roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     load_git_workflow_config,
     resolve_integration_defaults,
 )
+from specy_road.git_subprocess import git_out, is_worktree_root, run_bytes
 from specy_road.nested_repos import nested_repos
 from specy_road.review_files import reviews_root
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_state import list_records
-from specy_road.worktree_delete_set import (
-    cmd,
-    common_dir,
-    deletions,
-    foreign_refusal,
-    git_out,
-    git_run,
-    is_repo_top,
-    walk_foreign,
-)
+from specy_road.orchestration.workers.worker_state import list_records
+from specy_road.worktree_delete_set import cmd, common_dir, deletions, foreign_refusal, walk_foreign
 
 
-class PruneError(RuntimeError):
+class PruneError(SpecyError, RuntimeError):
     """The leaf or its worktree cannot be found."""
+
+    __init__ = inherited_init
 
 
 @dataclass
@@ -86,7 +87,7 @@ def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
         raise PruneError(f"no roadmap node {node_id!r} with a codename")
     main = reviews_root(root).parent.parent
     wt = main / "work" / ".worktrees" / node["codename"]
-    if not is_repo_top(wt) or common_dir(wt) != common_dir(main):
+    if not is_worktree_root(wt) or common_dir(wt) != common_dir(main):
         raise PruneError(f"{wt} is not a worktree of this repository; nothing to prune")
     return main, wt, f"feature/rm-{node['codename']}"
 
@@ -98,11 +99,11 @@ def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] 
     # path as the next field. --untracked-files=all names each file inside an untracked or ignored
     # directory, so the list says exactly what removal deletes. Foreign repositories are not found from
     # this list (a clean tracked one is not in it): see walk_foreign.
-    code, out, _msg = git_run(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
-    if code:
+    r = run_bytes(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
+    if not r.ok:
         return None
     changed, ignored = [], []
-    fields = iter(os.fsdecode(f) for f in out.split(b"\0"))
+    fields = iter(os.fsdecode(f) for f in r.out.split(b"\0"))
     for rec in fields:
         if not rec:
             continue
@@ -157,7 +158,7 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
     leaf_root = plan.worktree / prefix
     for nr in nested_repos(main):
         d, src = leaf_root / nr.path, main / nr.path
-        if not is_repo_top(d):
+        if not is_worktree_root(d):
             continue
         linked = common_dir(d) == common_dir(src)
         plan.nested.append((src, d, linked))
@@ -190,20 +191,28 @@ def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[st
     the remote, or any of those commits, cannot be read.
     """
     want = {f"refs/heads/{b}": b for b in branches}
-    code, out, msg = git_run(["ls-remote", remote, *want], main)
-    if code:
-        return {}, f"cannot read {remote} ({shlex.join(['git', 'ls-remote', remote])}: {msg})"
-    lines = os.fsdecode(out).split("\n")
+    listed = run_bytes(["ls-remote", remote, *want], main)
+    if not listed.ok:
+        return {}, f"cannot read {remote} ({shlex.join(['git', 'ls-remote', remote])}: {listed.message})"
+    lines = os.fsdecode(listed.out).split("\n")
     tips = {want[ref]: sha for sha, _, ref in (line.partition("\t") for line in lines) if ref in want}
     if tips:
-        code, _out_b, msg = git_run(["fetch", "--no-tags", "--no-write-fetch-head", remote,
-                                  *(f"refs/heads/{b}" for b in tips)], main)
-        if code:
-            return {}, f"cannot fetch {', '.join(tips)} from {remote}: {msg}"
-    missing = [b for b, sha in tips.items() if git_run(["cat-file", "-e", f"{sha}^{{commit}}"], main)[0]]
+        fetched = run_bytes(["fetch", "--no-tags", "--no-write-fetch-head", remote,
+                             *(f"refs/heads/{b}" for b in tips)], main)
+        if not fetched.ok:
+            return {}, f"cannot fetch {', '.join(tips)} from {remote}: {fetched.message}"
+    missing = [b for b, sha in tips.items() if not run_bytes(["cat-file", "-e", f"{sha}^{{commit}}"], main).ok]
     if missing:
         return {}, f"the commits {remote} has at {', '.join(missing)} are not here after fetching them"
     return tips, None
+
+
+def _live_refusals(main: Path, target: str, branch: str, wt: Path) -> list[str]:
+    """The planner's live reason for the leaf's branch or worktree, as a refusal (none when not
+    live), judged at ``target``: the integration commit just read from the remote."""
+    by_branch, by_path = held_branches(main, target)
+    live = by_branch.get(branch) or by_path.get(str(wt.resolve()))
+    return [f"{branch} {live[1]}; finish or release it first"] if live else []
 
 
 def plan_prune(root: Path, node_id: str) -> PrunePlan:
@@ -227,6 +236,8 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals.append(f"{remote} has no {base} to judge merged against")
     else:
         target = f"{remote}'s {base} ({tips[base][:12]})"
+        # the fetched tip, not a remote-tracking ref that may be stale
+        plan.refusals += _live_refusals(main, tips[base], branch, wt)
         # Every leaf ref that exists, local, remote-tracking and on the remote: any may hold work the
         # others lack, and with none (the branch deleted after landing) the worktree's HEAD alone is checked.
         heads = [("the worktree's HEAD", git_out(["rev-parse", "HEAD"], wt) or "HEAD")]
@@ -277,9 +288,9 @@ def remove(plan: PrunePlan) -> str | None:
     for step in steps:
         if step.owner:
             argv = ["worktree", "remove", "--force", str(step.path)]
-            code, _o, msg = git_run(argv, step.owner)
-            if code:
-                return f"{cmd('git', '-C', step.owner, *argv)} failed: {msg}"
+            r = run_bytes(argv, step.owner)
+            if not r.ok:
+                return f"{cmd('git', '-C', step.owner, *argv)} failed: {r.message}"
         else:
             try:
                 shutil.rmtree(step.path)

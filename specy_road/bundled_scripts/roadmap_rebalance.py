@@ -35,7 +35,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
-from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
+from specy_road.roadmap_chunk_router_pick import (
     all_chunks_in_manifest_order,
     chunk_max_lines,
     load_merged_nodes,
@@ -43,14 +43,14 @@ from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
     simulate_chunk_lines,
     strip_partN_suffix,
 )
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     build_node_chunk_map,
     load_chunk_nodes,
     load_manifest_mapping,
     render_json_chunk,
     roadmap_dir,
 )
-from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
+from specy_road.roadmap_layout import ordered_tree_rows
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
@@ -296,7 +296,8 @@ def _run_normalize(root: Path, dry_run: bool) -> None:
     print("\nrebalance-chunks --normalize: applied; specy-road validate passed.")
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road rebalance-chunks`` parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     add_repo_root_arg(parser)
     parser.add_argument(
@@ -312,6 +313,11 @@ def main(argv: list[str] | None = None) -> None:
             "or touching the manifest; a no-op on already-canonical chunks."
         ),
     )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = build_parser()
     args = parser.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     # Refuse to rebalance while any milestone is in-flight: rebalance
@@ -323,7 +329,7 @@ def main(argv: list[str] | None = None) -> None:
     # to close the milestone (specy-road reconcile-milestone-status
     # --apply) first.
     from specy_road.milestone_lock import milestone_lock_parent_ids
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     nodes = load_roadmap(root)["nodes"]
     locked_parents = milestone_lock_parent_ids(nodes)

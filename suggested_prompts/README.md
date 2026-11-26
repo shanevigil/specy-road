@@ -20,12 +20,24 @@ real formats. Run them in this order:
    / evidence brainstorm with `specy-road brainstorm` and promotes what survives
    into the graph. Use any time after the roadmap exists.
 
+Paths in the prompts (`roadmap/`, `constitution/`, `planning/`) are relative to
+the project root. In the embedded layout that is the git root. In the nested
+layout (the tree under `sr/`) it is the directory `.specyrd/manifest.json`
+records as `project_root`. Run `specy-road` and `specyrd` from the git root; the
+CLI resolves a nested project root. `specy-road init project` ships
+`docs/supply-chain-security.md` and `docs/model-profiles-research-notes.md` only.
+Every other `docs/` file these prompts name, including
+[`docs/orchestration.md`](../docs/orchestration.md), is in the toolkit
+repository, https://github.com/shanevigil/specy-road/tree/main/docs .
+`specy-road upgrade` copies a `docs/` file only when `.specyrd/AGENTS.md`'s load
+order names it and the repo lacks it.
+
 ## Generic review, cleanup, security and audit passes
 
 specy-road does not ship prompts for these. Your coding harness already has
 built-in skills for code review, simplification, security review and similar
 passes (for example Claude Code's review and security-review commands, or the
 Cursor and Codex equivalents); use those. What specy-road owns is the
-roadmap-specific review contract — `specy-road review-packet`,
+roadmap-specific review contract — `specy-road review packet`,
 `specy-road review record`, and the review gate — documented in
 [`docs/orchestration.md`](../docs/orchestration.md).

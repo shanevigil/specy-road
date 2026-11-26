@@ -1,0 +1,21 @@
+$ specy-road why-blocked --help
+exit: 0
+--- stdout ---
+usage: specy-road why-blocked [-h] [--json] [--repo-root DIR] NODE_ID
+
+Why a node cannot be picked up: the transitive chain of unmet dependencies, an open gate, an
+existing claim, or a missing codename. For a pickable leaf, also whether grind-session --plan
+holds it behind another leaf that shares a touch zone, and that pickup does not honour that hold.
+Exits 1 when the node really is blocked or gated, 0 when it is pickable (held or not) or already
+closed, 2 when the id does not exist.
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help       show this help message and exit
+  --json           Machine-readable output.
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

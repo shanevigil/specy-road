@@ -1,0 +1,19 @@
+$ specy-road why-blocked M2.2 --repo-root <B>
+exit: 0
+--- stdout ---
+M2.2 — Node M2.2
+
+M2.2 is Complete; there is nothing to pick up.
+--- stderr ---
+
+$ specy-road list-gates --repo-root <B>
+exit: 0
+--- stdout ---
+No open gates.
+--- stderr ---
+
+$ specy-road list-gates
+exit: 0
+--- stdout ---
+No open gates.
+--- stderr ---

@@ -1,0 +1,16 @@
+$ specy-road models --help
+exit: 0
+--- stdout ---
+usage: specy-road models [-h] {list,show,stale,roster} ...
+
+positional arguments:
+  {list,show,stale,roster}
+    list                The roster with each model's profile, role scores, and staleness
+    show                One model's profile: machine fields plus a body section
+    stale               Profiles whose research is old, superseded, or alias-moved; exit 1 if any
+                        is rostered
+    roster              Roster entries from the shipped profiles, in the form validate accepts
+
+options:
+  -h, --help            show this help message and exit
+--- stderr ---

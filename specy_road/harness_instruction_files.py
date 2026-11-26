@@ -4,7 +4,7 @@ Split from :mod:`specy_road.agents_md_block`, which measures and reports what
 these walkers find. Sources: code.claude.com/docs/en/memory,
 developers.openai.com/codex/guides/agents-md, the Cursor CLI changelog
 (2026.10.22) and the Copilot CLI release notes (1.0.100), as summarised in
-docs/design-notes/harness-compatibility-triage.md and the 2026-11-02
+the harness compatibility triage and the 2026-11-02
 harness-capabilities research.
 """
 
@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 from specy_road.agent_guide_block import AGENT_GUIDE
-from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
+from specy_road.planning_artifacts import split_frontmatter
 from specy_road.claude_config import claude_config_dir, claude_projects_dir
 from specy_road.git_subprocess import git_stdout, git_text
 

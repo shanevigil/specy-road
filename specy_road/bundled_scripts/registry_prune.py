@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Report registry claims with no branch in this clone, and remove named ones.
 
+Deprecated alias (``specy-road`` prints the line naming ``doctor --prune --kind
+registry``): the planner lists the same rows and removes a Complete leaf's row
+itself; it calls this module's ``--remove`` to do it, without the deprecation line.
+
 ``abort-task-pickup`` is the right tool while you still hold the branch: it
 knows the node, deletes the branch and cleans ``work/``. It cannot help once
 the branch is gone — it refuses to run anywhere but ``feature/rm-*`` — and the
@@ -21,16 +25,17 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
-from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch
+from specy_road.repo_ops import sync_integration_branch
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.git_subprocess import local_branch_exists
+from specy_road.git_subprocess import git_run, local_branch_exists
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.repo_lock import pickup_finish_lock
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
-def _report(root: Path, reg: dict, remote: str, base: str) -> int:
+def report(root: Path, reg: dict, remote: str, base: str) -> int:
     """List rows whose branch this clone cannot see. Exit 1 when any exist."""
     stale = detect_stale_claims(repo_root=root, reg=reg, remote=remote)
     total = len(reg.get("entries") or [])
@@ -62,7 +67,7 @@ def _report(root: Path, reg: dict, remote: str, base: str) -> int:
     return 1
 
 
-def _resolve_removals(root: Path, reg: dict, codenames: list[str]) -> list[dict]:
+def resolve_removals(root: Path, reg: dict, codenames: list[str]) -> list[dict]:
     """The rows to drop, or exit with the reason a named codename cannot go."""
     by_codename = {
         e.get("codename"): e for e in reg.get("entries") or [] if isinstance(e, dict)
@@ -91,7 +96,7 @@ def _resolve_removals(root: Path, reg: dict, codenames: list[str]) -> list[dict]
     return rows
 
 
-def _remove_and_push(
+def remove_and_push(
     root: Path, reg: dict, rows: list[dict], remote: str, base: str
 ) -> int:
     """Drop the rows, commit on the integration branch, push. Never silent."""
@@ -116,13 +121,16 @@ def _remove_and_push(
     return 0
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road registry-prune`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road registry-prune",
         description=(
-            "Report registry claims whose feature/rm-* branch is missing from "
-            "this clone, and remove ones you name. Removal commits on the "
-            "integration branch and pushes it."
+            "Deprecated: use specy-road doctor --prune --kind registry (this "
+            "alias is removed in the release after 0.3.1). Report registry "
+            "claims whose feature/rm-* branch is missing from this clone, and "
+            "remove ones you name. Removal commits on the integration branch "
+            "and pushes it."
         ),
     )
     add_repo_root_arg(p)
@@ -137,23 +145,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "still exists here — use abort-task-pickup for that."
         ),
     )
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
-        help="Integration branch (default: roadmap/git-workflow.yaml, else main).",
-    )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
-        help="Git remote (default: roadmap/git-workflow.yaml, else origin).",
-    )
-    return p.parse_args(argv)
+    add_base_arg(p)
+    add_remote_arg(p)
+    return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
     base, remote, gw_warns = resolve_integration_defaults(
         root,
@@ -165,7 +163,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if not args.remove:
         # Report against local state: read-only, and useful with no network.
-        raise SystemExit(_report(root, read_registry(registry_path(root)), remote, base))
+        raise SystemExit(report(root, read_registry(registry_path(root)), remote, base))
 
     # It checks out and commits on the integration branch: not while a pickup, finish or abort does too.
     with pickup_finish_lock(root, operation="registry-prune"):
@@ -179,8 +177,8 @@ def main(argv: list[str] | None = None) -> None:
             ),
         )
         reg = read_registry(registry_path(root))
-        rows = _resolve_removals(root, reg, args.remove)
-        code = _remove_and_push(root, reg, rows, remote, base)
+        rows = resolve_removals(root, reg, args.remove)
+        code = remove_and_push(root, reg, rows, remote, base)
     raise SystemExit(code)
 
 

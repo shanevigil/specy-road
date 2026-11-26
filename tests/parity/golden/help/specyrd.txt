@@ -1,0 +1,17 @@
+$ specyrd --help
+exit: 0
+--- stdout ---
+usage: specyrd [-h] [--version] {init} ...
+
+Optional installer for IDE slash-command stubs that delegate to specy-road (and bundled roadmap
+scripts under specy_road/bundled_scripts/). Does not replace core validation or briefs.
+
+positional arguments:
+  {init}
+    init         Bootstrap or augment a repo with thin command markdown (not the Spec Kit
+                 'specify' CLI).
+
+options:
+  -h, --help     show this help message and exit
+  --version, -V  show program's version number and exit
+--- stderr ---

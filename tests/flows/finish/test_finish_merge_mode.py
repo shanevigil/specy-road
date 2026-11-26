@@ -1,0 +1,172 @@
+"""F-012: --on-complete merge actually merges, errors clearly when it can't."""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+from pathlib import Path
+
+from specy_road.finish_land_integration import (
+    integration_branch_present,
+    land_merge_feature_into_integration,
+    print_merge_push_notice,
+)
+from tests.helpers import REPO
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.same.commit_553cf5f7a1bf import commit
+from tests.support.same.git_df16ee62bf81 import git as git_cmd
+from tests.support.extracted.finish_merge_mode import bootstrap, merge_mode_finish_repo
+import pytest
+from tests.support.cli import run_cli
+
+BR = "feature/rm-x"
+
+
+
+
+
+
+
+
+def test_land_merge_succeeds_when_integration_branch_is_master(tmp_path: Path) -> None:
+    repo, _bare = bootstrap(tmp_path)
+    ok, err = land_merge_feature_into_integration(
+        repo,
+        remote="origin",
+        integration_branch="master",
+        feature_branch="feature/rm-x",
+    )
+    assert ok, err
+
+
+def test_land_merge_returns_clear_error_when_integration_branch_missing(
+    tmp_path: Path,
+) -> None:
+    """F-012: misconfigured integration_branch should fail loudly, not silently fall through."""
+    repo, _bare = bootstrap(tmp_path)
+    # Real branch is master; misconfigure as 'main' which doesn't exist.
+    ok, err = land_merge_feature_into_integration(
+        repo,
+        remote="origin",
+        integration_branch="main",
+        feature_branch="feature/rm-x",
+    )
+    assert ok is False
+    assert "integration branch 'main' does not exist" in err
+    assert "roadmap/git-workflow.yaml" in err
+
+
+def test_integration_branch_present_finds_local_branch(tmp_path: Path) -> None:
+    repo, _bare = bootstrap(tmp_path)
+    ok, where = integration_branch_present(repo, "origin", "master")
+    assert ok
+    assert where == "refs/heads/master"
+    ok2, _ = integration_branch_present(repo, "origin", "main")
+    assert ok2 is False
+
+
+
+
+def _finish_cli(repo: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO)
+    return run_cli(["finish-this-task", "--repo-root", str(repo), *extra], cwd=repo, env=env)
+
+
+def _push_disclosure(out: str, feature_branch: str) -> tuple[int, int]:
+    quoted = re.escape(repr(feature_branch))
+    m = re.search(
+        rf"The push will carry (\d+) commits? \((\d+) not from {quoted}\)",
+        out,
+    )
+    assert m is not None, out
+    return int(m.group(1)), int(m.group(2))
+
+
+def test_merge_push_disclosure_counts_when_local_integration_branch_is_absent(
+    tmp_path: Path, capsys,
+) -> None:
+    """A1: still disclose when ``refs/heads/<integration>`` is missing (tracking ref after fetch)."""
+    repo, _bare = bootstrap(tmp_path)
+    git_cmd(repo, "checkout", "-q", "master")
+    git_cmd(repo, "update-ref", "-d", "refs/heads/master")
+    git_cmd(repo, "update-ref", "-d", "refs/remotes/origin/master")
+    print_merge_push_notice(
+        repo, remote="origin", integration_branch="master", feature_branch=BR,
+    )
+    total, not_from = _push_disclosure(capsys.readouterr().out, BR)
+    assert (total, not_from) == (2, 0)
+
+
+def test_merge_push_disclosure_counts_when_tracking_ref_is_absent(
+    tmp_path: Path, capsys,
+) -> None:
+    """A1: still disclose when ``refs/remotes/<remote>/<integration>`` is absent."""
+    repo, _bare = bootstrap(tmp_path)
+    git_cmd(repo, "checkout", "-q", "master")
+    git_cmd(repo, "commit", "--allow-empty", "-qm", "only local integration")
+    git_cmd(repo, "remote", "remove", "origin")
+    git_cmd(repo, "update-ref", "-d", "refs/remotes/origin/master")
+    print_merge_push_notice(
+        repo, remote="origin", integration_branch="master", feature_branch=BR,
+    )
+    total, not_from = _push_disclosure(capsys.readouterr().out, BR)
+    assert (total, not_from) == (4, 1)
+
+
+@pytest.mark.slow
+def test_finish_merge_prints_push_disclosure_for_unrelated_dev_commit(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    repo, bare = merge_mode_finish_repo(tmp_path, monkeypatch)
+    git(repo, "checkout", "-q", "dev")
+    base = git(repo, "rev-parse", "HEAD")
+    git(repo, "commit", "--allow-empty", "-qm", "unrelated on dev")
+    git(repo, "update-ref", "refs/remotes/origin/dev", base)
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    before = git(bare, "rev-parse", "dev")
+    result = _finish_cli(repo)
+    assert result.returncode == 0, result.stderr
+    total, not_from = _push_disclosure(result.stdout, "feature/rm-thing")
+    added = int(git(bare, "rev-list", "--count", f"{before}..dev"))
+    assert total == added
+    assert not_from == 1
+    assert "[ok] merged feature/rm-thing into dev and pushed to origin" in result.stdout
+    assert result.stdout.rstrip().endswith(
+        "[ok] this checkout is still on feature/rm-thing (landed into dev); next: git switch dev"
+    )
+
+
+@pytest.mark.slow
+def test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """``--delete-branch`` leaves the checkout on the integration branch, so the line is absent."""
+    repo, _bare = merge_mode_finish_repo(tmp_path, monkeypatch)
+    result = _finish_cli(repo, "--delete-branch")
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "this checkout is still on" not in result.stdout
+
+
+
+# Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
+
+def test_finish_help_and_merge_notice(tmp_path: Path, capsys) -> None:
+    result = run_cli(["finish-this-task", "--help"])
+    result.check_returncode()
+    help_text = result.stdout
+    assert "merge lands on the integration branch and pushes it" in help_text
+    assert "--push only pushes the feature branch" in help_text
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    base = git(repo, "rev-parse", "HEAD")
+    git(repo, "commit", "--allow-empty", "-qm", "extra on dev")
+    git(repo, "update-ref", "refs/remotes/origin/dev", base)
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    print_merge_push_notice(
+        repo, remote="origin", integration_branch="dev", feature_branch="feature/rm-thing",
+    )
+    out = capsys.readouterr().out
+    assert "will merge 'feature/rm-thing' into 'dev' and push origin/dev" in out
+    assert "The push will carry 4 commits (1 not from 'feature/rm-thing')." in out

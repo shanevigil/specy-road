@@ -33,8 +33,8 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from specy_road.runtime_paths import specy_road_package_dir
-from specy_road.worker_adapter_base import Adapter
-from specy_road.worker_adapter_parsers import loads_untrusted
+from specy_road.orchestration.workers.worker_adapter_base import Adapter
+from specy_road.orchestration.workers.worker_adapter_parsers import loads_untrusted
 
 #: Record fields ``review record`` writes itself; a reviewer's output never carries them.
 FILLED_BY_SPECY_ROAD = ("family", "independence", "notes_sha256", "signature", "launch_mode", "sibling_heads",

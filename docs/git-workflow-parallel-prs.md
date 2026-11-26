@@ -21,7 +21,8 @@ specy-road reconcile-branch [NODE_ID]   # optional: --base BRANCH --remote NAME
 It fetches the integration branch and merges it into the feature branch with
 the same rule finish uses: the registry is the integration branch's registry,
 minus this leaf's row once the leaf has finished (a branch that still holds its
-claim keeps the row), and the two generated files are rendered again from the
+claim keeps the row; a row the integration ref lacks is copied from this branch),
+and the two generated files are rendered again from the
 merged graph. It commits the merge and pushes the branch when it has an
 upstream, so the PR updates and merges cleanly. With `NODE_ID`, it refuses
 unless `HEAD` is that leaf's branch.

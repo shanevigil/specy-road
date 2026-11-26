@@ -133,11 +133,47 @@ jobs:
         run: python scripts/check_release_version.py "${{ needs.resolve.outputs.tag }}"
       - name: Build sdist + wheel
         run: python -m build
+      - name: Public hygiene on the unpacked sdist and wheel
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import subprocess
+          import sys
+          import tarfile
+          import tempfile
+          import zipfile
+          from pathlib import Path
+
+          dist = Path("dist")
+          wheels = sorted(dist.glob("*.whl"))
+          sdists = sorted(dist.glob("*.tar.gz"))
+          if len(wheels) != 1 or len(sdists) != 1:
+              sys.exit(f"expected one wheel and one sdist, found {wheels} and {sdists}")
+          wheel_dir = Path(tempfile.mkdtemp())
+          sdist_dir = Path(tempfile.mkdtemp())
+          try:
+              with zipfile.ZipFile(wheels[0]) as archive:
+                  archive.extractall(wheel_dir)
+              with tarfile.open(sdists[0]) as archive:
+                  archive.extractall(sdist_dir, filter="data")
+          except (OSError, zipfile.BadZipFile, tarfile.TarError) as exc:
+              sys.exit(f"cannot unpack the distribution: {exc}")
+          tops = [path for path in sdist_dir.iterdir() if path.is_dir()]
+          if len(tops) != 1:
+              sys.exit("sdist must unpack to one distribution directory")
+          # Member paths are relative to the distribution root: the wheel root,
+          # and the sdist with its single top directory removed.
+          sys.exit(subprocess.call([
+              sys.executable, "scripts/check_public_hygiene.py", "--promotion",
+              "--tree", str(wheel_dir), "--tree", str(tops[0]),
+          ]))
+          PY
       - name: Verify wheel contains PM Gantt UI assets
         run: |
           set -euo pipefail
           wheel="$(ls dist/*.whl)"
-          python scripts/verify_wheel_contents.py "${wheel}"
+          sdist="$(ls dist/*.tar.gz)"
+          python scripts/verify_wheel_contents.py "${wheel}" "${sdist}"
       - name: Capture artifact names
         id: find
         run: |
@@ -219,6 +255,10 @@ jobs:
       - name: Extract changelog section
         id: notes
         shell: bash
+        env:
+          RELEASE_TARGET: ${{ needs.resolve.outputs.target }}
+          RELEASE_DIST_DIR: dist
+          RELEASE_NOTES_PATH: /tmp/release-notes.md
         run: |
           set -euo pipefail
           tag="${{ needs.resolve.outputs.tag }}"
@@ -235,6 +275,43 @@ jobs:
           if [[ ! -s /tmp/release-notes.md ]]; then
             printf "Release %s — see CHANGELOG.md for details.\n" "${tag}" > /tmp/release-notes.md
           fi
+          # PyPI's file URL is the blake2b-256 digest of the wheel bytes, split
+          # 2/2/rest, then the filename. The same path is what
+          # files.pythonhosted.org and test-files.pythonhosted.org serve, so the
+          # notes can name the exact URL without reading the index back.
+          # One rule: a known publish target and exactly one wheel. Anything else
+          # stops before a URL is written. An sdist beside that wheel is ignored.
+          python3 - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          hosts = {
+              "testpypi": "test-files.pythonhosted.org",
+              "pypi": "files.pythonhosted.org",
+          }
+          target = os.environ["RELEASE_TARGET"]
+          dist = Path(os.environ["RELEASE_DIST_DIR"])
+          notes = Path(os.environ["RELEASE_NOTES_PATH"])
+          wheels = sorted(dist.glob("*.whl"))
+          host = hosts.get(target)
+          if host is None or len(wheels) != 1:
+              raise SystemExit(
+                  "release notes need pypi or testpypi and exactly one wheel, "
+                  f"got target {target!r} and {[p.name for p in wheels]}"
+              )
+          wheel = wheels[0]
+          data = wheel.read_bytes()
+          sha = hashlib.sha256(data).hexdigest()
+          digest = hashlib.blake2b(data, digest_size=32).hexdigest()
+          url = f"https://{host}/packages/{digest[:2]}/{digest[2:4]}/{digest[4:]}/{wheel.name}"
+          install = f'pip install "specy-road @ {url}#sha256={sha}"'
+          body = notes.read_text(encoding="utf-8").rstrip() + "\n\n"
+          body += f"Wheel URL: {url}\n\nsha256: {sha}\n\n```bash\n{install}\n```\n"
+          notes.write_text(body, encoding="utf-8")
+          print(url)
+          print(sha)
+          PY
           {
             echo 'body<<__NOTES_EOF__'
             cat /tmp/release-notes.md

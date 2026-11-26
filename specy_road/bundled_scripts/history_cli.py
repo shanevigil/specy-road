@@ -15,6 +15,7 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg
 from specy_road.history_events import ARCHIVED, RESTORED, SHEET_EDIT
 from specy_road.history_index import (
     events as all_events,
@@ -25,7 +26,7 @@ from specy_road.history_index import (
     resolve_node_key,
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.cli_entry import run_forwarded_cli
+from specy_road.cli_entry import run_handler
 
 # How each event kind reads on one line. `{}` slots are filled from the event.
 _PHRASES = {
@@ -214,7 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Flip the order of whichever view you asked for.",
     )
-    p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    add_json_arg(p)
     p.add_argument(
         "--rebuild",
         action="store_true",
@@ -226,7 +227,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    run_forwarded_cli(build_parser, "history", argv)
+    run_handler(build_parser().parse_args(argv))
 
 
 if __name__ == "__main__":

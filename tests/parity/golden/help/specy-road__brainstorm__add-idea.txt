@@ -1,0 +1,35 @@
+$ specy-road brainstorm add-idea --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm add-idea [-h] [--title TEXT] [--rationale TEXT]
+                                      [--kind {feature,capability,risk,research,experiment,refactor,platform,policy}]
+                                      [--effort SIZE] [--evidence URL] [--quote TEXT]
+                                      [--origin H/M/LENS/ROUND[/SHARD]] [--hypothesis TEXT]
+                                      [--assumption TEXT] [--from-gap] [--from-file PATH]
+                                      [--slug SLUG] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --title TEXT          Required unless --from-file.
+  --rationale TEXT
+  --kind {feature,capability,risk,research,experiment,refactor,platform,policy}
+                        Default: feature.
+  --effort SIZE         Free-form t-shirt size, e.g. S / M / L.
+  --evidence URL        Source that produced the idea. Repeatable.
+  --quote TEXT          Verbatim text (≤300 chars) from the --evidence URL in the same position;
+                        records a source `verify` checks. Repeatable.
+  --origin H/M/LENS/ROUND[/SHARD]
+                        Where the idea came from: harness/model/lens/round[/shard].
+  --hypothesis TEXT     If we do this, <metric> moves because <reason>.
+  --assumption TEXT     Something that must be true for the idea to matter. Repeatable.
+  --from-gap            Mark the idea as raised in the converge pass (a gap); recommend lists it
+                        for a verdict.
+  --from-file PATH      Apply every record in a YAML list (or a mapping with a `ideas:` list), or
+                        JSONL (one object per line; `-` reads stdin), as one write: all or none.
+                        Keys are this command's flag names without the dashes; repeatable flags
+                        take a list.
+  --slug SLUG           Session name (default: the only open session; required when several are).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

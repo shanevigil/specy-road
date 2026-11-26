@@ -1,0 +1,252 @@
+"""Tests for finish_task and mark_implementation_reviewed helpers."""
+
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+import pytest
+import yaml
+
+from tests.support.review import diverge, make_review_repo, git
+
+from specy_road.bundled_scripts import finish_task as ft
+from specy_road.bundled_scripts import mark_implementation_reviewed as mir
+from specy_road import feature_rm_registry as frm
+from tests.support.same.git_init_39224a6ae177 import git_init
+
+
+
+
+def _write_registry(tmp_path, reg: dict) -> None:
+    p = tmp_path / "roadmap" / "registry.yaml"
+    p.parent.mkdir(parents=True)
+    p.write_text(yaml.dump(reg), encoding="utf-8")
+
+
+def test_resolve_context_rejects_registry_branch_mismatch(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "example",
+                "node_id": "M1.1",
+                "branch": "feature/rm-other",
+                "touch_zones": ["src/"],
+            }
+        ],
+    }
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(
+        frm,
+        "load_roadmap",
+        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+    )
+    with pytest.raises(SystemExit):
+        ft.resolve_context(tmp_path, "feature/rm-example")
+
+
+def test_resolve_context_rejects_missing_branch_field(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "example",
+                "node_id": "M1.1",
+                "touch_zones": ["src/"],
+            }
+        ],
+    }
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(
+        frm,
+        "load_roadmap",
+        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+    )
+    with pytest.raises(SystemExit):
+        ft.resolve_context(tmp_path, "feature/rm-example")
+
+
+def test_resolve_context_rejects_non_leaf_registry_claim(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "example",
+                "node_id": "M1",
+                "branch": "feature/rm-example",
+                "touch_zones": ["src/"],
+            }
+        ],
+    }
+    nodes = [
+        {"id": "M1", "title": "Parent"},
+        {"id": "M1.1", "title": "Child", "parent_id": "M1"},
+    ]
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(frm, "load_roadmap", lambda _p: {"nodes": nodes})
+    with pytest.raises(SystemExit):
+        ft.resolve_context(tmp_path, "feature/rm-example")
+    err = capsys.readouterr().err.lower()
+    assert "leaf" in err
+    assert "registry" in err
+    assert "not a leaf claim" in err
+
+
+def test_extract_walkthrough_parses_markdown_section() -> None:
+    text = """# X
+
+## Walkthrough
+
+1. First
+2. Second
+
+## Other
+noop
+"""
+    body = mir.extract_walkthrough(text)
+    assert body is not None
+    assert "1. First" in body
+    assert "noop" not in body
+
+
+def test_extract_walkthrough_none_when_missing() -> None:
+    assert mir.extract_walkthrough("# Only\n\nno walk") is None
+
+
+def test_finish_blocks_when_implementation_review_pending(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    git_init(tmp_path)
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "example",
+                "node_id": "M1.1",
+                "branch": "feature/rm-example",
+                "touch_zones": ["src/"],
+                "implementation_review": "pending",
+            }
+        ],
+    }
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(
+        frm,
+        "load_roadmap",
+        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+    )
+    monkeypatch.setattr(ft, "review_required", lambda _r: True)
+    monkeypatch.setattr(ft, "current_branch", lambda _root: "feature/rm-example")
+    monkeypatch.setattr(ft, "update_chunk_status", lambda _nid: [])
+    monkeypatch.setattr(ft, "validate_export_digest", lambda: None)
+    monkeypatch.setattr(ft, "git_run", lambda *_a, **_k: None)
+    with pytest.raises(SystemExit) as ei:
+        ft.main(["--repo-root", str(tmp_path)])
+    assert ei.value.code == 1
+
+
+def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None:
+    import json
+
+    from specy_road.roadmap_chunk_utils import load_json_chunk
+
+    (tmp_path / "roadmap" / "phases").mkdir(parents=True)
+    (tmp_path / "roadmap" / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/x.json"]}) + "\n",
+        encoding="utf-8",
+    )
+    nodes = [
+        {
+            "id": "M1.1",
+            "parent_id": None,
+            "type": "milestone",
+            "title": "Example",
+            "codename": "example",
+            "status": "Not Started",
+        },
+    ]
+    (tmp_path / "roadmap" / "phases" / "x.json").write_text(
+        json.dumps({"nodes": nodes}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    changed = ft.update_chunk_status(tmp_path, "M1.1")
+    assert changed == ["roadmap/phases/x.json"]
+    out = load_json_chunk(tmp_path / "roadmap" / "phases" / "x.json")
+    assert out[0]["status"] == "Complete"
+
+
+def test_validate_export_digest_runs_all_three_in_order(tmp_path, monkeypatch) -> None:
+    """digest is a CI drift gate, so finish must refresh roadmap-context.md too."""
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        ft.subprocess, "check_call", lambda argv, **_k: calls.append(list(argv))
+    )
+
+    ft.validate_export_digest(tmp_path)
+
+    assert [c[3] for c in calls] == ["validate", "export", "digest"]
+    assert all(c[1:3] == ["-m", "specy_road.cli"] for c in calls)
+    assert all(c[4:] == ["--repo-root", str(tmp_path)] for c in calls)
+
+
+def test_finish_already_done_on_branch_when_complete_and_deregistered(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """After pr-mode finish, re-run finish explains merge instead of registry error."""
+    _write_registry(tmp_path, {"version": 1, "entries": []})
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: dev\nremote: origin\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        frm,
+        "load_roadmap",
+        lambda _p: {
+            "nodes": [
+                {
+                    "id": "M17.1",
+                    "title": "Privacy guard",
+                    "codename": "manuscript-privacy-guard",
+                    "status": "Complete",
+                }
+            ]
+        },
+    )
+    with pytest.raises(SystemExit) as exc:
+        ft.resolve_context(tmp_path, "feature/rm-manuscript-privacy-guard")
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "already Complete" in out
+    assert "Do not run finish again" in out
+    assert "Where things stand (on_complete: pr)" in out
+
+
+@pytest.mark.parametrize("case", ["bookkeeping", "code"])
+def test_finish_refuses_while_a_trial_merge_conflicts_on_code(
+    tmp_path, capsys: pytest.CaptureFixture[str], case: str
+) -> None:
+    """A code conflict stops finish before anything; a bookkeeping one reaches the review gate."""
+    repo = make_review_repo(tmp_path)
+    diverge(repo, case)
+    head = git(repo, "rev-parse", "HEAD")
+    with pytest.raises(SystemExit) as ei:
+        ft.main(["--repo-root", str(repo)])
+    assert ei.value.code == 1
+    err = capsys.readouterr().err
+    assert ("trial merge conflicts on src/a.py" in err) == (case == "code")
+    assert ("implementation review is required" in err) == (case == "bookkeeping")
+    assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""

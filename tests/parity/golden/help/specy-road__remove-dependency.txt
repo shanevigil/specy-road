@@ -1,0 +1,12 @@
+$ specy-road remove-dependency --help
+exit: 0
+--- stdout ---
+usage: specy-road remove-dependency [-h] NODE_ID DEP_NODE_KEY
+
+positional arguments:
+  NODE_ID
+  DEP_NODE_KEY
+
+options:
+  -h, --help    show this help message and exit
+--- stderr ---

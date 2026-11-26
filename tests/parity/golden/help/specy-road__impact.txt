@@ -1,0 +1,19 @@
+$ specy-road impact --help
+exit: 0
+--- stdout ---
+usage: specy-road impact [-h] [--ref REF] [--zones] [--repo-root DIR] node_id
+
+List, sorted, every Python test file that imports (at any depth) a module changed between the
+merge base and REF; ALL when a conftest.py changed. Advisory; git objects only.
+
+positional arguments:
+  node_id          Roadmap node id, e.g. M9.9
+
+options:
+  -h, --help       show this help message and exit
+  --ref REF        Branch or commit (default: the node's registered branch)
+  --zones          Start from the modules under the node's touch zones at REF instead of the diff
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

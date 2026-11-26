@@ -1,0 +1,12 @@
+$ specy-road handoff --help
+exit: 0
+--- stdout ---
+usage: specy-road handoff [-h] {status} ...
+
+positional arguments:
+  {status}
+    status    Report hand-offs, reviews, and whether review policy is met
+
+options:
+  -h, --help  show this help message and exit
+--- stderr ---

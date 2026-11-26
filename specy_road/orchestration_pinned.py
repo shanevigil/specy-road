@@ -1,7 +1,7 @@
 """The roster and profiles as the integration branch has them: what prompts, plans and workers must route by.
 
 The review gate reads ``roadmap/orchestration.yaml`` from the integration
-branch (``review_policy_ref.policy_source``), never from the working tree an agent
+branch (``review_policy_pin.policy_source``), never from the working tree an agent
 can edit without a trace. Routing has to read the same file: a working-tree
 roster could widen ``may_process`` on an outside model, add a ``channels.cli``
 or ``preflight`` command, or name a reviewer the gate will later refuse.
@@ -22,12 +22,13 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from specy_road.git_subprocess import git_stdout, git_text
-from specy_road.model_profiles import (
+from specy_road.orchestration.model_profiles import (
     GUIDANCE_BYPASS_KEY,
     PROFILES_REL,
     Profile,
     bundled_profiles_root,
     list_profiles,
+    match_entry,
     parse_profile,
     profiles_dir,
     profile_for_entry,
@@ -41,10 +42,12 @@ from specy_road.orchestration_config import (
     orchestration_yaml_path,
     parse_orchestration_text,
 )
-from specy_road.review_policy_ref import integration_name, policy_source
+from specy_road.review_policy_pin import integration_name, policy_source
 from specy_road.review_target import full_sha
-from specy_road.roster_local import GUIDANCE_OPT_IN, merge_local_roster
-from specy_road.roster_profile_check import profile_value_form_problem, profile_value_problem
+from specy_road.orchestration.roster_local import GUIDANCE_OPT_IN, merge_local_roster
+from specy_road.orchestration.roster_profile_check import (
+    profile_value_form_problem, profile_value_problem,
+)
 
 
 #: ``roster_ref`` of a plan built with ``worktree=True``: a dry run nothing may launch from.
@@ -210,10 +213,18 @@ def _pinned_at(repo_root: Path, sha: str, rel: str, ref: str) -> Profile:
     return parse_profile(local, committed)
 
 
+def _listed_profiles(repo_root: Path, sha: str) -> tuple[str, ...] | None:
+    """The committed profile paths at ``sha`` (``None`` when git cannot list them). One listing for routing and the
+    guidance flags: NUL-delimited ``ls-tree -z``, since under ``core.quotePath`` a plain listing quotes a non-ASCII
+    name (``"model-profiles/caf\\303\\251.md"``) and the ``.md`` filter would drop it."""
+    out = git_stdout(["ls-tree", "-r", "-z", "--name-only", sha, "--", PROFILES_REL.as_posix()], repo_root)
+    return None if out is None else tuple(
+        p for p in out.split("\0") if p.endswith(".md") and not p.endswith("/README.md"))
+
+
 @cache
 def _committed_profile_paths(root: str, sha: str) -> tuple[str, ...]:
-    out = git_text(["ls-tree", "-r", "--name-only", sha, "--", PROFILES_REL.as_posix()], Path(root)) or ""
-    return tuple(p for p in out.splitlines() if p.endswith(".md") and not p.endswith("/README.md"))
+    return _listed_profiles(Path(root), sha) or ()
 
 
 def _pinned_for_id(repo_root: Path, sha: str, path: str, ref: str, model_id: Any) -> Profile | None:
@@ -264,8 +275,7 @@ def _integration_profile_for_entry(repo_root: Path, entry: dict[str, Any], rel: 
         prof = _pinned_at(repo_root, sha, rel_posix, ref)
         return prof.for_id(entry.get("id")) or prof
     paths = _committed_profile_paths(str(repo_root), sha)
-    return next((m for path in paths
-                 if (m := _pinned_for_id(repo_root, sha, path, ref, entry.get("id")))), None)
+    return match_entry(entry, paths, lambda path, key: _pinned_for_id(repo_root, sha, path, ref, key))
 
 
 def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree: bool = False) -> Profile | None:
@@ -273,7 +283,8 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree
     with ``worktree=True``, the dry run :func:`pinned_config` describes).
 
     ``profile:`` names the path; without it a committed profile whose ``api_id``,
-    file name or ``aliases`` include the entry's ``id`` is used, as :func:`profile_for_entry` does.
+    file name or ``aliases`` include the entry's ``id``, else its ``harness_model``, is used in
+    :func:`~specy_road.model_profiles.match_entry`'s order, as :func:`profile_for_entry` does.
     """
     rel = entry.get("profile")
     if bad := _invalid_explicit_profile(repo_root, rel):
@@ -360,11 +371,11 @@ def _committed_text(repo_root: Path, sha: str, rel: str) -> tuple[str | None, st
 
 
 def _committed_source(repo_root: Path, sha: str) -> GuidanceSource:
-    listing = git_text(["ls-tree", "-r", "--name-only", sha, "--", PROFILES_REL.as_posix()], repo_root)
+    listing = _listed_profiles(repo_root, sha)
     if listing is None:
         return _failed(repo_root, f"cannot list {PROFILES_REL.as_posix()}/ on the integration branch ({sha[:12]})")
     texts = {}
-    for rel in (r for r in listing.splitlines() if r.endswith(".md") and not r.endswith("/README.md")):
+    for rel in listing:
         text, err = _committed_text(repo_root, sha, rel)
         if err:
             return _failed(repo_root, err)
